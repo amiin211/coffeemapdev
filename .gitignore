@@ -6,4 +6,7 @@ build
 .env*.local
 .vercel
 *.log
-.DS_Store
+.D_Store
+enviro-*.json
+*.key
+credentials.json

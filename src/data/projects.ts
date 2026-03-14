@@ -10,6 +10,15 @@ export interface Project {
 
 export const projects: Project[] = [
   {
+    id: 'climate-vulnerability-assessment',
+    title: 'Climate Vulnerability Assessment',
+    description: 'Google Earth Engine-powered assessment of climate and environmental vulnerability for Eastern Sudan states using satellite-derived indicators.',
+    category: 'geoai',
+    tags: ['Google Earth Engine', 'Climate Analysis', 'Remote Sensing', 'Vulnerability Index'],
+    image: '/images/project-4.jpg',
+    externalUrl: '/projects/climate-vulnerability',
+  },
+  {
     id: 'sudan-flood-dashboard',
     title: 'Sudan Flood Dashboard',
     description: 'Interactive humanitarian dashboard tracking flood crisis, displacement, and disease outbreaks across Sudan states using real OCHA data.',
