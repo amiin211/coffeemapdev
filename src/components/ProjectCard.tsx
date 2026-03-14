@@ -3,7 +3,6 @@
 import {
   Card,
   CardContent,
-  CardMedia,
   Box,
   Typography,
   Button,
@@ -13,12 +12,15 @@ import {
 import { Project } from '@/data/projects';
 import TechBadge from './TechBadge';
 import { getCategoryLabel } from '@/utils/filters';
+import Link from 'next/link';
 
 interface ProjectCardProps {
   project: Project;
 }
 
 const ProjectCard = ({ project }: ProjectCardProps) => {
+  const isExternal = project.externalUrl?.startsWith('http');
+
   return (
     <Card
       sx={{
@@ -99,23 +101,70 @@ const ProjectCard = ({ project }: ProjectCardProps) => {
           ))}
         </Stack>
 
-        <Button
-          variant="outlined"
-          size="small"
-          sx={{
-            alignSelf: 'flex-start',
-            borderColor: 'primary.main',
-            color: 'primary.main',
-            fontFamily: 'Fira Code, monospace',
-            fontSize: '0.75rem',
-            '&:hover': {
-              backgroundColor: 'rgba(74, 55, 40, 0.08)',
-              borderColor: 'primary.dark',
-            },
-          }}
-        >
-          View Demo
-        </Button>
+        {project.externalUrl ? (
+          isExternal ? (
+            <Button
+              component="a"
+              href={project.externalUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              variant="outlined"
+              size="small"
+              sx={{
+                alignSelf: 'flex-start',
+                borderColor: 'primary.main',
+                color: 'primary.main',
+                fontFamily: 'Fira Code, monospace',
+                fontSize: '0.75rem',
+                '&:hover': {
+                  backgroundColor: 'rgba(74, 55, 40, 0.08)',
+                  borderColor: 'primary.dark',
+                },
+              }}
+            >
+              View Demo
+            </Button>
+          ) : (
+            <Button
+              component={Link}
+              href={project.externalUrl}
+              variant="outlined"
+              size="small"
+              sx={{
+                alignSelf: 'flex-start',
+                borderColor: 'primary.main',
+                color: 'primary.main',
+                fontFamily: 'Fira Code, monospace',
+                fontSize: '0.75rem',
+                textDecoration: 'none',
+                '&:hover': {
+                  backgroundColor: 'rgba(74, 55, 40, 0.08)',
+                  borderColor: 'primary.dark',
+                },
+              }}
+            >
+              View Demo
+            </Button>
+          )
+        ) : (
+          <Button
+            variant="outlined"
+            size="small"
+            sx={{
+              alignSelf: 'flex-start',
+              borderColor: 'primary.main',
+              color: 'primary.main',
+              fontFamily: 'Fira Code, monospace',
+              fontSize: '0.75rem',
+              '&:hover': {
+                backgroundColor: 'rgba(74, 55, 40, 0.08)',
+                borderColor: 'primary.dark',
+              },
+            }}
+          >
+            View Demo
+          </Button>
+        )}
       </CardContent>
     </Card>
   );

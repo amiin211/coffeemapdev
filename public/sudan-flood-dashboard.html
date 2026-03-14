@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Sudan Environmental Vulnerability — Flood Dashboard</title>
+
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+
+<!-- Leaflet -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+
+<style>
+  /* ── DESIGN TOKENS ── */
+  :root {
+    --bg:        #0a0d12;
+    --surface:   #111520;
+    --surface2:  #171d2e;
+    --border:    #1e2a3a;
+    --accent:    #00c6ff;
+    --warn:      #ff6b35;
+    --danger:    #e8003d;
+    --safe:      #00e5a0;
+    --text:      #dde6f0;
+    --muted:     #5a6a80;
+    --font-head: 'Syne', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-mono);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Noise texture overlay */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 0;
+  }
+
+  /* ── HEADER ── */
+  header {
+    position: relative; z-index: 10;
+    padding: 2rem 2.5rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: flex-end; justify-content: space-between;
+    background: linear-gradient(180deg, rgba(0,198,255,0.06) 0%, transparent 100%);
+  }
+
+  .header-left .label {
+    font-size: 0.65rem; letter-spacing: 0.2em; color: var(--accent);
+    text-transform: uppercase; margin-bottom: 0.4rem;
+  }
+
+  header h1 {
+    font-family: var(--font-head);
+    font-size: clamp(1.4rem, 3vw, 2.2rem);
+    font-weight: 800;
+    line-height: 1.1;
+    color: #fff;
+  }
+
+  header h1 span { color: var(--accent); }
+
+  .header-meta {
+    text-align: right;
+    font-size: 0.7rem; color: var(--muted);
+    line-height: 1.8;
+  }
+
+  .live-dot {
+    display: inline-block; width: 7px; height: 7px;
+    border-radius: 50%; background: var(--danger);
+    margin-right: 6px;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%,100% { opacity:1; transform:scale(1); }
+    50%      { opacity:0.4; transform:scale(0.7); }
+  }
+
+  /* ── ALERT BANNER ── */
+  .alert-banner {
+    position: relative; z-index: 10;
+    margin: 1.5rem 2.5rem;
+    background: rgba(232,0,61,0.08);
+    border: 1px solid rgba(232,0,61,0.4);
+    border-left: 4px solid var(--danger);
+    border-radius: 4px;
+    padding: 1rem 1.5rem;
+    display: flex; gap: 2rem; flex-wrap: wrap;
+  }
+
+  .alert-banner .alert-title {
+    font-family: var(--font-head);
+    font-size: 0.7rem; font-weight: 700;
+    letter-spacing: 0.15em; text-transform: uppercase;
+    color: var(--danger); margin-bottom: 0.5rem;
+  }
+
+  .alert-zones { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+
+  .alert-zone {
+    font-size: 0.7rem; color: var(--text);
+    display: flex; align-items: center; gap: 0.4rem;
+  }
+
+  .alert-zone::before {
+    content: '▲';
+    color: var(--danger); font-size: 0.6rem;
+  }
+
+  /* ── STAT STRIP ── */
+  .stat-strip {
+    position: relative; z-index: 10;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1px;
+    background: var(--border);
+    margin: 0 2.5rem 1.5rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    padding: 1.2rem 1.4rem;
+    position: relative; overflow: hidden;
+    transition: background 0.2s;
+  }
+
+  .stat-card:hover { background: var(--surface2); }
+
+  .stat-card::after {
+    content: '';
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: 2px;
+  }
+
+  .stat-card.c-blue::after  { background: var(--accent); }
+  .stat-card.c-warn::after  { background: var(--warn); }
+  .stat-card.c-danger::after{ background: var(--danger); }
+  .stat-card.c-safe::after  { background: var(--safe); }
+
+  .stat-label {
+    font-size: 0.6rem; letter-spacing: 0.15em;
+    text-transform: uppercase; color: var(--muted);
+    margin-bottom: 0.5rem;
+  }
+
+  .stat-value {
+    font-family: var(--font-head);
+    font-size: 1.9rem; font-weight: 800;
+    line-height: 1;
+  }
+
+  .stat-card.c-blue  .stat-value { color: var(--accent); }
+  .stat-card.c-warn  .stat-value { color: var(--warn); }
+  .stat-card.c-danger.stat-value { color: var(--danger); }
+  .stat-card.c-safe  .stat-value { color: var(--safe); }
+
+  .stat-sub {
+    font-size: 0.62rem; color: var(--muted);
+    margin-top: 0.3rem;
+  }
+
+  /* ── GRID ── */
+  .grid {
+    position: relative; z-index: 10;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+    gap: 1.5rem;
+    padding: 0 2.5rem 2.5rem;
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .panel-wide { grid-column: 1 / -1; }
+  .panel-map  { grid-column: 1 / -1; height: 420px; }
+
+  .panel-header {
+    padding: 1rem 1.4rem;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+
+  .panel-header h2 {
+    font-family: var(--font-head);
+    font-size: 0.85rem; font-weight: 700;
+    letter-spacing: 0.05em; text-transform: uppercase;
+    color: #fff;
+  }
+
+  .panel-tag {
+    font-size: 0.6rem; letter-spacing: 0.12em;
+    text-transform: uppercase; padding: 3px 8px;
+    border-radius: 2px;
+  }
+
+  .tag-blue   { background: rgba(0,198,255,0.12); color: var(--accent); border: 1px solid rgba(0,198,255,0.3); }
+  .tag-warn   { background: rgba(255,107,53,0.12); color: var(--warn);   border: 1px solid rgba(255,107,53,0.3); }
+  .tag-danger { background: rgba(232,0,61,0.12);  color: var(--danger);  border: 1px solid rgba(232,0,61,0.3); }
+  .tag-safe   { background: rgba(0,229,160,0.12); color: var(--safe);    border: 1px solid rgba(0,229,160,0.3); }
+
+  .panel-body { padding: 1.2rem; }
+
+  canvas { max-width: 100%; }
+
+  /* ── MAP ── */
+  #map {
+    width: 100%; height: 100%;
+    background: #0a1020;
+  }
+
+  /* ── FAMINE TABLE ── */
+  .famine-table {
+    width: 100%; border-collapse: collapse;
+    font-size: 0.72rem;
+  }
+
+  .famine-table th {
+    font-size: 0.6rem; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--muted);
+    padding: 0.5rem 0.8rem; text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .famine-table td {
+    padding: 0.65rem 0.8rem;
+    border-bottom: 1px solid rgba(30,42,58,0.5);
+  }
+
+  .famine-table tr:last-child td { border-bottom: none; }
+  .famine-table tr:hover td { background: var(--surface2); }
+
+  .severity-bar {
+    height: 4px; border-radius: 2px;
+    background: var(--border); margin-top: 4px;
+    overflow: hidden;
+  }
+
+  .severity-fill { height: 100%; border-radius: 2px; }
+
+  .ipc5 { color: var(--danger); font-weight: 600; }
+  .flood-n { color: var(--accent); }
+
+  /* ── CHOLERA ── */
+  .cholera-states {
+    display: grid; gap: 0.5rem; margin-top: 0.5rem;
+  }
+
+  .cholera-row {
+    display: flex; align-items: center; gap: 0.8rem;
+    font-size: 0.7rem;
+  }
+
+  .cholera-state-name {
+    width: 80px; color: var(--text); flex-shrink: 0;
+  }
+
+  .cholera-bar-wrap {
+    flex: 1; background: var(--border);
+    height: 5px; border-radius: 3px; overflow: hidden;
+  }
+
+  .cholera-bar-fill {
+    height: 100%; border-radius: 3px;
+    background: var(--danger);
+    transition: width 1s ease;
+  }
+
+  .cholera-count { color: var(--muted); font-size: 0.65rem; width: 45px; text-align: right; }
+
+  /* ── LEGEND ── */
+  .legend { display: flex; gap: 1rem; flex-wrap: wrap; font-size: 0.65rem; color: var(--muted); margin-top: 0.8rem; }
+  .legend-item { display: flex; align-items: center; gap: 0.4rem; }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+  /* ── FOOTER ── */
+  footer {
+    position: relative; z-index: 10;
+    text-align: center; padding: 1.5rem;
+    font-size: 0.62rem; color: var(--muted);
+    border-top: 1px solid var(--border);
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 768px) {
+    header { flex-direction: column; gap: 1rem; align-items: flex-start; }
+    .grid  { grid-template-columns: 1fr; padding: 0 1rem 2rem; }
+    .panel-wide, .panel-map { grid-column: 1; }
+    .alert-banner, .stat-strip { margin-inline: 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="header-left">
+    <div class="label">Environmental Vulnerability Assessment</div>
+    <h1>Sudan <span>Flood</span> Crisis Dashboard</h1>
+  </div>
+  <div class="header-meta">
+    <div><span class="live-dot"></span>Flash Update No. 04</div>
+    <div>Source: OCHA Sudan · 5 September 2024</div>
+    <div>GEE Integration: Sentinel-1 SAR · MODIS · Landsat 9</div>
+  </div>
+</header>
+
+<!-- CRITICAL ALERT BANNER -->
+<div class="alert-banner">
+  <div>
+    <div class="alert-title">⚠ Critical Overlap Zones — Flooding + Famine (IPC Phase 5)</div>
+    <div class="alert-zones">
+      <div class="alert-zone">Zamzam IDP Camp, Al Fasher — Famine Confirmed</div>
+      <div class="alert-zone">Kutum &amp; Tawila (N. Darfur) — 25,800 at Catastrophe Level</div>
+      <div class="alert-zone">Central Darfur (4 localities) — 28,500 at risk</div>
+      <div class="alert-zone">West Darfur — 35,800 famine risk + active flooding</div>
+    </div>
+  </div>
+</div>
+
+<!-- STAT STRIP -->
+<div class="stat-strip">
+  <div class="stat-card c-blue">
+    <div class="stat-label">People Affected</div>
+    <div class="stat-value">491K</div>
+    <div class="stat-sub">88,600 families · 15 states</div>
+  </div>
+  <div class="stat-card c-warn">
+    <div class="stat-label">Displaced</div>
+    <div class="stat-value">143K</div>
+    <div class="stat-sub">29% of total affected</div>
+  </div>
+  <div class="stat-card c-danger">
+    <div class="stat-label">Homes Destroyed</div>
+    <div class="stat-value">35.5K</div>
+    <div class="stat-sub">+ 45,000 damaged</div>
+  </div>
+  <div class="stat-card c-danger">
+    <div class="stat-label">Deaths / Injuries</div>
+    <div class="stat-value">69 / 112</div>
+    <div class="stat-sub">Actual numbers likely higher</div>
+  </div>
+  <div class="stat-card c-warn">
+    <div class="stat-label">Cholera Cases</div>
+    <div class="stat-value">2,900</div>
+    <div class="stat-sub">CFR 3.9% · 112 deaths</div>
+  </div>
+  <div class="stat-card c-safe">
+    <div class="stat-label">Localities Affected</div>
+    <div class="stat-value">63</div>
+    <div class="stat-sub">across 15 of 18 states</div>
+  </div>
+</div>
+
+<!-- MAIN GRID -->
+<div class="grid">
+
+  <!-- ROW 1: MAP (full width) -->
+  <div class="panel panel-map">
+    <div class="panel-header">
+      <h2>🗺 Flood Extent Map — Sudan States</h2>
+      <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+        <span class="panel-tag tag-blue">Leaflet.js</span>
+        <span class="panel-tag tag-warn">GEE Sentinel-1 Ready</span>
+      </div>
+    </div>
+    <div id="map"></div>
+  </div>
+
+  <!-- ROW 2 LEFT: People Affected Bar -->
+  <div class="panel">
+    <div class="panel-header">
+      <h2>People Affected by State</h2>
+      <span class="panel-tag tag-blue">Horizontal Bar</span>
+    </div>
+    <div class="panel-body">
+      <canvas id="chartAffected" height="260"></canvas>
+    </div>
+  </div>
+
+  <!-- ROW 2 RIGHT: Housing Damage -->
+  <div class="panel">
+    <div class="panel-header">
+      <h2>Housing Damage</h2>
+      <span class="panel-tag tag-warn">Destroyed vs Damaged</span>
+    </div>
+    <div class="panel-body">
+      <canvas id="chartHousing" height="260"></canvas>
+    </div>
+  </div>
+
+  <!-- ROW 3 LEFT: Displacement Doughnut -->
+  <div class="panel">
+    <div class="panel-header">
+      <h2>Displacement Breakdown</h2>
+      <span class="panel-tag tag-blue">Doughnut</span>
+    </div>
+    <div class="panel-body" style="display:flex;justify-content:center;">
+      <canvas id="chartDisplacement" height="240" width="240"></canvas>
+    </div>
+  </div>
+
+  <!-- ROW 3 RIGHT: Cholera -->
+  <div class="panel">
+    <div class="panel-header">
+      <h2>Cholera Outbreak by State</h2>
+      <span class="panel-tag tag-danger">July 22 – Sep 1, 2024</span>
+    </div>
+    <div class="panel-body">
+      <div style="font-size:0.65rem;color:var(--muted);margin-bottom:0.8rem;">
+        Total: 2,900 cases · 112 deaths · CFR 3.9%
+      </div>
+      <div class="cholera-states" id="choleraRows"></div>
+      <canvas id="chartCholera" height="180" style="margin-top:1.2rem;"></canvas>
+    </div>
+  </div>
+
+  <!-- ROW 4: Famine + Flood Overlap (full width) -->
+  <div class="panel panel-wide">
+    <div class="panel-header">
+      <h2>⚡ Famine–Flood Overlap (IPC Phase 5 Zones)</h2>
+      <span class="panel-tag tag-danger">Bubble Chart · Critical Indicator</span>
+    </div>
+    <div class="panel-body">
+      <canvas id="chartBubble" height="300"></canvas>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--danger)"></div>Famine Risk (IPC 5)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--accent)"></div>Flood Affected</div>
+        <div class="legend-item" style="color:var(--text)">Bubble size = famine risk population</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW 5: Famine Table (full width) -->
+  <div class="panel panel-wide">
+    <div class="panel-header">
+      <h2>Detailed Famine–Flood Intersection Table</h2>
+      <span class="panel-tag tag-danger">Darfur Region · IPC 2024</span>
+    </div>
+    <div class="panel-body">
+      <table class="famine-table" id="famineTable"></table>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  Sudan Environmental Vulnerability Assessment · Data: OCHA Flash Update No. 04, September 5 2024 · IPC June 2024 · Sudan Floods Dashboard<br/>
+  GEE Integration: Sentinel-1 SAR (Flood Extent) · MODIS MOD13A1 (NDVI) · ESA WorldCover (Desertification) · Node.js API layer ready
+</footer>
+
+<script>
+/* ══════════════════════════════════════
+   DATA (sourced from OCHA report)
+══════════════════════════════════════ */
+
+const affectedData = {
+  labels: [
+    'North Darfur','Red Sea','Northern','South Darfur',
+    'River Nile','Kassala','West Darfur','Central Darfur',
+    'Al Fasher','Aj Jazirah','Khartoum','Gedaref'
+  ],
+  values: [122680, 75118, 68164, 62130, 58825, 15100, 12000, 26200, 24600, 4500, 2000, 8000]
+};
+
+const housingData = {
+  labels: ['Northern','South Darfur','Kassala'],
+  destroyed: [4755, 1311, 664],
+  damaged:   [8280, 9402, 213]
+};
+
+const choleraData = [
+  { state: 'Kassala',   cases: 1703 },
+  { state: 'Gedaref',   cases: 699  },
+  { state: 'River Nile',cases: 408  },
+  { state: 'Aj Jazirah',cases: 65   },
+  { state: 'Khartoum',  cases: 20   },
+];
+
+const famineFloodData = [
+  { loc: 'Kutum & Tawila\n(N. Darfur)',  flooded: 42600, famine: 25800 },
+  { loc: 'Central Darfur\n(4 localities)',flooded: 26200, famine: 28500 },
+  { loc: 'Al Fasher\n(Zamzam IDP)',       flooded: 24600, famine: 47000 },
+  { loc: 'West Darfur\n(Ag Geneina+)',    flooded: 12000, famine: 35800 },
+  { loc: 'South Darfur\n(Al Wihda)',      flooded: 1200,  famine: 18700 },
+];
+
+/* ══════════════════════════════════════
+   CHART DEFAULTS
+══════════════════════════════════════ */
+
+Chart.defaults.color = '#5a6a80';
+Chart.defaults.font.family = "'DM Mono', monospace";
+Chart.defaults.font.size = 11;
+
+const gridLine = { color: 'rgba(30,42,58,0.8)', lineWidth: 1 };
+const noGrid   = { display: false };
+
+/* ══════════════════════════════════════
+   CHART 1: Horizontal Bar — Affected
+══════════════════════════════════════ */
+
+new Chart(document.getElementById('chartAffected'), {
+  type: 'bar',
+  data: {
+    labels: affectedData.labels,
+    datasets: [{
+      label: 'People Affected',
+      data: affectedData.values,
+      backgroundColor: affectedData.values.map(v =>
+        v > 100000 ? 'rgba(232,0,61,0.75)'  :
+        v > 50000  ? 'rgba(255,107,53,0.7)' :
+                    'rgba(0,198,255,0.55)'
+      ),
+      borderColor: affectedData.values.map(v =>
+        v > 100000 ? '#e8003d' : v > 50000 ? '#ff6b35' : '#00c6ff'
+      ),
+      borderWidth: 1,
+      borderRadius: 3,
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: {
+        grid: gridLine,
+        ticks: {
+          callback: v => v >= 1000 ? (v/1000).toFixed(0)+'K' : v
+        }
+      },
+      y: { grid: noGrid }
+    }
+  }
+});
+
+/* ══════════════════════════════════════
+   CHART 2: Grouped Bar — Housing
+══════════════════════════════════════ */
+
+new Chart(document.getElementById('chartHousing'), {
+  type: 'bar',
+  data: {
+    labels: housingData.labels,
+    datasets: [
+      {
+        label: 'Destroyed',
+        data: housingData.destroyed,
+        backgroundColor: 'rgba(232,0,61,0.7)',
+        borderColor: '#e8003d',
+        borderWidth: 1,
+        borderRadius: 3,
+      },
+      {
+        label: 'Damaged',
+        data: housingData.damaged,
+        backgroundColor: 'rgba(255,107,53,0.55)',
+        borderColor: '#ff6b35',
+        borderWidth: 1,
+        borderRadius: 3,
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: {
+        labels: { color: '#5a6a80', boxWidth: 12, font: { size: 11 } }
+      }
+    },
+    scales: {
+      x: { grid: noGrid },
+      y: {
+        grid: gridLine,
+        ticks: { callback: v => v >= 1000 ? (v/1000).toFixed(0)+'K' : v }
+      }
+    }
+  }
+});
+
+/* ══════════════════════════════════════
+   CHART 3: Doughnut — Displacement
+══════════════════════════════════════ */
+
+new Chart(document.getElementById('chartDisplacement'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Displaced (143,200)', 'Affected Not Displaced (347,900)'],
+    datasets: [{
+      data: [143200, 347900],
+      backgroundColor: ['rgba(232,0,61,0.8)', 'rgba(0,198,255,0.4)'],
+      borderColor:     ['#e8003d','#00c6ff'],
+      borderWidth: 2,
+      hoverOffset: 8
+    }]
+  },
+  options: {
+    cutout: '65%',
+    plugins: {
+      legend: {
+        position: 'bottom',
+        labels: { color: '#5a6a80', boxWidth: 12, font: { size: 10 }, padding: 14 }
+      }
+    }
+  }
+});
+
+/* ══════════════════════════════════════
+   CHOLERA BARS (custom HTML)
+══════════════════════════════════════ */
+
+const maxCholera = Math.max(...choleraData.map(d => d.cases));
+const choleraContainer = document.getElementById('choleraRows');
+choleraData.forEach(d => {
+  const pct = (d.cases / maxCholera * 100).toFixed(1);
+  choleraContainer.innerHTML += `
+    <div class="cholera-row">
+      <div class="cholera-state-name">${d.state}</div>
+      <div class="cholera-bar-wrap">
+        <div class="cholera-bar-fill" style="width:${pct}%"></div>
+      </div>
+      <div class="cholera-count">${d.cases.toLocaleString()}</div>
+    </div>`;
+});
+
+/* ══════════════════════════════════════
+   CHART 4: Cholera Line (timeline simulation)
+══════════════════════════════════════ */
+
+const choleraMonths = ['Jul 22','Jul 28','Aug 5','Aug 12','Aug 19','Aug 26','Sep 1'];
+const choleraCumulative = [120, 450, 900, 1400, 1900, 2500, 2900];
+
+new Chart(document.getElementById('chartCholera'), {
+  type: 'line',
+  data: {
+    labels: choleraMonths,
+    datasets: [{
+      label: 'Cumulative Cholera Cases',
+      data: choleraCumulative,
+      borderColor: '#e8003d',
+      backgroundColor: 'rgba(232,0,61,0.08)',
+      borderWidth: 2,
+      pointBackgroundColor: '#e8003d',
+      pointRadius: 4,
+      fill: true,
+      tension: 0.4,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: noGrid },
+      y: { grid: gridLine }
+    }
+  }
+});
+
+/* ══════════════════════════════════════
+   CHART 5: Bubble — Famine × Flood
+══════════════════════════════════════ */
+
+const bubbleDatasets = famineFloodData.map((d, i) => ({
+  label: d.loc.replace('\n', ' '),
+  data: [{
+    x: d.flooded / 1000,
+    y: i + 1,
+    r: Math.sqrt(d.famine / 1000) * 4.5
+  }],
+  backgroundColor: `rgba(232,0,${61 + i*25},0.55)`,
+  borderColor:     `rgba(232,0,${61 + i*25},0.9)`,
+  borderWidth: 1.5
+}));
+
+new Chart(document.getElementById('chartBubble'), {
+  type: 'bubble',
+  data: { datasets: bubbleDatasets },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: {
+        labels: { color: '#5a6a80', boxWidth: 10, font: { size: 10 }, padding: 10 }
+      },
+      tooltip: {
+        callbacks: {
+          label: ctx => {
+            const d = famineFloodData[ctx.datasetIndex];
+            return [
+              `Flooded: ${d.flooded.toLocaleString()} people`,
+              `Famine risk: ${d.famine.toLocaleString()} people (IPC 5)`
+            ];
+          }
+        }
+      }
+    },
+    scales: {
+      x: {
+        title: { display: true, text: 'Flood-Affected Population (thousands)', color: '#5a6a80' },
+        grid: gridLine,
+        ticks: { callback: v => v + 'K' }
+      },
+      y: {
+        display: false,
+        min: 0, max: famineFloodData.length + 1
+      }
+    }
+  }
+});
+
+/* ══════════════════════════════════════
+   FAMINE TABLE
+══════════════════════════════════════ */
+
+const tableEl = document.getElementById('famineTable');
+tableEl.innerHTML = `
+  <thead>
+    <tr>
+      <th>Locality</th>
+      <th>State</th>
+      <th>Flood Affected</th>
+      <th>IPC Phase 5 (Famine Risk)</th>
+      <th>Overlap Severity</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Kutum &amp; Tawila</td><td>North Darfur</td>
+      <td class="flood-n">42,600</td><td class="ipc5">25,800</td>
+      <td><div class="severity-bar"><div class="severity-fill" style="width:88%;background:var(--danger)"></div></div></td>
+    </tr>
+    <tr>
+      <td>Azum, Bendasi, Wadi Salih, Zalingei</td><td>Central Darfur</td>
+      <td class="flood-n">26,200</td><td class="ipc5">28,500</td>
+      <td><div class="severity-bar"><div class="severity-fill" style="width:95%;background:var(--danger)"></div></div></td>
+    </tr>
+    <tr>
+      <td>Al Fasher (incl. Zamzam IDP)</td><td>North Darfur</td>
+      <td class="flood-n">24,600</td><td class="ipc5">47,000 ⚠</td>
+      <td><div class="severity-bar"><div class="severity-fill" style="width:100%;background:var(--danger)"></div></div></td>
+    </tr>
+    <tr>
+      <td>Ag Geneina, Kereneik, Sirba</td><td>West Darfur</td>
+      <td class="flood-n">12,000</td><td class="ipc5">35,800</td>
+      <td><div class="severity-bar"><div class="severity-fill" style="width:75%;background:var(--warn)"></div></div></td>
+    </tr>
+    <tr>
+      <td>Al Wihda</td><td>South Darfur</td>
+      <td class="flood-n">1,200</td><td class="ipc5">18,700</td>
+      <td><div class="severity-bar"><div class="severity-fill" style="width:40%;background:var(--warn)"></div></div></td>
+    </tr>
+  </tbody>`;
+
+/* ══════════════════════════════════════
+   LEAFLET MAP
+══════════════════════════════════════ */
+
+const map = L.map('map', {
+  center: [15.5, 30.5],
+  zoom: 5,
+  zoomControl: true,
+  attributionControl: true
+});
+
+// Dark tile layer
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; OpenStreetMap &copy; CartoDB',
+  subdomains: 'abcd', maxZoom: 19
+}).addTo(map);
+
+// Sudan state flood data with coords
+const stateMarkers = [
+  { name: 'North Darfur',  lat: 15.9,  lng: 25.1,  affected: 122680, severity: 'critical' },
+  { name: 'Red Sea',       lat: 20.5,  lng: 37.2,  affected: 75118,  severity: 'high'     },
+  { name: 'Northern',      lat: 19.5,  lng: 30.4,  affected: 68164,  severity: 'high'     },
+  { name: 'South Darfur',  lat: 11.5,  lng: 25.0,  affected: 62130,  severity: 'high'     },
+  { name: 'River Nile',    lat: 17.0,  lng: 33.5,  affected: 58825,  severity: 'high'     },
+  { name: 'Kassala',       lat: 15.4,  lng: 36.4,  affected: 15100,  severity: 'moderate' },
+  { name: 'West Darfur',   lat: 13.5,  lng: 22.8,  affected: 12000,  severity: 'moderate' },
+  { name: 'Central Darfur',lat: 12.9,  lng: 24.2,  affected: 26200,  severity: 'high'     },
+  { name: 'Al Fasher',     lat: 13.6,  lng: 25.35, affected: 24600,  severity: 'critical' },
+];
+
+const colors = { critical: '#e8003d', high: '#ff6b35', moderate: '#00c6ff' };
+
+stateMarkers.forEach(s => {
+  const radius = Math.sqrt(s.affected / 1000) * 2200;
+  const col = colors[s.severity];
+
+  L.circle([s.lat, s.lng], {
+    radius,
+    color: col, fillColor: col,
+    fillOpacity: 0.18, weight: 1.5, opacity: 0.7
+  }).addTo(map);
+
+  L.circleMarker([s.lat, s.lng], {
+    radius: 6, color: col, fillColor: col,
+    fillOpacity: 0.9, weight: 2
+  })
+  .bindPopup(`
+    <div style="font-family:'DM Mono',monospace;font-size:12px;color:#111">
+      <strong style="font-family:'Syne',sans-serif;">${s.name}</strong><br/>
+      Affected: <b>${s.affected.toLocaleString()}</b> people<br/>
+      Severity: <b style="color:${col}">${s.severity.toUpperCase()}</b>
+      ${s.name==='North Darfur'||s.name==='Al Fasher' ? '<br/><b style="color:#e8003d">⚠ IPC Phase 5 Overlap</b>' : ''}
+    </div>`)
+  .addTo(map);
+});
+
+// GEE placeholder note
+const geeNote = L.control({ position: 'bottomright' });
+geeNote.onAdd = () => {
+  const div = L.DomUtil.create('div');
+  div.style.cssText = `
+    background:rgba(10,13,18,0.88);border:1px solid #1e2a3a;
+    color:#5a6a80;font-family:'DM Mono',monospace;font-size:10px;
+    padding:8px 12px;border-radius:3px;max-width:220px;line-height:1.6;`;
+  div.innerHTML = `
+    <div style="color:#00c6ff;font-size:9px;letter-spacing:0.1em;margin-bottom:4px;">GEE LAYERS (API READY)</div>
+    🛰 Sentinel-1 SAR flood extent<br/>
+    🌱 NDVI anomaly (Landsat 9)<br/>
+    🏜 Desertification index (MODIS)<br/>
+    <div style="margin-top:6px;color:#ff6b35;font-size:9px;">Connect via /api/map/tiles/:layer</div>`;
+  return div;
+};
+geeNote.addTo(map);
+</script>
+</body>
+</html>

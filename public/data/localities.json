@@ -1,0 +1,292 @@
+{
+  "localities": [
+    {
+      "name": "Ad Dabbah",
+      "state": "Northern",
+      "state_pcode": "SD17",
+      "lat": 18.05,
+      "lon": 30.95,
+      "affected": null,
+      "notes": "All seven localities affected in Northern State"
+    },
+    {
+      "name": "Al Burgaig",
+      "state": "Northern",
+      "state_pcode": "SD17",
+      "lat": 18.8,
+      "lon": 30.9,
+      "affected": null,
+      "notes": "All seven localities affected in Northern State"
+    },
+    {
+      "name": "Al Golid",
+      "state": "Northern",
+      "state_pcode": "SD17",
+      "lat": 18.5,
+      "lon": 30.6,
+      "affected": null,
+      "notes": "All seven localities affected in Northern State"
+    },
+    {
+      "name": "Delgo",
+      "state": "Northern",
+      "state_pcode": "SD17",
+      "lat": 18.35,
+      "lon": 30.55,
+      "affected": null,
+      "notes": "All seven localities affected in Northern State"
+    },
+    {
+      "name": "Dongola",
+      "state": "Northern",
+      "state_pcode": "SD17",
+      "lat": 19.17,
+      "lon": 30.47,
+      "affected": null,
+      "notes": "All seven localities affected in Northern State"
+    },
+    {
+      "name": "Halfa",
+      "state": "Northern",
+      "state_pcode": "SD17",
+      "lat": 17.6,
+      "lon": 33.8,
+      "affected": null,
+      "notes": "All seven localities affected in Northern State"
+    },
+    {
+      "name": "Merowe",
+      "state": "Northern",
+      "state_pcode": "SD17",
+      "lat": 18.45,
+      "lon": 31.85,
+      "affected": null,
+      "notes": "All seven localities affected in Northern State"
+    },
+    {
+      "name": "Rehaid Albirdi",
+      "state": "South Darfur",
+      "state_pcode": "SD03",
+      "lat": 10.8,
+      "lon": 24.2,
+      "affected": null,
+      "notes": "Most affected locality in South Darfur"
+    },
+    {
+      "name": "Ed Al Fursan",
+      "state": "South Darfur",
+      "state_pcode": "SD03",
+      "lat": 10.95,
+      "lon": 24.85,
+      "affected": null,
+      "notes": "Most affected locality in South Darfur"
+    },
+    {
+      "name": "Tulus",
+      "state": "South Darfur",
+      "state_pcode": "SD03",
+      "lat": 10.7,
+      "lon": 24.5,
+      "affected": null,
+      "notes": "Also known as Sergaila"
+    },
+    {
+      "name": "Buram",
+      "state": "South Darfur",
+      "state_pcode": "SD03",
+      "lat": 10.4,
+      "lon": 24.15,
+      "affected": null,
+      "notes": "Most affected locality in South Darfur"
+    },
+    {
+      "name": "Katila",
+      "state": "South Darfur",
+      "state_pcode": "SD03",
+      "lat": 11.2,
+      "lon": 24.3,
+      "affected": null,
+      "notes": "Most affected locality in South Darfur"
+    },
+    {
+      "name": "As Sunta",
+      "state": "South Darfur",
+      "state_pcode": "SD03",
+      "lat": 11.0,
+      "lon": 23.9,
+      "affected": null,
+      "notes": "Most affected locality in South Darfur"
+    },
+    {
+      "name": "Halfa Aj Jadeedah",
+      "state": "Kassala",
+      "state_pcode": "SD11",
+      "lat": 16.0,
+      "lon": 35.7,
+      "affected": null,
+      "notes": "Affected locality in Kassala"
+    },
+    {
+      "name": "Madeinat Kassala",
+      "state": "Kassala",
+      "state_pcode": "SD11",
+      "lat": 15.45,
+      "lon": 36.4,
+      "affected": null,
+      "notes": "Kassala city area"
+    },
+    {
+      "name": "Reifi Aroma",
+      "state": "Kassala",
+      "state_pcode": "SD11",
+      "lat": 15.9,
+      "lon": 36.0,
+      "affected": null,
+      "notes": "Aroma locality"
+    },
+    {
+      "name": "Reifi Gharb Kassala",
+      "state": "Kassala",
+      "state_pcode": "SD11",
+      "lat": 15.4,
+      "lon": 36.3,
+      "affected": null,
+      "notes": "West Kassala locality"
+    },
+    {
+      "name": "Reifi Kassala",
+      "state": "Kassala",
+      "state_pcode": "SD11",
+      "lat": 15.5,
+      "lon": 36.4,
+      "affected": null,
+      "notes": "Kassala locality"
+    },
+    {
+      "name": "Reifi Khashm Elgirba",
+      "state": "Kassala",
+      "state_pcode": "SD11",
+      "lat": 15.1,
+      "lon": 36.0,
+      "affected": null,
+      "notes": "Khashm Elgirba locality"
+    },
+    {
+      "name": "Aroma",
+      "state": "Kassala",
+      "state_pcode": "SD11",
+      "lat": 15.75,
+      "lon": 35.9,
+      "affected": null,
+      "notes": "Some villages inaccessible"
+    },
+    {
+      "name": "North Delta",
+      "state": "Kassala",
+      "state_pcode": "SD11",
+      "lat": 15.8,
+      "lon": 35.6,
+      "affected": 9500,
+      "notes": "37 villages affected"
+    },
+    {
+      "name": "Kutum",
+      "state": "North Darfur",
+      "state_pcode": "SD02",
+      "lat": 14.2,
+      "lon": 26.1,
+      "affected": 42600,
+      "notes": "Flood affected, 25,800 at risk of famine (IPC 5)"
+    },
+    {
+      "name": "Tawila",
+      "state": "North Darfur",
+      "state_pcode": "SD02",
+      "lat": 13.9,
+      "lon": 26.3,
+      "affected": 42600,
+      "notes": "Flood affected together with Kutum"
+    },
+    {
+      "name": "Al Fasher",
+      "state": "North Darfur",
+      "state_pcode": "SD02",
+      "lat": 13.62,
+      "lon": 25.35,
+      "affected": 24600,
+      "notes": "Zamzam IDP camp in famine conditions"
+    },
+    {
+      "name": "Azum",
+      "state": "Central Darfur",
+      "state_pcode": "SD06",
+      "lat": 12.5,
+      "lon": 23.5,
+      "affected": null,
+      "notes": "Flood affected locality"
+    },
+    {
+      "name": "Bendasi",
+      "state": "Central Darfur",
+      "state_pcode": "SD06",
+      "lat": 12.2,
+      "lon": 23.2,
+      "affected": null,
+      "notes": "Flood affected locality"
+    },
+    {
+      "name": "Wadi Salih",
+      "state": "Central Darfur",
+      "state_pcode": "SD06",
+      "lat": 12.1,
+      "lon": 23.0,
+      "affected": null,
+      "notes": "Flood affected locality"
+    },
+    {
+      "name": "Zalingei",
+      "state": "Central Darfur",
+      "state_pcode": "SD06",
+      "lat": 12.9,
+      "lon": 23.5,
+      "affected": null,
+      "notes": "Central Darfur capital"
+    },
+    {
+      "name": "Ag Geneina",
+      "state": "West Darfur",
+      "state_pcode": "SD04",
+      "lat": 13.45,
+      "lon": 22.4,
+      "affected": null,
+      "notes": "Flood affected locality"
+    },
+    {
+      "name": "Kereneik",
+      "state": "West Darfur",
+      "state_pcode": "SD04",
+      "lat": 13.2,
+      "lon": 22.2,
+      "affected": null,
+      "notes": "Flood affected locality"
+    },
+    {
+      "name": "Sirba",
+      "state": "West Darfur",
+      "state_pcode": "SD04",
+      "lat": 13.1,
+      "lon": 22.6,
+      "affected": null,
+      "notes": "Flood affected locality"
+    },
+    {
+      "name": "Al Wihda",
+      "state": "South Darfur",
+      "state_pcode": "SD03",
+      "lat": 10.6,
+      "lon": 23.5,
+      "affected": 1200,
+      "notes": "Flood affected, 18,700 at risk of famine"
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "source": "Sudan Federal Ministry of Health (FMoH)",
+  "date": "2024-08-12",
+  "period": "22 July - 1 September 2024",
+  "total_cases": 2900,
+  "total_deaths": 112,
+  "case_fatality_rate": 3.9,
+  "states": [
+    {
+      "name": "Kassala",
+      "pcode": "SD11",
+      "cases": 1703,
+      "deaths": null,
+      "cfr": null,
+      "lat": 15.71040524,
+      "lon": 35.5355862
+    },
+    {
+      "name": "Gedaref",
+      "pcode": "SD12",
+      "cases": 699,
+      "deaths": null,
+      "cfr": null,
+      "lat": 14.21029664,
+      "lon": 35.02673717
+    },
+    {
+      "name": "River Nile",
+      "pcode": "SD16",
+      "cases": 408,
+      "deaths": null,
+      "cfr": null,
+      "lat": 18.83467686,
+      "lon": 33.12314746
+    },
+    {
+      "name": "Aj Jazirah",
+      "pcode": "SD15",
+      "cases": 65,
+      "deaths": null,
+      "cfr": null,
+      "lat": 14.5116272,
+      "lon": 33.28351684
+    },
+    {
+      "name": "Khartoum",
+      "pcode": "SD01",
+      "cases": 20,
+      "deaths": null,
+      "cfr": null,
+      "lat": 15.91498652,
+      "lon": 33.13522205
+    }
+  ],
+  "notes": "Cholera outbreak declared on 12 August 2024. All five affected states have been impacted by floods."
+}

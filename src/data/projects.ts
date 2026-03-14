@@ -5,16 +5,18 @@ export interface Project {
   category: string;
   tags: string[];
   image: string;
+  externalUrl?: string;
 }
 
 export const projects: Project[] = [
   {
-    id: 'sudan-conflict-map',
-    title: 'Sudan Conflict Map',
-    description: 'Real-time humanitarian crisis mapping tracking conflict zones, displacement routes, and aid accessibility in Sudan.',
-    category: 'geoai',
-    tags: ['ArcGIS', 'QGIS', 'PostGIS', 'Leaflet'],
-    image: '/images/project-1.jpg',
+    id: 'sudan-flood-dashboard',
+    title: 'Sudan Flood Dashboard',
+    description: 'Interactive humanitarian dashboard tracking flood crisis, displacement, and disease outbreaks across Sudan states using real OCHA data.',
+    category: 'web-mapping',
+    tags: ['Leaflet', 'Chart.js', 'OCHA Data', 'Interactive Dashboard'],
+    image: '/images/flood.png',
+    externalUrl: '/projects/sudan-flood-dashboard',
   },
   {
     id: '3w-humanitarian-mapping',
