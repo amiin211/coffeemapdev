@@ -1,12 +1,16 @@
 node_modules
 .next
+next-env.d.ts
+*.tsbuildinfo
 out
 dist
 build
 .env*.local
 .vercel
 *.log
+.DS_Store
 .D_Store
+*:Zone.Identifier
 enviro-*.json
 *.key
 credentials.json
