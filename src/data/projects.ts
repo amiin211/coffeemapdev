@@ -21,10 +21,11 @@ export const projects: Project[] = [
   {
     id: '3w-humanitarian-mapping',
     title: '3W Humanitarian Mapping',
-    description: 'Who What Where platform for visualizing humanitarian activities, resource allocation, and coverage gaps.',
+    description: 'Who What Where dashboard tracking Sudan humanitarian activities, active partners, and coverage gaps using real OCHA 3W response monitoring data.',
     category: 'enterprise-gis',
-    tags: ['ArcGIS Online', 'Dashboard', 'PowerBI'],
+    tags: ['Leaflet', 'Chart.js', 'OCHA Data', 'Interactive Dashboard'],
     image: '/images/project-2.jpg',
+    externalUrl: '/projects/3w-humanitarian-mapping',
   },
   {
     id: 'infrastructure-conflict-webgis',

@@ -8,9 +8,19 @@ interface DashboardHeaderProps {
   source: string;
   author: string;
   date: string;
+  title?: string;
+  subtitle?: string;
+  icon?: React.ReactNode;
 }
 
-export default function DashboardHeader({ source, author, date }: DashboardHeaderProps) {
+export default function DashboardHeader({
+  source,
+  author,
+  date,
+  title = 'Sudan Flood Dashboard',
+  subtitle = 'Humanitarian Impact of Heavy Rains and Flooding',
+  icon = <WaterDropIcon sx={{ fontSize: 28 }} />,
+}: DashboardHeaderProps) {
   return (
     <Box
       sx={{
@@ -30,13 +40,13 @@ export default function DashboardHeader({ source, author, date }: DashboardHeade
           gap: 2
         }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <WaterDropIcon sx={{ fontSize: 28 }} />
+            {icon}
             <Box>
               <Typography variant="h5" sx={{ fontWeight: 700, fontFamily: 'Fira Code, monospace', lineHeight: 1.2 }}>
-                Sudan Flood Dashboard
+                {title}
               </Typography>
               <Typography variant="body2" sx={{ opacity: 0.9, fontWeight: 400, mt: 0.5 }}>
-                Humanitarian Impact of Heavy Rains and Flooding
+                {subtitle}
               </Typography>
             </Box>
           </Box>
