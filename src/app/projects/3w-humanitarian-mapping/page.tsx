@@ -287,11 +287,11 @@ function DashboardContent() {
             <Box sx={{ px: 2, pb: 1.25, flexShrink: 0 }}>{statsNode}</Box>
 
             <Box sx={{ px: 2, pb: 1.25, display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
-              <Box sx={{ width: 360, flexShrink: 0, height: 750, display: 'flex', flexDirection: 'column', gap: 1.5, justifyContent: 'space-between' }}>
+              <Box sx={{ width: 360, flexShrink: 0, height: 700, display: 'flex', flexDirection: 'column', gap: 1.5, justifyContent: 'space-between' }}>
                 {chartsNode}
               </Box>
 
-              <Box sx={{ flex: 1, position: 'relative', height: 750 }}>
+              <Box sx={{ flex: 1, position: 'relative', height: 700 }}>
                 <Paper elevation={2} sx={{ height: '100%', overflow: 'hidden' }}>
                   {mapNode}
                 </Paper>
@@ -330,7 +330,7 @@ function DashboardContent() {
                 )}
               </Box>
 
-              <Box sx={{ width: 360, flexShrink: 0, height: 750, '& > *': { height: '100%', overflowY: 'auto' } }}>
+              <Box sx={{ width: 360, flexShrink: 0, height: 700, '& > *': { height: '100%', overflowY: 'auto' } }}>
                 {detailPanelNode}
               </Box>
             </Box>
