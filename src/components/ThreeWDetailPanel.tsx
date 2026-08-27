@@ -4,13 +4,7 @@ import { Box, Typography, Paper, Chip, Button } from '@mui/material';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import CloseIcon from '@mui/icons-material/Close';
 import { OrgAggregate, OrgTypeAggregate } from '@/utils/threew';
-
-const orgTypeColors: Record<string, string> = {
-  INGO: '#1565c0',
-  NNGO: '#2e7d32',
-  'UN Agency': '#6a1b9a',
-  'Red Cross': '#c62828',
-};
+import { unOrgTypeColors as orgTypeColors } from '@/theme/unColors';
 
 interface ThreeWDetailPanelProps {
   state: string | null;
@@ -28,7 +22,7 @@ export default function ThreeWDetailPanel({
   onClear,
 }: ThreeWDetailPanelProps) {
   return (
-    <Paper elevation={2} sx={{ p: 1.5, height: '100%', overflow: 'auto' }}>
+    <Paper elevation={2} sx={{ p: 1.5, flexShrink: 0 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <LocationOnIcon color="primary" fontSize="small" />

@@ -4,6 +4,7 @@ import GroupsIcon from '@mui/icons-material/Groups';
 import CategoryIcon from '@mui/icons-material/Category';
 import PublicIcon from '@mui/icons-material/Public';
 import PlaceIcon from '@mui/icons-material/Place';
+import { unBlue, unCategorical } from '@/theme/unColors';
 
 interface StatCardProps {
   title: string;
@@ -118,31 +119,31 @@ export default function ThreeWStatCards({
         title={isStateSelected ? selectedState! : 'Total Activities'}
         value={activities}
         icon="activities"
-        color="#e65100"
+        color={unBlue.dark}
         subtitle="reported activities"
       />
       <StatCard
         title="Organizations"
         value={orgs}
         icon="orgs"
-        color="#1565c0"
+        color={unBlue.DEFAULT}
         subtitle={isStateSelected ? 'active in state' : 'active partners'}
       />
       <StatCard
         title="Clusters Active"
         value={clusters}
         icon="clusters"
-        color="#6a1b9a"
+        color={unCategorical[3]}
         subtitle="sectors present"
       />
       {!isStateSelected && (
-        <StatCard title="States Covered" value={states} icon="states" color="#2e7d32" subtitle="of 19 states" />
+        <StatCard title="States Covered" value={states} icon="states" color={unCategorical[5]} subtitle="of 19 states" />
       )}
       <StatCard
         title="Localities Reached"
         value={localities}
         icon="localities"
-        color="#c62828"
+        color={unCategorical[4]}
         subtitle={isStateSelected ? 'in state' : 'of 188 localities'}
       />
     </Box>

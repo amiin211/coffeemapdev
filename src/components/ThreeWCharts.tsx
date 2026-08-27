@@ -15,6 +15,7 @@ import {
 } from 'chart.js';
 import { Bar, Pie, Doughnut, Line } from 'react-chartjs-2';
 import { OrgAggregate, ClusterAggregate, OrgTypeAggregate, MonthlyTrendPoint } from '@/utils/threew';
+import { unBlue, unCategorical, unOrgTypeColors } from '@/theme/unColors';
 
 if (typeof window !== 'undefined') {
   ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend);
@@ -41,7 +42,7 @@ const lineOptions = {
   scales: { y: { beginAtZero: true } },
 };
 
-const palette = ['#e65100', '#1565c0', '#6a1b9a', '#2e7d32', '#c62828', '#00838f', '#f9a825', '#4527a0', '#00695c', '#ad1457'];
+const palette = unCategorical;
 
 export function TopOrgsBarChart({ orgs }: { orgs: OrgAggregate[] }) {
   const data = {
@@ -50,8 +51,8 @@ export function TopOrgsBarChart({ orgs }: { orgs: OrgAggregate[] }) {
       {
         label: 'Activities',
         data: orgs.map((o) => o.activities),
-        backgroundColor: 'rgba(230, 81, 0, 0.8)',
-        borderColor: 'rgba(230, 81, 0, 1)',
+        backgroundColor: `${unBlue.DEFAULT}cc`,
+        borderColor: unBlue.DEFAULT,
         borderWidth: 1,
       },
     ],
@@ -94,12 +95,7 @@ export function ClusterBreakdownPieChart({ clusters }: { clusters: ClusterAggreg
   );
 }
 
-const orgTypeColors: Record<string, string> = {
-  INGO: '#1565c0',
-  NNGO: '#2e7d32',
-  'UN Agency': '#6a1b9a',
-  'Red Cross': '#c62828',
-};
+const orgTypeColors = unOrgTypeColors;
 
 export function OrgTypeDoughnutChart({ orgTypes }: { orgTypes: OrgTypeAggregate[] }) {
   const data = {
@@ -133,8 +129,8 @@ export function MonthlyTrendChart({ trend }: { trend: MonthlyTrendPoint[] }) {
       {
         label: 'Activities',
         data: trend.map((t) => t.activities),
-        borderColor: '#8d4220',
-        backgroundColor: 'rgba(141, 66, 32, 0.15)',
+        borderColor: unBlue.dark,
+        backgroundColor: `${unBlue.DEFAULT}26`,
         fill: true,
         tension: 0.3,
       },
