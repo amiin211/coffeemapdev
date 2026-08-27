@@ -146,7 +146,7 @@ export function TopStatesBarChart({ statesData, localitiesData, selectedStateNam
 
   return (
     <Paper elevation={2} sx={{ p: 2, height: 200 }}>
-      <Typography variant="subtitle2" sx={{ fontFamily: 'Fira Code, monospace', mb: 1 }}>
+      <Typography variant="subtitle2" sx={{ fontFamily: 'Roboto, sans-serif', mb: 1 }}>
         {title}
       </Typography>
       <Box sx={{ height: 160 }}>
@@ -171,7 +171,7 @@ export function HousingPieChart({ homesDestroyed, homesDamaged }: { homesDestroy
 
   return (
     <Paper elevation={2} sx={{ p: 2, height: 200 }}>
-      <Typography variant="subtitle2" sx={{ fontFamily: 'Fira Code, monospace', mb: 1 }}>
+      <Typography variant="subtitle2" sx={{ fontFamily: 'Roboto, sans-serif', mb: 1 }}>
         Housing Damage (National)
       </Typography>
       <Box sx={{ height: 160 }}>
@@ -236,7 +236,7 @@ export function AffectedBubbleChart({ statesData, localitiesData, selectedStateN
 
   return (
     <Paper elevation={2} sx={{ p: 2, height: 200 }}>
-      <Typography variant="subtitle2" sx={{ fontFamily: 'Fira Code, monospace', mb: 1 }}>
+      <Typography variant="subtitle2" sx={{ fontFamily: 'Roboto, sans-serif', mb: 1 }}>
         {title}
       </Typography>
       <Box sx={{ height: 160 }}>
@@ -274,7 +274,7 @@ export function CholeraBarChart({ choleraData }: { choleraData: CholeraData[] })
 
   return (
     <Paper elevation={2} sx={{ p: 2, height: 200 }}>
-      <Typography variant="subtitle2" sx={{ fontFamily: 'Fira Code, monospace', mb: 1 }}>
+      <Typography variant="subtitle2" sx={{ fontFamily: 'Roboto, sans-serif', mb: 1 }}>
         Cholera Cases by State
       </Typography>
       <Box sx={{ height: 160 }}>

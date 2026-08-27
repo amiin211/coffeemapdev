@@ -63,7 +63,7 @@ const ProjectCard = ({ project }: ProjectCardProps) => {
             right: 12,
             backgroundColor: 'rgba(255, 255, 255, 0.95)',
             color: 'primary.main',
-            fontFamily: 'Fira Code, monospace',
+            fontFamily: 'Roboto, sans-serif',
             fontSize: '0.7rem',
             fontWeight: 600,
           }}
@@ -75,7 +75,7 @@ const ProjectCard = ({ project }: ProjectCardProps) => {
           variant="h6"
           sx={{
             mb: 1,
-            fontFamily: 'Fira Code, monospace',
+            fontFamily: 'Roboto, sans-serif',
             fontWeight: 600,
             fontSize: '1rem',
           }}
@@ -114,7 +114,7 @@ const ProjectCard = ({ project }: ProjectCardProps) => {
                 alignSelf: 'flex-start',
                 borderColor: 'primary.main',
                 color: 'primary.main',
-                fontFamily: 'Fira Code, monospace',
+                fontFamily: 'Roboto, sans-serif',
                 fontSize: '0.75rem',
                 '&:hover': {
                   backgroundColor: 'rgba(74, 55, 40, 0.08)',
@@ -134,7 +134,7 @@ const ProjectCard = ({ project }: ProjectCardProps) => {
                 alignSelf: 'flex-start',
                 borderColor: 'primary.main',
                 color: 'primary.main',
-                fontFamily: 'Fira Code, monospace',
+                fontFamily: 'Roboto, sans-serif',
                 fontSize: '0.75rem',
                 textDecoration: 'none',
                 '&:hover': {
@@ -154,7 +154,7 @@ const ProjectCard = ({ project }: ProjectCardProps) => {
               alignSelf: 'flex-start',
               borderColor: 'primary.main',
               color: 'primary.main',
-              fontFamily: 'Fira Code, monospace',
+              fontFamily: 'Roboto, sans-serif',
               fontSize: '0.75rem',
               '&:hover': {
                 backgroundColor: 'rgba(74, 55, 40, 0.08)',

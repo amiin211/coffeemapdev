@@ -44,31 +44,31 @@ const theme = createTheme({
   typography: {
     fontFamily: 'Roboto, sans-serif',
     h1: {
-      fontFamily: 'Fira Code, monospace',
+      fontFamily: 'Roboto, sans-serif',
       fontWeight: 700,
     },
     h2: {
-      fontFamily: 'Fira Code, monospace',
+      fontFamily: 'Roboto, sans-serif',
       fontWeight: 700,
     },
     h3: {
-      fontFamily: 'Fira Code, monospace',
-      fontWeight: 600,
+      fontFamily: 'Roboto, sans-serif',
+      fontWeight: 700,
     },
     h4: {
-      fontFamily: 'Fira Code, monospace',
-      fontWeight: 600,
+      fontFamily: 'Roboto, sans-serif',
+      fontWeight: 700,
     },
     h5: {
-      fontFamily: 'Fira Code, monospace',
-      fontWeight: 600,
+      fontFamily: 'Roboto, sans-serif',
+      fontWeight: 700,
     },
     h6: {
-      fontFamily: 'Fira Code, monospace',
-      fontWeight: 600,
+      fontFamily: 'Roboto, sans-serif',
+      fontWeight: 700,
     },
     button: {
-      fontFamily: 'Fira Code, monospace',
+      fontFamily: 'Roboto, sans-serif',
       fontWeight: 500,
       textTransform: 'none',
     },

@@ -1,5 +1,5 @@
 import { Metadata } from 'next';
-import { roboto, firaCode } from '@/theme/fonts';
+import { roboto } from '@/theme/fonts';
 import ClientWrapper from './ClientWrapper';
 
 export const metadata: Metadata = {
@@ -14,7 +14,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${roboto.className} ${firaCode.className}`}>
+      <body className={roboto.className}>
         {children}
       </body>
     </html>

@@ -165,7 +165,7 @@ export default function FloodMap({ statesData, localitiesData, onStateSelect, ch
   return (
     <Box sx={{ height: '100%', position: 'relative', display: 'flex', flexDirection: 'column' }}>
       <Box sx={{ p: 2, borderBottom: '1px solid #eee' }}>
-        <Typography variant="h6" sx={{ fontFamily: 'Fira Code, monospace', fontWeight: 600 }}>
+        <Typography variant="h6" sx={{ fontFamily: 'Roboto, sans-serif', fontWeight: 600 }}>
           Interactive Map - Click State for Details
         </Typography>
       </Box>

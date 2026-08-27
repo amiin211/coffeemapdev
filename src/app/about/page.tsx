@@ -25,7 +25,7 @@ export default function About() {
                 <Typography
                   variant="h4"
                   sx={{
-                    fontFamily: 'Fira Code, monospace',
+                    fontFamily: 'Roboto, sans-serif',
                     fontWeight: 600,
                     color: 'primary.main',
                     mb: 3,
@@ -72,7 +72,7 @@ export default function About() {
                 <Typography
                   variant="h4"
                   sx={{
-                    fontFamily: 'Fira Code, monospace',
+                    fontFamily: 'Roboto, sans-serif',
                     fontWeight: 600,
                     color: 'primary.main',
                     mb: 3,
@@ -138,7 +138,7 @@ export default function About() {
                 <Typography
                   variant="h4"
                   sx={{
-                    fontFamily: 'Fira Code, monospace',
+                    fontFamily: 'Roboto, sans-serif',
                     fontWeight: 600,
                     color: 'primary.main',
                     mb: 3,
@@ -178,7 +178,7 @@ export default function About() {
             <Typography
               variant="h2"
               sx={{
-                fontFamily: 'Fira Code, monospace',
+                fontFamily: 'Roboto, sans-serif',
                 fontSize: { xs: '1.5rem', md: '2rem' },
                 fontWeight: 700,
                 color: 'primary.main',
@@ -195,7 +195,7 @@ export default function About() {
                 href="/"
                 sx={{
                   backgroundColor: 'primary.main',
-                  fontFamily: 'Fira Code, monospace',
+                  fontFamily: 'Roboto, sans-serif',
                 }}
               >
                 View Projects
@@ -207,7 +207,7 @@ export default function About() {
                 sx={{
                   borderColor: 'primary.main',
                   color: 'primary.main',
-                  fontFamily: 'Fira Code, monospace',
+                  fontFamily: 'Roboto, sans-serif',
                 }}
               >
                 Get in Touch

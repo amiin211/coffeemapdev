@@ -2,7 +2,7 @@
 
 import { ThemeProvider, CssBaseline, Box } from '@mui/material';
 import theme from '@/theme/theme';
-import { roboto, firaCode } from '@/theme/fonts';
+import { roboto } from '@/theme/fonts';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 
@@ -17,7 +17,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
       <style jsx global>{`
         :root {
           --font-roboto: ${roboto.style.fontFamily};
-          --font-fira: ${firaCode.style.fontFamily};
         }
         body {
           font-family: var(--font-roboto);

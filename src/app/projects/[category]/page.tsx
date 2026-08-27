@@ -59,7 +59,7 @@ function FilterContent() {
             <Button
               startIcon={<ArrowBackIcon />}
               sx={{
-                fontFamily: 'Fira Code, monospace',
+                fontFamily: 'Roboto, sans-serif',
                 color: 'text.secondary',
                 mb: 2,
               }}
@@ -73,7 +73,7 @@ function FilterContent() {
           <Typography
             variant="h1"
             sx={{
-              fontFamily: 'Fira Code, monospace',
+              fontFamily: 'Roboto, sans-serif',
               fontSize: { xs: '2rem', md: '2.5rem' },
               fontWeight: 700,
               color: 'primary.main',
@@ -106,7 +106,7 @@ function FilterContent() {
               sx={{
                 backgroundColor: 'secondary.light',
                 color: 'white',
-                fontFamily: 'Fira Code, monospace',
+                fontFamily: 'Roboto, sans-serif',
               }}
             />
           )}
@@ -117,7 +117,7 @@ function FilterContent() {
             <Typography
               variant="h2"
               sx={{
-                fontFamily: 'Fira Code, monospace',
+                fontFamily: 'Roboto, sans-serif',
                 fontSize: '1.5rem',
                 fontWeight: 600,
                 color: 'primary.main',
@@ -147,7 +147,7 @@ function FilterContent() {
             <Typography
               variant="h2"
               sx={{
-                fontFamily: 'Fira Code, monospace',
+                fontFamily: 'Roboto, sans-serif',
                 fontSize: '1.5rem',
                 fontWeight: 600,
                 color: 'primary.main',

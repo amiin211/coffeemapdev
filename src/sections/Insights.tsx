@@ -25,7 +25,7 @@ const Insights = ({ selectedCategory = null }: InsightsProps) => {
           <Typography
             variant="h2"
             sx={{
-              fontFamily: 'Fira Code, monospace',
+              fontFamily: 'Roboto, sans-serif',
               fontSize: { xs: '2rem', md: '2.5rem' },
               fontWeight: 700,
               color: 'primary.main',

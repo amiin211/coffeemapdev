@@ -24,7 +24,7 @@ const Contact = () => {
           <Typography
             variant="h2"
             sx={{
-              fontFamily: 'Fira Code, monospace',
+              fontFamily: 'Roboto, sans-serif',
               fontSize: { xs: '2rem', md: '2.5rem' },
               fontWeight: 700,
               color: 'primary.main',
@@ -102,7 +102,7 @@ const Contact = () => {
                     backgroundColor: 'primary.main',
                     color: 'white',
                     py: 1.5,
-                    fontFamily: 'Fira Code, monospace',
+                    fontFamily: 'Roboto, sans-serif',
                     '&:hover': {
                       backgroundColor: 'primary.dark',
                     },
@@ -119,7 +119,7 @@ const Contact = () => {
               <Typography
                 variant="h5"
                 sx={{
-                  fontFamily: 'Fira Code, monospace',
+                  fontFamily: 'Roboto, sans-serif',
                   fontWeight: 600,
                   color: 'primary.main',
                   mb: 3,
@@ -165,7 +165,7 @@ const Contact = () => {
                   <Box>
                     <Typography
                       variant="body1"
-                      sx={{ fontWeight: 500, fontFamily: 'Fira Code, monospace' }}
+                      sx={{ fontWeight: 500, fontFamily: 'Roboto, sans-serif' }}
                     >
                       X (Twitter)
                     </Typography>
@@ -211,7 +211,7 @@ const Contact = () => {
                   <Box>
                     <Typography
                       variant="body1"
-                      sx={{ fontWeight: 500, fontFamily: 'Fira Code, monospace' }}
+                      sx={{ fontWeight: 500, fontFamily: 'Roboto, sans-serif' }}
                     >
                       LinkedIn
                     </Typography>
@@ -257,7 +257,7 @@ const Contact = () => {
                   <Box>
                     <Typography
                       variant="body1"
-                      sx={{ fontWeight: 500, fontFamily: 'Fira Code, monospace' }}
+                      sx={{ fontWeight: 500, fontFamily: 'Roboto, sans-serif' }}
                     >
                       GitHub
                     </Typography>
@@ -301,7 +301,7 @@ const Contact = () => {
                   <Box>
                     <Typography
                       variant="body1"
-                      sx={{ fontWeight: 500, fontFamily: 'Fira Code, monospace' }}
+                      sx={{ fontWeight: 500, fontFamily: 'Roboto, sans-serif' }}
                     >
                       Email
                     </Typography>

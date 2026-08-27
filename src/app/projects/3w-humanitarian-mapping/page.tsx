@@ -136,7 +136,7 @@ function DashboardContent() {
   }
 
   const compactSelectSx = {
-    '& .MuiOutlinedInput-root': { fontFamily: 'Fira Code, monospace', fontSize: '0.7rem' },
+    '& .MuiOutlinedInput-root': { fontFamily: 'Roboto, sans-serif', fontSize: '0.7rem' },
     '& .MuiSelect-select': { py: '5px', display: 'flex', alignItems: 'center' },
     '& .MuiInputLabel-root': { fontSize: '0.7rem' },
     '& .MuiInputLabel-root.MuiInputLabel-shrink': { fontSize: '0.75rem' },
@@ -193,7 +193,7 @@ function DashboardContent() {
           key={m}
           value={m}
           sx={{
-            fontFamily: 'Fira Code, monospace',
+            fontFamily: 'Roboto, sans-serif',
             fontSize: '0.7rem',
             px: 1.5,
             '&.Mui-selected': { bgcolor: unBlue.DEFAULT, color: 'white', '&:hover': { bgcolor: unBlue.dark } },
@@ -389,7 +389,7 @@ function DashboardContent() {
                     }}
                   >
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
-                      <Typography variant="h6" sx={{ fontFamily: 'Fira Code, monospace', fontWeight: 700, color: unBlue.dark }}>
+                      <Typography variant="h6" sx={{ fontFamily: 'Roboto, sans-serif', fontWeight: 700, color: unBlue.dark }}>
                         About this dashboard
                       </Typography>
                       <IconButton onClick={() => setAboutOpen(false)} size="small" aria-label="Close">
@@ -407,7 +407,7 @@ function DashboardContent() {
             </Box>
 
             <Paper elevation={2} sx={{ mx: 2, mb: 1.5, p: 1.25, flexShrink: 0 }}>
-              <Typography variant="subtitle2" sx={{ fontFamily: 'Fira Code, monospace', mb: 0.5 }}>
+              <Typography variant="subtitle2" sx={{ fontFamily: 'Roboto, sans-serif', mb: 0.5 }}>
                 Monthly Trend (Jan–Jun 2026)
               </Typography>
               {trendNode}
@@ -424,7 +424,7 @@ function DashboardContent() {
             {aboutOpen && (
               <Paper elevation={2} sx={{ p: 2.5, mb: 2 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
-                  <Typography variant="h6" sx={{ fontFamily: 'Fira Code, monospace', fontWeight: 700, color: unBlue.dark }}>
+                  <Typography variant="h6" sx={{ fontFamily: 'Roboto, sans-serif', fontWeight: 700, color: unBlue.dark }}>
                     About this dashboard
                   </Typography>
                   <IconButton onClick={() => setAboutOpen(false)} size="small" aria-label="Close">
@@ -436,7 +436,7 @@ function DashboardContent() {
             )}
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>{sidebarNode}</Box>
             <Paper elevation={2} sx={{ p: 2, mt: 2 }}>
-              <Typography variant="subtitle2" sx={{ fontFamily: 'Fira Code, monospace', mb: 1 }}>
+              <Typography variant="subtitle2" sx={{ fontFamily: 'Roboto, sans-serif', mb: 1 }}>
                 Monthly Trend (Jan–Jun 2026)
               </Typography>
               {trendNode}

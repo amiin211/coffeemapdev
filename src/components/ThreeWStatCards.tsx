@@ -67,7 +67,7 @@ function StatCard({ title, value, icon, color }: StatCardProps) {
         </Typography>
         <Typography
           variant="h6"
-          sx={{ fontWeight: 700, fontFamily: 'Fira Code, monospace', color, lineHeight: 1.2 }}
+          sx={{ fontWeight: 700, fontFamily: 'Roboto, sans-serif', color, lineHeight: 1.2 }}
         >
           {typeof value === 'number' ? value.toLocaleString() : value}
         </Typography>

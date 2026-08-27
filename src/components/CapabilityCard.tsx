@@ -51,7 +51,7 @@ const CapabilityCard = ({ capability, isActive }: CapabilityCardProps) => {
           variant="h6"
           sx={{
             mb: 1,
-            fontFamily: 'Fira Code, monospace',
+            fontFamily: 'Roboto, sans-serif',
             fontWeight: 600,
           }}
         >

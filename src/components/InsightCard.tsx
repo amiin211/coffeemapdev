@@ -25,7 +25,7 @@ const InsightCard = ({ insight }: InsightCardProps) => {
             sx={{
               backgroundColor: 'accent.light',
               color: 'primary.main',
-              fontFamily: 'Fira Code, monospace',
+              fontFamily: 'Roboto, sans-serif',
               fontSize: '0.65rem',
               fontWeight: 600,
               height: 22,
@@ -35,7 +35,7 @@ const InsightCard = ({ insight }: InsightCardProps) => {
             variant="caption"
             sx={{
               color: 'text.secondary',
-              fontFamily: 'Fira Code, monospace',
+              fontFamily: 'Roboto, sans-serif',
             }}
           >
             {insight.date}
@@ -46,7 +46,7 @@ const InsightCard = ({ insight }: InsightCardProps) => {
           variant="h6"
           sx={{
             mb: 1.5,
-            fontFamily: 'Fira Code, monospace',
+            fontFamily: 'Roboto, sans-serif',
             fontWeight: 600,
             fontSize: '1rem',
             lineHeight: 1.4,
@@ -71,7 +71,7 @@ const InsightCard = ({ insight }: InsightCardProps) => {
           size="small"
           sx={{
             color: 'secondary.main',
-            fontFamily: 'Fira Code, monospace',
+            fontFamily: 'Roboto, sans-serif',
             fontSize: '0.75rem',
             fontWeight: 500,
             p: 0,

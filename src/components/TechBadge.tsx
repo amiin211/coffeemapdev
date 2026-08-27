@@ -14,7 +14,7 @@ const TechBadge = ({ technology }: TechBadgeProps) => {
       sx={{
         backgroundColor: 'rgba(45, 90, 61, 0.1)',
         color: 'secondary.dark',
-        fontFamily: 'Fira Code, monospace',
+        fontFamily: 'Roboto, sans-serif',
         fontSize: '0.7rem',
         fontWeight: 500,
         height: 24,

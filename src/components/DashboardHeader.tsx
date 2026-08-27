@@ -50,7 +50,7 @@ export default function DashboardHeader({
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             {icon}
             <Box>
-              <Typography variant="h5" sx={{ fontWeight: 700, fontFamily: 'Fira Code, monospace', lineHeight: 1.2 }}>
+              <Typography variant="h5" sx={{ fontWeight: 700, fontFamily: 'Roboto, sans-serif', lineHeight: 1.2 }}>
                 {title}
               </Typography>
               <Typography variant="body2" sx={{ opacity: 0.9, fontWeight: 400, mt: 0.5 }}>
@@ -68,7 +68,7 @@ export default function DashboardHeader({
                 sx={{ 
                   bgcolor: 'rgba(255,255,255,0.2)', 
                   color: 'white',
-                  fontFamily: 'Fira Code, monospace',
+                  fontFamily: 'Roboto, sans-serif',
                   fontSize: '0.75rem'
                 }} 
               />
@@ -79,7 +79,7 @@ export default function DashboardHeader({
                 sx={{ 
                   bgcolor: 'rgba(255,255,255,0.2)', 
                   color: 'white',
-                  fontFamily: 'Fira Code, monospace',
+                  fontFamily: 'Roboto, sans-serif',
                   fontSize: '0.75rem'
                 }} 
               />

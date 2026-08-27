@@ -85,13 +85,13 @@ export default function DataPanel({ state, localities, choleraData, totalCholera
       <Paper elevation={2} sx={{ p: 1, flex: '1 1 auto', overflow: 'auto' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
           <LocationOnIcon color="primary" fontSize="small" />
-          <Typography variant="subtitle1" sx={{ fontFamily: 'Fira Code, monospace' }}>
+          <Typography variant="subtitle1" sx={{ fontFamily: 'Roboto, sans-serif' }}>
             {state ? state.name : 'State Details'}
           </Typography>
         </Box>
 
         <Box sx={{ mb: 1, p: 1, bgcolor: '#f5f5f5', borderRadius: 1 }}>
-          <Typography variant="caption" sx={{ fontFamily: 'Fira Code, monospace', fontWeight: 600, color: '#9c27b0' }}>
+          <Typography variant="caption" sx={{ fontFamily: 'Roboto, sans-serif', fontWeight: 600, color: '#9c27b0' }}>
             Cholera
           </Typography>
           {state ? (
@@ -213,7 +213,7 @@ export default function DataPanel({ state, localities, choleraData, totalCholera
 
             {localities.length > 0 && (
               <Box sx={{ mt: 1 }}>
-                <Typography variant="caption" sx={{ fontFamily: 'Fira Code, monospace', fontWeight: 600 }}>
+                <Typography variant="caption" sx={{ fontFamily: 'Roboto, sans-serif', fontWeight: 600 }}>
                   Localities ({localities.length})
                 </Typography>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.25, mt: 0.5 }}>
@@ -239,7 +239,7 @@ export default function DataPanel({ state, localities, choleraData, totalCholera
       </Paper>
 
       <Paper elevation={2} sx={{ p: 1, height: 150 }}>
-        <Typography variant="caption" sx={{ fontFamily: 'Fira Code, monospace', fontWeight: 600 }}>
+        <Typography variant="caption" sx={{ fontFamily: 'Roboto, sans-serif', fontWeight: 600 }}>
           Cholera by State
         </Typography>
         <Box sx={{ height: 120 }}>

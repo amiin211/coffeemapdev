@@ -119,7 +119,7 @@ export function TopOrgsBarChart({ orgs, selectedOrg, onOrgClick, height = 240, b
 
   const content = (
     <>
-      <Typography variant="subtitle2" sx={{ fontFamily: 'Fira Code, monospace', mb: 1 }}>
+      <Typography variant="subtitle2" sx={{ fontFamily: 'Roboto, sans-serif', mb: 1 }}>
         Top Organizations
       </Typography>
       <Box sx={{ height: height - 40 }}>
@@ -177,7 +177,7 @@ export function ClusterBreakdownPieChart({ clusters, selectedCluster, onClusterC
 
   const content = (
     <>
-      <Typography variant="subtitle2" sx={{ fontFamily: 'Fira Code, monospace', mb: 1 }}>
+      <Typography variant="subtitle2" sx={{ fontFamily: 'Roboto, sans-serif', mb: 1 }}>
         Cluster Breakdown
       </Typography>
       <ChartWithLegend size={height - 40} chart={<Pie data={data} options={options} />} entries={entries} />
@@ -235,7 +235,7 @@ export function OrgTypeDoughnutChart({ orgTypes, selectedOrgType, onOrgTypeClick
 
   const content = (
     <>
-      <Typography variant="subtitle2" sx={{ fontFamily: 'Fira Code, monospace', mb: 1 }}>
+      <Typography variant="subtitle2" sx={{ fontFamily: 'Roboto, sans-serif', mb: 1 }}>
         Organization Type
       </Typography>
       <ChartWithLegend size={height - 40} chart={<Doughnut data={data} options={options} />} entries={entries} />

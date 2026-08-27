@@ -35,7 +35,7 @@ const Hero = () => {
             <Typography
               variant="h1"
               sx={{
-                fontFamily: 'Fira Code, monospace',
+                fontFamily: 'Roboto, sans-serif',
                 fontSize: { xs: '2.5rem', md: '3.5rem' },
                 fontWeight: 700,
                 color: 'primary.main',
@@ -82,7 +82,7 @@ const Hero = () => {
                   color: 'white',
                   px: 4,
                   py: 1.5,
-                  fontFamily: 'Fira Code, monospace',
+                  fontFamily: 'Roboto, sans-serif',
                   fontSize: '0.9rem',
                   '&:hover': {
                     backgroundColor: 'primary.dark',
@@ -105,7 +105,7 @@ const Hero = () => {
                   color: 'primary.main',
                   px: 4,
                   py: 1.5,
-                  fontFamily: 'Fira Code, monospace',
+                  fontFamily: 'Roboto, sans-serif',
                   fontSize: '0.9rem',
                   '&:hover': {
                     borderColor: 'primary.dark',

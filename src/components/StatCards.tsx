@@ -88,7 +88,7 @@ function StatCard({ title, value, icon, color, subtitle }: StatCardProps) {
           variant="h5" 
           sx={{ 
             fontWeight: 700, 
-            fontFamily: 'Fira Code, monospace',
+            fontFamily: 'Roboto, sans-serif',
             color: color,
             lineHeight: 1.2
           }}

@@ -34,7 +34,7 @@ const Navbar = () => {
               <ListItemText
                 primary={item.label}
                 primaryTypographyProps={{
-                  fontFamily: 'Fira Code, monospace',
+                  fontFamily: 'Roboto, sans-serif',
                 }}
               />
             </ListItemButton>
@@ -97,7 +97,7 @@ const Navbar = () => {
                 href={item.href}
                 sx={{
                   color: 'text.primary',
-                  fontFamily: 'Fira Code, monospace',
+                  fontFamily: 'Roboto, sans-serif',
                   fontSize: '0.875rem',
                   '&:hover': {
                     backgroundColor: 'rgba(74, 55, 40, 0.08)',

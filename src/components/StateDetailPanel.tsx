@@ -31,7 +31,7 @@ export default function StateDetailPanel({ state, localities }: StateDetailPanel
       <Paper elevation={2} sx={{ p: 3, height: '100%', minHeight: 300 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
           <LocationOnIcon color="primary" />
-          <Typography variant="h6" sx={{ fontFamily: 'Fira Code, monospace' }}>
+          <Typography variant="h6" sx={{ fontFamily: 'Roboto, sans-serif' }}>
             State Details
           </Typography>
         </Box>
@@ -46,7 +46,7 @@ export default function StateDetailPanel({ state, localities }: StateDetailPanel
     <Paper elevation={2} sx={{ p: 3, height: '100%', minHeight: 300, overflow: 'auto' }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
         <LocationOnIcon color="primary" />
-        <Typography variant="h5" sx={{ fontFamily: 'Fira Code, monospace', fontWeight: 700 }}>
+        <Typography variant="h5" sx={{ fontFamily: 'Roboto, sans-serif', fontWeight: 700 }}>
           {state.name}
         </Typography>
       </Box>
@@ -129,7 +129,7 @@ export default function StateDetailPanel({ state, localities }: StateDetailPanel
 
       {localities.length > 0 && (
         <Box>
-          <Typography variant="h6" sx={{ fontFamily: 'Fira Code, monospace', mb: 2 }}>
+          <Typography variant="h6" sx={{ fontFamily: 'Roboto, sans-serif', mb: 2 }}>
             Affected Localities ({localities.length})
           </Typography>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>

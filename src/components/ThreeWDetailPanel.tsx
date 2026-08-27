@@ -38,7 +38,7 @@ export default function ThreeWDetailPanel({
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <LocationOnIcon color="primary" fontSize="small" />
-          <Typography variant="subtitle1" sx={{ fontFamily: 'Fira Code, monospace' }}>
+          <Typography variant="subtitle1" sx={{ fontFamily: 'Roboto, sans-serif' }}>
             {state ?? 'Response Overview'}
           </Typography>
         </Box>
@@ -56,7 +56,7 @@ export default function ThreeWDetailPanel({
       )}
 
       <Box sx={{ mb: 1.5 }}>
-        <Typography variant="caption" sx={{ fontFamily: 'Fira Code, monospace', fontWeight: 600 }}>
+        <Typography variant="caption" sx={{ fontFamily: 'Roboto, sans-serif', fontWeight: 600 }}>
           Org Type Breakdown
         </Typography>
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75, mt: 0.5 }}>
@@ -88,7 +88,7 @@ export default function ThreeWDetailPanel({
       </Box>
 
       <Box sx={{ mb: 1.5 }}>
-        <Typography variant="caption" sx={{ fontFamily: 'Fira Code, monospace', fontWeight: 600 }}>
+        <Typography variant="caption" sx={{ fontFamily: 'Roboto, sans-serif', fontWeight: 600 }}>
           Clusters Active ({clustersActive.length})
         </Typography>
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
@@ -115,7 +115,7 @@ export default function ThreeWDetailPanel({
       </Box>
 
       <Box>
-        <Typography variant="caption" sx={{ fontFamily: 'Fira Code, monospace', fontWeight: 600 }}>
+        <Typography variant="caption" sx={{ fontFamily: 'Roboto, sans-serif', fontWeight: 600 }}>
           Top Organizations
         </Typography>
         <Box sx={{ mt: 0.5 }}>

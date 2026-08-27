@@ -35,7 +35,7 @@ const TechStack = ({ selectedCategory, selectedTech, onTechClick, onCategoryClic
           <Typography
             variant="h2"
             sx={{
-              fontFamily: 'Fira Code, monospace',
+              fontFamily: 'Roboto, sans-serif',
               fontSize: { xs: '2rem', md: '2.5rem' },
               fontWeight: 700,
               color: 'primary.main',
@@ -62,7 +62,7 @@ const TechStack = ({ selectedCategory, selectedTech, onTechClick, onCategoryClic
           <Typography
             variant="h5"
             sx={{
-              fontFamily: 'Fira Code, monospace',
+              fontFamily: 'Roboto, sans-serif',
               fontWeight: 600,
               color: 'primary.main',
               mb: 2,
@@ -80,7 +80,7 @@ const TechStack = ({ selectedCategory, selectedTech, onTechClick, onCategoryClic
                 sx={{
                   backgroundColor: selectedCategory === cap.category ? 'primary.main' : 'background.paper',
                   color: selectedCategory === cap.category ? 'white' : 'text.primary',
-                  fontFamily: 'Fira Code, monospace',
+                  fontFamily: 'Roboto, sans-serif',
                   fontSize: '0.8rem',
                   border: '1px solid',
                   borderColor: selectedCategory === cap.category ? 'primary.main' : 'divider',
@@ -117,7 +117,7 @@ const TechStack = ({ selectedCategory, selectedTech, onTechClick, onCategoryClic
                   <Typography
                     variant="h6"
                     sx={{
-                      fontFamily: 'Fira Code, monospace',
+                      fontFamily: 'Roboto, sans-serif',
                       fontWeight: 600,
                       color: 'secondary.main',
                     }}
@@ -136,7 +136,7 @@ const TechStack = ({ selectedCategory, selectedTech, onTechClick, onCategoryClic
                         py: 2,
                         backgroundColor: isTechSelected(tech) ? 'secondary.main' : 'transparent',
                         color: isTechSelected(tech) ? 'white' : 'text.primary',
-                        fontFamily: 'Fira Code, monospace',
+                        fontFamily: 'Roboto, sans-serif',
                         fontSize: '0.8rem',
                         border: '1px solid',
                         borderColor: isTechSelected(tech) ? 'secondary.main' : 'divider',
@@ -161,7 +161,7 @@ const TechStack = ({ selectedCategory, selectedTech, onTechClick, onCategoryClic
               variant="body2"
               sx={{
                 color: 'text.secondary',
-                fontFamily: 'Fira Code, monospace',
+                fontFamily: 'Roboto, sans-serif',
               }}
             >
               Click any chip to clear filter. Filters work together.

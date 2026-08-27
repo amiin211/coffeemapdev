@@ -55,7 +55,7 @@ export default function ExpertisePage({ params }: ExpertisePageProps) {
                   alignItems: 'center',
                   gap: 1,
                   color: 'primary.main',
-                  fontFamily: 'Fira Code, monospace',
+                  fontFamily: 'Roboto, sans-serif',
                   fontSize: '0.875rem',
                   textDecoration: 'none',
                   '&:hover': {
@@ -86,7 +86,7 @@ export default function ExpertisePage({ params }: ExpertisePageProps) {
               <Typography
                 variant="h2"
                 sx={{
-                  fontFamily: 'Fira Code, monospace',
+                  fontFamily: 'Roboto, sans-serif',
                   fontWeight: 700,
                   color: 'primary.main',
                 }}
@@ -115,7 +115,7 @@ export default function ExpertisePage({ params }: ExpertisePageProps) {
                       backgroundColor: 'primary.main',
                       color: 'white',
                       borderRadius: 1,
-                      fontFamily: 'Fira Code, monospace',
+                      fontFamily: 'Roboto, sans-serif',
                       fontSize: '0.75rem',
                     }}
                   >
@@ -131,7 +131,7 @@ export default function ExpertisePage({ params }: ExpertisePageProps) {
               <Typography
                 variant="h3"
                 sx={{
-                  fontFamily: 'Fira Code, monospace',
+                  fontFamily: 'Roboto, sans-serif',
                   fontSize: { xs: '1.5rem', md: '2rem' },
                   fontWeight: 600,
                   color: 'primary.main',
@@ -155,7 +155,7 @@ export default function ExpertisePage({ params }: ExpertisePageProps) {
               <Typography
                 variant="h3"
                 sx={{
-                  fontFamily: 'Fira Code, monospace',
+                  fontFamily: 'Roboto, sans-serif',
                   fontSize: { xs: '1.5rem', md: '2rem' },
                   fontWeight: 600,
                   color: 'primary.main',

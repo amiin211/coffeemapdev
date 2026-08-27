@@ -50,7 +50,7 @@ const Footer = () => {
             <Box>
               <Typography
                 sx={{
-                  fontFamily: 'Fira Code, monospace',
+                  fontFamily: 'Roboto, sans-serif',
                   fontSize: '0.875rem',
                   color: 'text.secondary',
                 }}
@@ -59,7 +59,7 @@ const Footer = () => {
               </Typography>
               <Typography
                 sx={{
-                  fontFamily: 'Fira Code, monospace',
+                  fontFamily: 'Roboto, sans-serif',
                   fontSize: '0.7rem',
                   color: 'text.secondary',
                   mt: 0.5,
@@ -172,7 +172,7 @@ const Footer = () => {
           <Typography
             variant="caption"
             sx={{
-              fontFamily: 'Fira Code, monospace',
+              fontFamily: 'Roboto, sans-serif',
               color: 'text.secondary',
             }}
           >
