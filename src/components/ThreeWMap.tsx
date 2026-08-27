@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Typography, ToggleButton, ToggleButtonGroup } from '@mui/material';
 import MapGL, { Source, Layer, Marker, Popup, MapLayerMouseEvent } from 'react-map-gl/maplibre';
 import type { StyleSpecification, ExpressionSpecification } from 'maplibre-gl';
@@ -49,6 +49,30 @@ function getRadius(count: number, max: number): number {
   return Math.max(6, Math.min(28, (count / max) * 28));
 }
 
+// Computed once the real boundary data loads, rather than a hand-tuned
+// center/zoom, so the whole country fits regardless of the map's aspect ratio.
+function computeBounds(geojson: any): [[number, number], [number, number]] {
+  let west = Infinity;
+  let south = Infinity;
+  let east = -Infinity;
+  let north = -Infinity;
+
+  const visit = (coords: any): void => {
+    if (typeof coords[0] === 'number') {
+      const [lng, lat] = coords;
+      if (lng < west) west = lng;
+      if (lng > east) east = lng;
+      if (lat < south) south = lat;
+      if (lat > north) north = lat;
+    } else {
+      coords.forEach(visit);
+    }
+  };
+
+  geojson.features.forEach((f: any) => visit(f.geometry.coordinates));
+  return [[west, south], [east, north]];
+}
+
 const floatingPanelSx = {
   bgcolor: 'rgba(255,255,255,0.92)',
   backdropFilter: 'blur(8px)',
@@ -66,12 +90,20 @@ export default function ThreeWMap({
 }: ThreeWMapProps) {
   const [admin1, setAdmin1] = useState<any>(null);
   const [hovered, setHovered] = useState<{ lng: number; lat: number; properties: any } | null>(null);
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const mapRef = useRef<any>(null);
 
   useEffect(() => {
     fetch('/data/sdn_admin1.geojson')
       .then((res) => res.json())
       .then(setAdmin1);
   }, []);
+
+  useEffect(() => {
+    if (mapLoaded && admin1 && mapRef.current) {
+      mapRef.current.fitBounds(computeBounds(admin1), { padding: 30, duration: 0 });
+    }
+  }, [mapLoaded, admin1]);
 
   const byState = useMemo(() => new Map(stateAggregates.map((s) => [s.state, s])), [stateAggregates]);
   const maxValue = useMemo(() => Math.max(0, ...stateAggregates.map((s) => s[metric])), [stateAggregates, metric]);
@@ -129,15 +161,17 @@ export default function ThreeWMap({
   return (
     <Box sx={{ height: '100%', position: 'relative' }}>
       <MapGL
+        ref={mapRef}
         initialViewState={{ longitude: 28, latitude: 16, zoom: 5 }}
-        minZoom={4.5}
+        minZoom={4}
         maxZoom={8}
-        maxBounds={[18, 8, 42, 24]}
+        maxBounds={[15, 5, 45, 26]}
         mapStyle={osmStyle}
         interactiveLayerIds={enrichedGeoJson ? [STATES_FILL_LAYER] : []}
         onClick={handleClick}
         onMouseMove={handleMouseMove}
         onMouseLeave={() => setHovered(null)}
+        onLoad={() => setMapLoaded(true)}
         reuseMaps
         style={{ width: '100%', height: '100%' }}
       >

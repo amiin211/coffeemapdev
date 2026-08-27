@@ -132,9 +132,16 @@ function DashboardContent() {
     );
   }
 
+  const compactSelectSx = {
+    '& .MuiOutlinedInput-root': { fontFamily: 'Fira Code, monospace', fontSize: '0.7rem' },
+    '& .MuiSelect-select': { py: '5px', display: 'flex', alignItems: 'center' },
+    '& .MuiInputLabel-root': { fontSize: '0.7rem' },
+    '& .MuiInputLabel-root.MuiInputLabel-shrink': { fontSize: '0.75rem' },
+  };
+
   const filtersNode = (
     <>
-      <FormControl size="small" sx={{ minWidth: 150 }}>
+      <FormControl size="small" sx={{ minWidth: 130, ...compactSelectSx }}>
         <InputLabel>Month</InputLabel>
         <Select label="Month" value={selectedMonth ?? ''} onChange={(e) => setSelectedMonth(e.target.value || null)}>
           <MenuItem value="">All Months</MenuItem>
@@ -146,7 +153,7 @@ function DashboardContent() {
         </Select>
       </FormControl>
 
-      <FormControl size="small" sx={{ minWidth: 200 }}>
+      <FormControl size="small" sx={{ minWidth: 170, ...compactSelectSx }}>
         <InputLabel>Cluster</InputLabel>
         <Select label="Cluster" value={selectedCluster ?? ''} onChange={(e) => setSelectedCluster(e.target.value || null)}>
           <MenuItem value="">All Clusters</MenuItem>
@@ -319,8 +326,8 @@ function DashboardContent() {
                   {mapNode}
                 </Paper>
 
-                <Box sx={{ position: 'absolute', top: 16, left: 16, right: 16, zIndex: 500, display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
-                  <Box sx={{ p: 1.5, display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'center', ...floatingPanelSx }}>
+                <Box sx={{ position: 'absolute', top: 16, left: 16, right: 16, zIndex: 500, display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center', pointerEvents: 'none' }}>
+                  <Box sx={{ p: 1.5, display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'center', pointerEvents: 'auto', ...floatingPanelSx }}>
                     {filtersNode}
                   </Box>
                 </Box>
