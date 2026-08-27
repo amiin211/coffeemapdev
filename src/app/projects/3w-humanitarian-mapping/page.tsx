@@ -243,7 +243,7 @@ function DashboardContent() {
     <AppLayout>
       <Box
         sx={{
-          height: isDesktop ? 'calc(100vh - 96px)' : 'auto',
+          minHeight: 'calc(100vh - 96px)',
           display: 'flex',
           flexDirection: 'column',
           bgcolor: unBlue.light,
@@ -276,8 +276,12 @@ function DashboardContent() {
           <>
             <Box sx={{ px: 2, pb: 1.25, flexShrink: 0 }}>{statsNode}</Box>
 
-            <Box sx={{ px: 2, pb: 1.25, flex: 1, minHeight: 0, display: 'flex', gap: 1.5 }}>
-              <Box sx={{ flex: 1, position: 'relative', minHeight: 0 }}>
+            <Box sx={{ px: 2, pb: 1.25, display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
+              <Box sx={{ width: 360, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                {sidebarNode}
+              </Box>
+
+              <Box sx={{ flex: 1, position: 'relative', height: 600 }}>
                 <Paper elevation={2} sx={{ height: '100%', overflow: 'hidden' }}>
                   {mapNode}
                 </Paper>
@@ -314,10 +318,6 @@ function DashboardContent() {
                     {aboutContent}
                   </Box>
                 )}
-              </Box>
-
-              <Box sx={{ width: 360, flexShrink: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 1.5, pr: 0.5 }}>
-                {sidebarNode}
               </Box>
             </Box>
 
