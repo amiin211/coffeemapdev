@@ -182,24 +182,34 @@ function DashboardContent() {
     />
   );
 
-  const sidebarNode = (
+  const detailPanelNode = (
+    <ThreeWDetailPanel
+      state={selectedState}
+      topOrgs={topOrgs}
+      orgTypeBreakdown={orgTypeAggregates}
+      clustersActive={clusterAggregates.map((c) => c.cluster)}
+      onClear={() => setSelectedState(null)}
+      selectedCluster={selectedCluster}
+      selectedOrgType={selectedOrgType}
+      selectedOrg={selectedOrg}
+      onClusterClick={handleClusterClick}
+      onOrgTypeClick={handleOrgTypeClick}
+      onOrgClick={handleOrgClick}
+    />
+  );
+
+  const chartsNode = (
     <>
-      <ThreeWDetailPanel
-        state={selectedState}
-        topOrgs={topOrgs}
-        orgTypeBreakdown={orgTypeAggregates}
-        clustersActive={clusterAggregates.map((c) => c.cluster)}
-        onClear={() => setSelectedState(null)}
-        selectedCluster={selectedCluster}
-        selectedOrgType={selectedOrgType}
-        selectedOrg={selectedOrg}
-        onClusterClick={handleClusterClick}
-        onOrgTypeClick={handleOrgTypeClick}
-        onOrgClick={handleOrgClick}
-      />
       <TopOrgsBarChart orgs={topOrgs} selectedOrg={selectedOrg} onOrgClick={handleOrgClick} />
       <ClusterBreakdownPieChart clusters={clusterAggregates} selectedCluster={selectedCluster} onClusterClick={handleClusterClick} />
       <OrgTypeDoughnutChart orgTypes={orgTypeAggregates} selectedOrgType={selectedOrgType} onOrgTypeClick={handleOrgTypeClick} />
+    </>
+  );
+
+  const sidebarNode = (
+    <>
+      {detailPanelNode}
+      {chartsNode}
     </>
   );
 
@@ -278,7 +288,7 @@ function DashboardContent() {
 
             <Box sx={{ px: 2, pb: 1.25, display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
               <Box sx={{ width: 360, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                {sidebarNode}
+                {chartsNode}
               </Box>
 
               <Box sx={{ flex: 1, position: 'relative', height: 600 }}>
@@ -319,6 +329,8 @@ function DashboardContent() {
                   </Box>
                 )}
               </Box>
+
+              <Box sx={{ width: 360, flexShrink: 0 }}>{detailPanelNode}</Box>
             </Box>
 
             <Paper elevation={2} sx={{ mx: 2, mb: 1.5, p: 1.25, flexShrink: 0 }}>
