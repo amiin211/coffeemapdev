@@ -202,26 +202,26 @@ function DashboardContent() {
           bgcolor: unBlue.light,
         }}
       >
-        <Box sx={{ position: 'relative', flexShrink: 0 }}>
-          <DashboardHeader
-            title="3W Humanitarian Mapping"
-            subtitle="Who, What, Where — Sudan Response Monitoring"
-            icon={<GroupsIcon sx={{ fontSize: 28 }} />}
-            source="OCHA Sudan – 2026 HRP Response Monitoring, Consolidated 3W Data (Jan–Jun 2026)"
-            author="Amin Adnan Gasim"
-            date="Jan–Jun 2026"
-            gradientFrom={unBlue.DEFAULT}
-            gradientTo={unBlue.dark}
-            borderRadius={0}
-            mb={0}
-          />
-          <IconButton
-            onClick={() => setAboutOpen(true)}
-            sx={{ position: 'absolute', top: 12, right: 12, color: 'white' }}
-            aria-label="About this dashboard"
-          >
-            <InfoOutlinedIcon />
-          </IconButton>
+        <Box sx={{ px: 2, pt: 2, flexShrink: 0 }}>
+          <Box sx={{ position: 'relative' }}>
+            <DashboardHeader
+              title="3W Humanitarian Mapping"
+              subtitle="Who, What, Where — Sudan Response Monitoring"
+              icon={<GroupsIcon sx={{ fontSize: 28 }} />}
+              source="OCHA Sudan – 2026 HRP Response Monitoring, Consolidated 3W Data (Jan–Jun 2026)"
+              author="Amin Adnan Gasim"
+              date="Jan–Jun 2026"
+              gradientFrom={unBlue.DEFAULT}
+              gradientTo={unBlue.dark}
+            />
+            <IconButton
+              onClick={() => setAboutOpen(true)}
+              sx={{ position: 'absolute', top: 12, right: 12, color: 'white' }}
+              aria-label="About this dashboard"
+            >
+              <InfoOutlinedIcon />
+            </IconButton>
+          </Box>
         </Box>
 
         {isDesktop ? (
