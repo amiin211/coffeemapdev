@@ -13,6 +13,8 @@ import {
   FormControl,
   InputLabel,
   IconButton,
+  ToggleButton,
+  ToggleButtonGroup,
   useMediaQuery,
   useTheme,
 } from '@mui/material';
@@ -23,6 +25,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import AppLayout from '@/components/AppLayout';
 import DashboardHeader from '@/components/DashboardHeader';
 import ThreeWStatCards from '@/components/ThreeWStatCards';
+import { metricLabels, ThreeWMetric } from '@/utils/threewMetric';
 import { unBlue } from '@/theme/unColors';
 import {
   ThreeWData,
@@ -80,7 +83,7 @@ function DashboardContent() {
   const [selectedState, setSelectedState] = useState<string | null>(null);
   const [selectedOrg, setSelectedOrg] = useState<string | null>(null);
   const [selectedOrgType, setSelectedOrgType] = useState<string | null>(null);
-  const [metric, setMetric] = useState<'activities' | 'orgs' | 'clusters'>('activities');
+  const [metric, setMetric] = useState<ThreeWMetric>('activities');
   const [aboutOpen, setAboutOpen] = useState(false);
 
   const theme = useTheme();
@@ -177,6 +180,31 @@ function DashboardContent() {
     </>
   );
 
+  const metricToggleNode = (
+    <ToggleButtonGroup
+      size="small"
+      exclusive
+      value={metric}
+      onChange={(_, value) => value && setMetric(value)}
+      sx={{ bgcolor: 'transparent' }}
+    >
+      {(Object.keys(metricLabels) as ThreeWMetric[]).map((m) => (
+        <ToggleButton
+          key={m}
+          value={m}
+          sx={{
+            fontFamily: 'Fira Code, monospace',
+            fontSize: '0.7rem',
+            px: 1.5,
+            '&.Mui-selected': { bgcolor: unBlue.DEFAULT, color: 'white', '&:hover': { bgcolor: unBlue.dark } },
+          }}
+        >
+          {metricLabels[m]}
+        </ToggleButton>
+      ))}
+    </ToggleButtonGroup>
+  );
+
   const statsNode = (
     <ThreeWStatCards
       activities={selectedStateAgg ? selectedStateAgg.activities : totalActivities}
@@ -241,7 +269,6 @@ function DashboardContent() {
       localityAggregates={localityAggregates}
       selectedState={selectedState}
       metric={metric}
-      onMetricChange={setMetric}
       onStateSelect={setSelectedState}
     />
   );
@@ -326,10 +353,24 @@ function DashboardContent() {
                   {mapNode}
                 </Paper>
 
-                <Box sx={{ position: 'absolute', top: 16, left: 16, right: 16, zIndex: 500, display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center', pointerEvents: 'none' }}>
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    top: 16,
+                    left: 16,
+                    right: 16,
+                    zIndex: 500,
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: 1,
+                    pointerEvents: 'none',
+                  }}
+                >
                   <Box sx={{ p: 1.5, display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'center', pointerEvents: 'auto', ...floatingPanelSx }}>
                     {filtersNode}
                   </Box>
+                  <Box sx={{ pointerEvents: 'auto', ...floatingPanelSx }}>{metricToggleNode}</Box>
                 </Box>
 
                 {aboutOpen && (
@@ -374,7 +415,8 @@ function DashboardContent() {
           </>
         ) : (
           <Box sx={{ p: 2 }}>
-            <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', mb: 2 }}>{filtersNode}</Box>
+            <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', mb: 1.5, alignItems: 'center' }}>{filtersNode}</Box>
+            <Box sx={{ mb: 2, overflowX: 'auto' }}>{metricToggleNode}</Box>
             <Box sx={{ mb: 2 }}>{statsNode}</Box>
             <Paper elevation={2} sx={{ height: 420, mb: 2, overflow: 'hidden' }}>
               {mapNode}

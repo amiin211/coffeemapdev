@@ -1,27 +1,19 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Box, Typography, ToggleButton, ToggleButtonGroup } from '@mui/material';
+import { Box, Typography } from '@mui/material';
 import MapGL, { Source, Layer, Marker, Popup, MapLayerMouseEvent } from 'react-map-gl/maplibre';
 import type { StyleSpecification, ExpressionSpecification } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { StateAggregate, LocalityAggregate } from '@/utils/threew';
+import { ThreeWMetric, metricLabels } from '@/utils/threewMetric';
 import { unBlue, unChoroplethRamp } from '@/theme/unColors';
-
-export type ThreeWMetric = 'activities' | 'orgs' | 'clusters';
-
-const metricLabels: Record<ThreeWMetric, string> = {
-  activities: 'Activities',
-  orgs: 'Organizations',
-  clusters: 'Clusters',
-};
 
 interface ThreeWMapProps {
   stateAggregates: StateAggregate[];
   localityAggregates: LocalityAggregate[];
   selectedState: string | null;
   metric: ThreeWMetric;
-  onMetricChange: (metric: ThreeWMetric) => void;
   onStateSelect: (state: string | null) => void;
 }
 
@@ -85,7 +77,6 @@ export default function ThreeWMap({
   localityAggregates,
   selectedState,
   metric,
-  onMetricChange,
   onStateSelect,
 }: ThreeWMapProps) {
   const [admin1, setAdmin1] = useState<any>(null);
@@ -225,31 +216,6 @@ export default function ThreeWMap({
           </Popup>
         )}
       </MapGL>
-
-      <Box sx={{ position: 'absolute', top: 16, right: 16, zIndex: 500, ...floatingPanelSx }}>
-        <ToggleButtonGroup
-          size="small"
-          exclusive
-          value={metric}
-          onChange={(_, value) => value && onMetricChange(value)}
-          sx={{ bgcolor: 'transparent' }}
-        >
-          {(Object.keys(metricLabels) as ThreeWMetric[]).map((m) => (
-            <ToggleButton
-              key={m}
-              value={m}
-              sx={{
-                fontFamily: 'Fira Code, monospace',
-                fontSize: '0.7rem',
-                px: 1.5,
-                '&.Mui-selected': { bgcolor: unBlue.DEFAULT, color: 'white', '&:hover': { bgcolor: unBlue.dark } },
-              }}
-            >
-              {metricLabels[m]}
-            </ToggleButton>
-          ))}
-        </ToggleButtonGroup>
-      </Box>
 
       <Box sx={{ position: 'absolute', bottom: 20, left: 20, zIndex: 500, p: 2, ...floatingPanelSx }}>
         <Typography variant="caption" sx={{ fontWeight: 600, display: 'block', mb: 1 }}>
