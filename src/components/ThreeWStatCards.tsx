@@ -11,7 +11,6 @@ interface StatCardProps {
   value: number | string;
   icon: 'activities' | 'orgs' | 'clusters' | 'states' | 'localities';
   color: string;
-  subtitle?: string;
 }
 
 const iconMap = {
@@ -22,15 +21,15 @@ const iconMap = {
   localities: PlaceIcon,
 };
 
-function StatCard({ title, value, icon, color, subtitle }: StatCardProps) {
+function StatCard({ title, value, icon, color }: StatCardProps) {
   const Icon = iconMap[icon];
 
   return (
     <Paper
       elevation={2}
       sx={{
-        p: 2,
-        height: 100,
+        p: 1.25,
+        height: 64,
         display: 'flex',
         flexDirection: 'row',
         alignItems: 'center',
@@ -43,40 +42,35 @@ function StatCard({ title, value, icon, color, subtitle }: StatCardProps) {
         },
       }}
     >
-      <Box sx={{ position: 'absolute', top: -15, right: -15, opacity: 0.08, color }}>
-        <Icon sx={{ fontSize: 80 }} />
+      <Box sx={{ position: 'absolute', top: -10, right: -10, opacity: 0.08, color }}>
+        <Icon sx={{ fontSize: 56 }} />
       </Box>
 
       <Box
         sx={{
-          p: 1,
+          p: 0.75,
           borderRadius: 1,
           bgcolor: `${color}20`,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          mr: 2,
-          minWidth: 48,
+          mr: 1.25,
+          minWidth: 34,
         }}
       >
-        <Icon sx={{ color, fontSize: 28 }} />
+        <Icon sx={{ color, fontSize: 20 }} />
       </Box>
 
-      <Box sx={{ flex: 1 }}>
-        <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500, lineHeight: 1.2 }}>
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500, lineHeight: 1.1, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {title}
         </Typography>
         <Typography
-          variant="h5"
+          variant="h6"
           sx={{ fontWeight: 700, fontFamily: 'Fira Code, monospace', color, lineHeight: 1.2 }}
         >
           {typeof value === 'number' ? value.toLocaleString() : value}
         </Typography>
-        {subtitle && (
-          <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1 }}>
-            {subtitle}
-          </Typography>
-        )}
       </Box>
     </Paper>
   );
@@ -106,12 +100,11 @@ export default function ThreeWStatCards({
       sx={{
         display: 'flex',
         flexWrap: 'wrap',
-        gap: 2,
-        mb: 4,
+        gap: 1.25,
         width: '100%',
         '& > *': {
           flex: '1 1 calc(20% - 16px)',
-          minWidth: 140,
+          minWidth: 130,
         },
       }}
     >
@@ -120,31 +113,27 @@ export default function ThreeWStatCards({
         value={activities}
         icon="activities"
         color={unBlue.dark}
-        subtitle="reported activities"
       />
       <StatCard
         title="Organizations"
         value={orgs}
         icon="orgs"
         color={unBlue.DEFAULT}
-        subtitle={isStateSelected ? 'active in state' : 'active partners'}
       />
       <StatCard
         title="Clusters Active"
         value={clusters}
         icon="clusters"
         color={unCategorical[3]}
-        subtitle="sectors present"
       />
       {!isStateSelected && (
-        <StatCard title="States Covered" value={states} icon="states" color={unCategorical[5]} subtitle="of 19 states" />
+        <StatCard title="States Covered" value={states} icon="states" color={unCategorical[5]} />
       )}
       <StatCard
         title="Localities Reached"
         value={localities}
         icon="localities"
         color={unCategorical[4]}
-        subtitle={isStateSelected ? 'in state' : 'of 188 localities'}
       />
     </Box>
   );

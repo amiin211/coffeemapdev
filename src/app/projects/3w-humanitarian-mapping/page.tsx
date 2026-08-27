@@ -204,7 +204,7 @@ function DashboardContent() {
   );
 
   const trendNode = (
-    <MonthlyTrendChart trend={trend} selectedMonth={selectedMonth} onMonthClick={handleMonthClick} height={isDesktop ? 200 : 200} />
+    <MonthlyTrendChart trend={trend} selectedMonth={selectedMonth} onMonthClick={handleMonthClick} height={isDesktop ? 110 : 200} />
   );
 
   const mapNode = (
@@ -249,7 +249,7 @@ function DashboardContent() {
           bgcolor: unBlue.light,
         }}
       >
-        <Box sx={{ px: 2, pt: 2, flexShrink: 0 }}>
+        <Box sx={{ px: 2, pt: 1.5, flexShrink: 0 }}>
           <Box sx={{ position: 'relative' }}>
             <DashboardHeader
               title="3W Humanitarian Mapping"
@@ -260,6 +260,7 @@ function DashboardContent() {
               date="Jan–Jun 2026"
               gradientFrom={unBlue.DEFAULT}
               gradientTo={unBlue.dark}
+              mb={isDesktop ? 1.5 : 3}
             />
             <IconButton
               onClick={() => setAboutOpen((v) => !v)}
@@ -273,9 +274,9 @@ function DashboardContent() {
 
         {isDesktop ? (
           <>
-            <Box sx={{ px: 2, pb: 2, flexShrink: 0 }}>{statsNode}</Box>
+            <Box sx={{ px: 2, pb: 1.25, flexShrink: 0 }}>{statsNode}</Box>
 
-            <Box sx={{ px: 2, pb: 2, flex: 1, minHeight: 0, display: 'flex', gap: 2 }}>
+            <Box sx={{ px: 2, pb: 1.25, flex: 1, minHeight: 0, display: 'flex', gap: 1.5 }}>
               <Box sx={{ flex: 1, position: 'relative', minHeight: 0 }}>
                 <Paper elevation={2} sx={{ height: '100%', overflow: 'hidden' }}>
                   {mapNode}
@@ -320,8 +321,8 @@ function DashboardContent() {
               </Box>
             </Box>
 
-            <Paper elevation={2} sx={{ mx: 2, mb: 2, p: 2, flexShrink: 0 }}>
-              <Typography variant="subtitle2" sx={{ fontFamily: 'Fira Code, monospace', mb: 1 }}>
+            <Paper elevation={2} sx={{ mx: 2, mb: 1.5, p: 1.25, flexShrink: 0 }}>
+              <Typography variant="subtitle2" sx={{ fontFamily: 'Fira Code, monospace', mb: 0.5 }}>
                 Monthly Trend (Jan–Jun 2026)
               </Typography>
               {trendNode}
