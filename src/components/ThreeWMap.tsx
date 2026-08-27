@@ -204,8 +204,8 @@ export default function ThreeWMap({
                 width: getRadius(l.activities, maxLocalityCount) * 2,
                 height: getRadius(l.activities, maxLocalityCount) * 2,
                 borderRadius: '50%',
-                background: `${unBlue.DEFAULT}99`,
-                border: `1px solid ${unBlue.dark}`,
+                background: '#00BCD499',
+                border: '1px solid #00838F',
               }}
             />
           </Marker>
