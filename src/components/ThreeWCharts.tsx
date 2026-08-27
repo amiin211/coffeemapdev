@@ -44,9 +44,10 @@ interface TopOrgsBarChartProps {
   orgs: OrgAggregate[];
   selectedOrg?: string | null;
   onOrgClick?: (acronym: string) => void;
+  height?: number;
 }
 
-export function TopOrgsBarChart({ orgs, selectedOrg, onOrgClick }: TopOrgsBarChartProps) {
+export function TopOrgsBarChart({ orgs, selectedOrg, onOrgClick, height = 240 }: TopOrgsBarChartProps) {
   const selectedIndex = selectedOrg ? orgs.findIndex((o) => o.org.acronym === selectedOrg) : -1;
   const colors = emphasize(orgs.map(() => unBlue.DEFAULT), selectedIndex);
 
@@ -80,11 +81,11 @@ export function TopOrgsBarChart({ orgs, selectedOrg, onOrgClick }: TopOrgsBarCha
   };
 
   return (
-    <Paper elevation={2} sx={{ p: 2, height: 240 }}>
+    <Paper elevation={2} sx={{ p: 2, height }}>
       <Typography variant="subtitle2" sx={{ fontFamily: 'Fira Code, monospace', mb: 1 }}>
         Top Organizations
       </Typography>
-      <Box sx={{ height: 200 }}>
+      <Box sx={{ height: height - 40 }}>
         <Bar data={data} options={options} />
       </Box>
     </Paper>
@@ -95,9 +96,10 @@ interface ClusterBreakdownPieChartProps {
   clusters: ClusterAggregate[];
   selectedCluster?: string | null;
   onClusterClick?: (cluster: string) => void;
+  height?: number;
 }
 
-export function ClusterBreakdownPieChart({ clusters, selectedCluster, onClusterClick }: ClusterBreakdownPieChartProps) {
+export function ClusterBreakdownPieChart({ clusters, selectedCluster, onClusterClick, height = 220 }: ClusterBreakdownPieChartProps) {
   const selectedIndex = selectedCluster ? clusters.findIndex((c) => c.cluster === selectedCluster) : -1;
   const colors = emphasize(clusters.map((_, i) => palette[i % palette.length]), selectedIndex);
 
@@ -126,11 +128,11 @@ export function ClusterBreakdownPieChart({ clusters, selectedCluster, onClusterC
   };
 
   return (
-    <Paper elevation={2} sx={{ p: 2, height: 220 }}>
+    <Paper elevation={2} sx={{ p: 2, height }}>
       <Typography variant="subtitle2" sx={{ fontFamily: 'Fira Code, monospace', mb: 1 }}>
         Cluster Breakdown
       </Typography>
-      <Box sx={{ height: 180 }}>
+      <Box sx={{ height: height - 40 }}>
         <Pie data={data} options={options} />
       </Box>
     </Paper>
@@ -143,9 +145,10 @@ interface OrgTypeDoughnutChartProps {
   orgTypes: OrgTypeAggregate[];
   selectedOrgType?: string | null;
   onOrgTypeClick?: (type: string) => void;
+  height?: number;
 }
 
-export function OrgTypeDoughnutChart({ orgTypes, selectedOrgType, onOrgTypeClick }: OrgTypeDoughnutChartProps) {
+export function OrgTypeDoughnutChart({ orgTypes, selectedOrgType, onOrgTypeClick, height = 200 }: OrgTypeDoughnutChartProps) {
   const selectedIndex = selectedOrgType ? orgTypes.findIndex((t) => t.type === selectedOrgType) : -1;
   const colors = emphasize(orgTypes.map((t) => orgTypeColors[t.type] ?? '#616161'), selectedIndex);
 
@@ -174,11 +177,11 @@ export function OrgTypeDoughnutChart({ orgTypes, selectedOrgType, onOrgTypeClick
   };
 
   return (
-    <Paper elevation={2} sx={{ p: 2, height: 200 }}>
+    <Paper elevation={2} sx={{ p: 2, height }}>
       <Typography variant="subtitle2" sx={{ fontFamily: 'Fira Code, monospace', mb: 1 }}>
         Organization Type
       </Typography>
-      <Box sx={{ height: 160 }}>
+      <Box sx={{ height: height - 40 }}>
         <Doughnut data={data} options={options} />
       </Box>
     </Paper>

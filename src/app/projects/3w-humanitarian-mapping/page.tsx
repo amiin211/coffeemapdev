@@ -200,9 +200,9 @@ function DashboardContent() {
 
   const chartsNode = (
     <>
-      <TopOrgsBarChart orgs={topOrgs} selectedOrg={selectedOrg} onOrgClick={handleOrgClick} />
-      <ClusterBreakdownPieChart clusters={clusterAggregates} selectedCluster={selectedCluster} onClusterClick={handleClusterClick} />
-      <OrgTypeDoughnutChart orgTypes={orgTypeAggregates} selectedOrgType={selectedOrgType} onOrgTypeClick={handleOrgTypeClick} />
+      <TopOrgsBarChart orgs={topOrgs} selectedOrg={selectedOrg} onOrgClick={handleOrgClick} height={isDesktop ? 208 : 240} />
+      <ClusterBreakdownPieChart clusters={clusterAggregates} selectedCluster={selectedCluster} onClusterClick={handleClusterClick} height={isDesktop ? 192 : 220} />
+      <OrgTypeDoughnutChart orgTypes={orgTypeAggregates} selectedOrgType={selectedOrgType} onOrgTypeClick={handleOrgTypeClick} height={isDesktop ? 176 : 200} />
     </>
   );
 
