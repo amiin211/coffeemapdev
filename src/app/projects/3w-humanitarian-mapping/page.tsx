@@ -307,7 +307,7 @@ function DashboardContent() {
                   p: 2,
                   display: 'flex',
                   flexDirection: 'column',
-                  justifyContent: 'space-between',
+                  justifyContent: 'space-evenly',
                   overflow: 'hidden',
                 }}
               >
