@@ -6,6 +6,7 @@ import {
   Typography,
   Paper,
   Chip,
+  Divider,
   CircularProgress,
   MenuItem,
   Select,
@@ -206,6 +207,16 @@ function DashboardContent() {
     </>
   );
 
+  const chartsNodeBare = (
+    <>
+      <TopOrgsBarChart orgs={topOrgs} selectedOrg={selectedOrg} onOrgClick={handleOrgClick} height={180} bare />
+      <Divider />
+      <ClusterBreakdownPieChart clusters={clusterAggregates} selectedCluster={selectedCluster} onClusterClick={handleClusterClick} height={180} bare />
+      <Divider />
+      <OrgTypeDoughnutChart orgTypes={orgTypeAggregates} selectedOrgType={selectedOrgType} onOrgTypeClick={handleOrgTypeClick} height={180} bare />
+    </>
+  );
+
   const sidebarNode = (
     <>
       {detailPanelNode}
@@ -287,9 +298,21 @@ function DashboardContent() {
             <Box sx={{ px: 2, pb: 1.25, flexShrink: 0 }}>{statsNode}</Box>
 
             <Box sx={{ px: 2, pb: 1.25, display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
-              <Box sx={{ width: 360, flexShrink: 0, height: 600, display: 'flex', flexDirection: 'column', gap: 1.5, justifyContent: 'space-between' }}>
-                {chartsNode}
-              </Box>
+              <Paper
+                elevation={2}
+                sx={{
+                  width: 360,
+                  flexShrink: 0,
+                  height: 600,
+                  p: 2,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  overflow: 'hidden',
+                }}
+              >
+                {chartsNodeBare}
+              </Paper>
 
               <Box sx={{ flex: 1, position: 'relative', height: 600 }}>
                 <Paper elevation={2} sx={{ height: '100%', overflow: 'hidden' }}>

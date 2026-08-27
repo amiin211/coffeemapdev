@@ -45,9 +45,10 @@ interface TopOrgsBarChartProps {
   selectedOrg?: string | null;
   onOrgClick?: (acronym: string) => void;
   height?: number;
+  bare?: boolean;
 }
 
-export function TopOrgsBarChart({ orgs, selectedOrg, onOrgClick, height = 240 }: TopOrgsBarChartProps) {
+export function TopOrgsBarChart({ orgs, selectedOrg, onOrgClick, height = 240, bare = false }: TopOrgsBarChartProps) {
   const selectedIndex = selectedOrg ? orgs.findIndex((o) => o.org.acronym === selectedOrg) : -1;
   const colors = emphasize(orgs.map(() => unBlue.DEFAULT), selectedIndex);
 
@@ -80,16 +81,18 @@ export function TopOrgsBarChart({ orgs, selectedOrg, onOrgClick, height = 240 }:
     },
   };
 
-  return (
-    <Paper elevation={2} sx={{ p: 2, height }}>
+  const content = (
+    <>
       <Typography variant="subtitle2" sx={{ fontFamily: 'Fira Code, monospace', mb: 1 }}>
         Top Organizations
       </Typography>
       <Box sx={{ height: height - 40 }}>
         <Bar data={data} options={options} />
       </Box>
-    </Paper>
+    </>
   );
+
+  return bare ? <Box sx={{ height }}>{content}</Box> : <Paper elevation={2} sx={{ p: 2, height }}>{content}</Paper>;
 }
 
 interface ClusterBreakdownPieChartProps {
@@ -97,9 +100,10 @@ interface ClusterBreakdownPieChartProps {
   selectedCluster?: string | null;
   onClusterClick?: (cluster: string) => void;
   height?: number;
+  bare?: boolean;
 }
 
-export function ClusterBreakdownPieChart({ clusters, selectedCluster, onClusterClick, height = 220 }: ClusterBreakdownPieChartProps) {
+export function ClusterBreakdownPieChart({ clusters, selectedCluster, onClusterClick, height = 220, bare = false }: ClusterBreakdownPieChartProps) {
   const selectedIndex = selectedCluster ? clusters.findIndex((c) => c.cluster === selectedCluster) : -1;
   const colors = emphasize(clusters.map((_, i) => palette[i % palette.length]), selectedIndex);
 
@@ -127,16 +131,18 @@ export function ClusterBreakdownPieChart({ clusters, selectedCluster, onClusterC
     },
   };
 
-  return (
-    <Paper elevation={2} sx={{ p: 2, height }}>
+  const content = (
+    <>
       <Typography variant="subtitle2" sx={{ fontFamily: 'Fira Code, monospace', mb: 1 }}>
         Cluster Breakdown
       </Typography>
       <Box sx={{ height: height - 40 }}>
         <Pie data={data} options={options} />
       </Box>
-    </Paper>
+    </>
   );
+
+  return bare ? <Box sx={{ height }}>{content}</Box> : <Paper elevation={2} sx={{ p: 2, height }}>{content}</Paper>;
 }
 
 const orgTypeColors = unOrgTypeColors;
@@ -146,9 +152,10 @@ interface OrgTypeDoughnutChartProps {
   selectedOrgType?: string | null;
   onOrgTypeClick?: (type: string) => void;
   height?: number;
+  bare?: boolean;
 }
 
-export function OrgTypeDoughnutChart({ orgTypes, selectedOrgType, onOrgTypeClick, height = 200 }: OrgTypeDoughnutChartProps) {
+export function OrgTypeDoughnutChart({ orgTypes, selectedOrgType, onOrgTypeClick, height = 200, bare = false }: OrgTypeDoughnutChartProps) {
   const selectedIndex = selectedOrgType ? orgTypes.findIndex((t) => t.type === selectedOrgType) : -1;
   const colors = emphasize(orgTypes.map((t) => orgTypeColors[t.type] ?? '#616161'), selectedIndex);
 
@@ -176,16 +183,18 @@ export function OrgTypeDoughnutChart({ orgTypes, selectedOrgType, onOrgTypeClick
     },
   };
 
-  return (
-    <Paper elevation={2} sx={{ p: 2, height }}>
+  const content = (
+    <>
       <Typography variant="subtitle2" sx={{ fontFamily: 'Fira Code, monospace', mb: 1 }}>
         Organization Type
       </Typography>
       <Box sx={{ height: height - 40 }}>
         <Doughnut data={data} options={options} />
       </Box>
-    </Paper>
+    </>
   );
+
+  return bare ? <Box sx={{ height }}>{content}</Box> : <Paper elevation={2} sx={{ p: 2, height }}>{content}</Paper>;
 }
 
 interface MonthlyTrendChartProps {
