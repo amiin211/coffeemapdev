@@ -93,6 +93,7 @@ export default function ThreeWMap({
   onStateSelect,
 }: ThreeWMapProps) {
   const [admin1, setAdmin1] = useState<any>(null);
+  const [admin2, setAdmin2] = useState<any>(null);
   const [hovered, setHovered] = useState<{ lng: number; lat: number; properties: any } | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   const mapRef = useRef<any>(null);
@@ -101,6 +102,9 @@ export default function ThreeWMap({
     fetch('/data/sdn_admin1.geojson')
       .then((res) => res.json())
       .then(setAdmin1);
+    fetch('/data/sdn_admin2.geojson')
+      .then((res) => res.json())
+      .then(setAdmin2);
   }, []);
 
   useEffect(() => {
@@ -135,6 +139,17 @@ export default function ThreeWMap({
       }),
     };
   }, [admin1, byState, metric, maxValue, selectedState]);
+
+  // Locality (admin2) boundaries within the selected state only — the full
+  // admin2 file covers all 188 localities nationwide, too dense to show
+  // until the user has drilled into one state.
+  const selectedAdmin2GeoJson = useMemo(() => {
+    if (!admin2 || !selectedState) return null;
+    return {
+      ...admin2,
+      features: admin2.features.filter((f: any) => f.properties.adm1_name === selectedState),
+    };
+  }, [admin2, selectedState]);
 
   const fillColorExpression: ExpressionSpecification = [
     'case',
@@ -204,6 +219,21 @@ export default function ThreeWMap({
               paint={{
                 'line-color': ['case', ['get', 'isSelected'], unBlue.dark, '#fff'],
                 'line-width': ['case', ['get', 'isSelected'], 3, 2],
+              }}
+            />
+          </Source>
+        )}
+
+        {selectedAdmin2GeoJson && (
+          <Source id="admin2" type="geojson" data={selectedAdmin2GeoJson}>
+            <Layer
+              id="admin2-outline"
+              type="line"
+              paint={{
+                'line-color': unBlue.dark,
+                'line-width': 1,
+                'line-dasharray': [2, 2],
+                'line-opacity': 0.7,
               }}
             />
           </Source>
