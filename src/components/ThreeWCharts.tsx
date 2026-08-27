@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { Box, Typography, Paper } from '@mui/material';
 import {
   Chart as ChartJS,
@@ -24,7 +25,7 @@ if (typeof window !== 'undefined') {
 const pieOptionsBase = {
   responsive: true,
   maintainAspectRatio: false,
-  plugins: { legend: { position: 'right' as const, labels: { boxWidth: 10, font: { size: 10 } } } },
+  plugins: { legend: { display: false } },
 };
 
 const palette = unCategorical;
@@ -38,6 +39,41 @@ function withAlpha(hex: string, alpha: string) {
 // visibly reflect the current cross-filter.
 function emphasize(colors: string[], selectedIndex: number) {
   return colors.map((c, i) => (selectedIndex === -1 || i === selectedIndex ? withAlpha(c, 'ee') : withAlpha(c, '33')));
+}
+
+// A left-anchored, fixed-size chart circle + a custom legend list to its
+// right — chart.js's built-in side legend re-centers the circle based on
+// its own label widths, so two charts with differently-sized legends end
+// up with their circles at different x positions. Rendering the legend
+// ourselves keeps the circle's box a constant size regardless of labels.
+interface LegendEntry {
+  key: string;
+  label: string;
+  color: string;
+  dimmed: boolean;
+  onClick?: () => void;
+}
+
+function ChartWithLegend({ size, chart, entries }: { size: number; chart: ReactNode; entries: LegendEntry[] }) {
+  return (
+    <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', height: size }}>
+      <Box sx={{ width: size, height: size, flexShrink: 0 }}>{chart}</Box>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.4, overflowY: 'auto', height: '100%', flex: 1, minWidth: 0 }}>
+        {entries.map((e) => (
+          <Box
+            key={e.key}
+            onClick={e.onClick}
+            sx={{ display: 'flex', alignItems: 'center', gap: 0.75, cursor: e.onClick ? 'pointer' : 'default', opacity: e.dimmed ? 0.4 : 1 }}
+          >
+            <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: e.color, flexShrink: 0 }} />
+            <Typography variant="caption" noWrap sx={{ fontSize: '0.68rem' }}>
+              {e.label}
+            </Typography>
+          </Box>
+        ))}
+      </Box>
+    </Box>
+  );
 }
 
 interface TopOrgsBarChartProps {
@@ -131,14 +167,20 @@ export function ClusterBreakdownPieChart({ clusters, selectedCluster, onClusterC
     },
   };
 
+  const entries: LegendEntry[] = clusters.map((c, i) => ({
+    key: c.cluster,
+    label: c.cluster,
+    color: palette[i % palette.length],
+    dimmed: selectedIndex !== -1 && i !== selectedIndex,
+    onClick: onClusterClick ? () => onClusterClick(c.cluster === selectedCluster ? '' : c.cluster) : undefined,
+  }));
+
   const content = (
     <>
       <Typography variant="subtitle2" sx={{ fontFamily: 'Fira Code, monospace', mb: 1 }}>
         Cluster Breakdown
       </Typography>
-      <Box sx={{ height: height - 40 }}>
-        <Pie data={data} options={options} />
-      </Box>
+      <ChartWithLegend size={height - 40} chart={<Pie data={data} options={options} />} entries={entries} />
     </>
   );
 
@@ -183,14 +225,20 @@ export function OrgTypeDoughnutChart({ orgTypes, selectedOrgType, onOrgTypeClick
     },
   };
 
+  const entries: LegendEntry[] = orgTypes.map((t) => ({
+    key: t.type,
+    label: t.type,
+    color: orgTypeColors[t.type] ?? '#616161',
+    dimmed: selectedIndex !== -1 && t.type !== selectedOrgType,
+    onClick: onOrgTypeClick ? () => onOrgTypeClick(t.type === selectedOrgType ? '' : t.type) : undefined,
+  }));
+
   const content = (
     <>
       <Typography variant="subtitle2" sx={{ fontFamily: 'Fira Code, monospace', mb: 1 }}>
         Organization Type
       </Typography>
-      <Box sx={{ height: height - 40 }}>
-        <Doughnut data={data} options={options} />
-      </Box>
+      <ChartWithLegend size={height - 40} chart={<Doughnut data={data} options={options} />} entries={entries} />
     </>
   );
 
