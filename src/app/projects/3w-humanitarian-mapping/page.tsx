@@ -5,13 +5,13 @@ import {
   Box,
   Typography,
   Paper,
+  Chip,
   CircularProgress,
   MenuItem,
   Select,
   FormControl,
   InputLabel,
   IconButton,
-  Drawer,
   useMediaQuery,
   useTheme,
 } from '@mui/material';
@@ -77,6 +77,8 @@ function DashboardContent() {
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const [selectedCluster, setSelectedCluster] = useState<string | null>(null);
   const [selectedState, setSelectedState] = useState<string | null>(null);
+  const [selectedOrg, setSelectedOrg] = useState<string | null>(null);
+  const [selectedOrgType, setSelectedOrgType] = useState<string | null>(null);
   const [metric, setMetric] = useState<'activities' | 'orgs' | 'clusters'>('activities');
   const [aboutOpen, setAboutOpen] = useState(false);
 
@@ -91,8 +93,8 @@ function DashboardContent() {
   }, []);
 
   const filters = useMemo(
-    () => ({ month: selectedMonth, cluster: selectedCluster, state: selectedState }),
-    [selectedMonth, selectedCluster, selectedState]
+    () => ({ month: selectedMonth, cluster: selectedCluster, state: selectedState, org: selectedOrg, orgType: selectedOrgType }),
+    [selectedMonth, selectedCluster, selectedState, selectedOrg, selectedOrgType]
   );
 
   const stateAggregates = useMemo(() => (data ? aggregateByState(data, filters) : []), [data, filters]);
@@ -113,6 +115,11 @@ function DashboardContent() {
     [data, filters]
   );
   const totalStatesCovered = stateAggregates.filter((s) => s.activities > 0).length;
+
+  const handleClusterClick = (cluster: string) => setSelectedCluster(cluster || null);
+  const handleOrgTypeClick = (type: string) => setSelectedOrgType(type || null);
+  const handleOrgClick = (acronym: string) => setSelectedOrg(acronym || null);
+  const handleMonthClick = (month: string) => setSelectedMonth(month || null);
 
   if (!data) {
     return (
@@ -149,6 +156,16 @@ function DashboardContent() {
           ))}
         </Select>
       </FormControl>
+
+      {selectedState && (
+        <Chip label={`State: ${selectedState}`} size="small" onDelete={() => setSelectedState(null)} sx={{ bgcolor: `${unBlue.DEFAULT}20` }} />
+      )}
+      {selectedOrg && (
+        <Chip label={`Org: ${selectedOrg}`} size="small" onDelete={() => setSelectedOrg(null)} sx={{ bgcolor: `${unBlue.DEFAULT}20` }} />
+      )}
+      {selectedOrgType && (
+        <Chip label={`Type: ${selectedOrgType}`} size="small" onDelete={() => setSelectedOrgType(null)} sx={{ bgcolor: `${unBlue.DEFAULT}20` }} />
+      )}
     </>
   );
 
@@ -165,7 +182,7 @@ function DashboardContent() {
     />
   );
 
-  const detailAndChartsNode = (
+  const sidebarNode = (
     <>
       <ThreeWDetailPanel
         state={selectedState}
@@ -173,12 +190,21 @@ function DashboardContent() {
         orgTypeBreakdown={orgTypeAggregates}
         clustersActive={clusterAggregates.map((c) => c.cluster)}
         onClear={() => setSelectedState(null)}
+        selectedCluster={selectedCluster}
+        selectedOrgType={selectedOrgType}
+        selectedOrg={selectedOrg}
+        onClusterClick={handleClusterClick}
+        onOrgTypeClick={handleOrgTypeClick}
+        onOrgClick={handleOrgClick}
       />
-      <TopOrgsBarChart orgs={topOrgs} />
-      <ClusterBreakdownPieChart clusters={clusterAggregates} />
-      <OrgTypeDoughnutChart orgTypes={orgTypeAggregates} />
-      <MonthlyTrendChart trend={trend} />
+      <TopOrgsBarChart orgs={topOrgs} selectedOrg={selectedOrg} onOrgClick={handleOrgClick} />
+      <ClusterBreakdownPieChart clusters={clusterAggregates} selectedCluster={selectedCluster} onClusterClick={handleClusterClick} />
+      <OrgTypeDoughnutChart orgTypes={orgTypeAggregates} selectedOrgType={selectedOrgType} onOrgTypeClick={handleOrgTypeClick} />
     </>
+  );
+
+  const trendNode = (
+    <MonthlyTrendChart trend={trend} selectedMonth={selectedMonth} onMonthClick={handleMonthClick} height={isDesktop ? 200 : 200} />
   );
 
   const mapNode = (
@@ -190,6 +216,27 @@ function DashboardContent() {
       onMetricChange={setMetric}
       onStateSelect={setSelectedState}
     />
+  );
+
+  const aboutContent = (
+    <>
+      <Typography variant="body2" sx={{ mb: 1.5, lineHeight: 1.7 }}>
+        3W (Who, What, Where) mapping is how humanitarian coordination bodies track which
+        organizations are running which activities, in which locations — the backbone of
+        response monitoring and gap analysis for a crisis the scale of Sudan&apos;s. This
+        dashboard turns six months of consolidated 3W reporting across 19 states and 188
+        localities into an explorable map: filter by month, cluster, organization, or
+        organization type — click a state, a chart element, or a chip anywhere on the page
+        and the rest of the dashboard follows.
+      </Typography>
+      <Typography variant="body2" sx={{ lineHeight: 1.7 }}>
+        I built this on <strong>CoffeeMap.dev</strong> to demonstrate how raw partner-reported
+        activity data — the kind normally buried in spreadsheets shared across coordination
+        meetings — can become an interactive, filterable spatial tool. It aggregates 7,517
+        reported activities from 165 organizations across 13 clusters, matched against
+        official Sudan administrative boundaries.
+      </Typography>
+    </>
   );
 
   return (
@@ -215,7 +262,7 @@ function DashboardContent() {
               gradientTo={unBlue.dark}
             />
             <IconButton
-              onClick={() => setAboutOpen(true)}
+              onClick={() => setAboutOpen((v) => !v)}
               sx={{ position: 'absolute', top: 12, right: 12, color: 'white' }}
               aria-label="About this dashboard"
             >
@@ -225,86 +272,91 @@ function DashboardContent() {
         </Box>
 
         {isDesktop ? (
-          <Box sx={{ position: 'relative', flex: 1, minHeight: 0 }}>
-            {mapNode}
+          <>
+            <Box sx={{ px: 2, pb: 2, flexShrink: 0 }}>{statsNode}</Box>
 
-            <Box
-              sx={{
-                position: 'absolute',
-                top: 16,
-                left: 16,
-                right: 392,
-                zIndex: 500,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 1.5,
-              }}
-            >
-              <Box sx={{ p: 1.5, display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'center', alignSelf: 'flex-start', ...floatingPanelSx }}>
-                {filtersNode}
+            <Box sx={{ px: 2, pb: 2, flex: 1, minHeight: 0, display: 'flex', gap: 2 }}>
+              <Box sx={{ flex: 1, position: 'relative', minHeight: 0 }}>
+                <Paper elevation={2} sx={{ height: '100%', overflow: 'hidden' }}>
+                  {mapNode}
+                </Paper>
+
+                <Box sx={{ position: 'absolute', top: 16, left: 16, right: 16, zIndex: 500, display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
+                  <Box sx={{ p: 1.5, display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'center', ...floatingPanelSx }}>
+                    {filtersNode}
+                  </Box>
+                </Box>
+
+                {aboutOpen && (
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      width: 420,
+                      maxWidth: 'calc(100% - 48px)',
+                      zIndex: 600,
+                      p: 3,
+                      ...floatingPanelSx,
+                      bgcolor: 'rgba(255,255,255,0.98)',
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+                      <Typography variant="h6" sx={{ fontFamily: 'Fira Code, monospace', fontWeight: 700, color: unBlue.dark }}>
+                        About this dashboard
+                      </Typography>
+                      <IconButton onClick={() => setAboutOpen(false)} size="small" aria-label="Close">
+                        <CloseIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
+                    {aboutContent}
+                  </Box>
+                )}
               </Box>
-              {statsNode}
+
+              <Box sx={{ width: 360, flexShrink: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 1.5, pr: 0.5 }}>
+                {sidebarNode}
+              </Box>
             </Box>
 
-            <Box
-              sx={{
-                position: 'absolute',
-                top: 16,
-                right: 16,
-                bottom: 16,
-                width: 360,
-                zIndex: 500,
-                overflowY: 'auto',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 1.5,
-                pr: 0.5,
-              }}
-            >
-              {detailAndChartsNode}
-            </Box>
-          </Box>
+            <Paper elevation={2} sx={{ mx: 2, mb: 2, p: 2, flexShrink: 0 }}>
+              <Typography variant="subtitle2" sx={{ fontFamily: 'Fira Code, monospace', mb: 1 }}>
+                Monthly Trend (Jan–Jun 2026)
+              </Typography>
+              {trendNode}
+            </Paper>
+          </>
         ) : (
           <Box sx={{ p: 2 }}>
             <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', mb: 2 }}>{filtersNode}</Box>
-            {statsNode}
+            <Box sx={{ mb: 2 }}>{statsNode}</Box>
             <Paper elevation={2} sx={{ height: 420, mb: 2, overflow: 'hidden' }}>
               {mapNode}
             </Paper>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>{detailAndChartsNode}</Box>
+            {aboutOpen && (
+              <Paper elevation={2} sx={{ p: 2.5, mb: 2 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+                  <Typography variant="h6" sx={{ fontFamily: 'Fira Code, monospace', fontWeight: 700, color: unBlue.dark }}>
+                    About this dashboard
+                  </Typography>
+                  <IconButton onClick={() => setAboutOpen(false)} size="small" aria-label="Close">
+                    <CloseIcon fontSize="small" />
+                  </IconButton>
+                </Box>
+                {aboutContent}
+              </Paper>
+            )}
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>{sidebarNode}</Box>
+            <Paper elevation={2} sx={{ p: 2, mt: 2 }}>
+              <Typography variant="subtitle2" sx={{ fontFamily: 'Fira Code, monospace', mb: 1 }}>
+                Monthly Trend (Jan–Jun 2026)
+              </Typography>
+              {trendNode}
+            </Paper>
           </Box>
         )}
       </Box>
-
-      <Drawer anchor="right" open={aboutOpen} onClose={() => setAboutOpen(false)}>
-        <Box sx={{ width: { xs: '100vw', sm: 420 }, p: 3 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Typography variant="h6" sx={{ fontFamily: 'Fira Code, monospace', fontWeight: 700, color: unBlue.dark }}>
-              About this dashboard
-            </Typography>
-            <IconButton onClick={() => setAboutOpen(false)} size="small">
-              <CloseIcon fontSize="small" />
-            </IconButton>
-          </Box>
-          <Typography variant="body1" sx={{ mb: 2, lineHeight: 1.8 }}>
-            3W (Who, What, Where) mapping is how humanitarian coordination bodies track which
-            organizations are running which activities, in which locations — the backbone of
-            response monitoring and gap analysis for a crisis the scale of Sudan&apos;s. This
-            dashboard turns six months of consolidated 3W reporting across 19 states and 188
-            localities into an explorable map: filter by reporting month or sector cluster,
-            click a state to see its active partners and coverage, and track how the response
-            footprint shifts over time.
-          </Typography>
-          <Typography variant="body1" sx={{ mb: 3, lineHeight: 1.8 }}>
-            I built this on <strong>CoffeeMap.dev</strong> to demonstrate how raw partner-reported
-            activity data — the kind normally buried in spreadsheets shared across coordination
-            meetings — can become an interactive, filterable spatial tool. It aggregates 7,517
-            reported activities from 165 organizations across 13 clusters, matched against
-            official Sudan administrative boundaries, to make coverage gaps and partner
-            presence immediately visible at both the state and locality level.
-          </Typography>
-        </Box>
-      </Drawer>
     </AppLayout>
   );
 }

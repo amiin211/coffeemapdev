@@ -24,13 +24,17 @@ export interface ThreeWFilters {
   month?: string | null;
   cluster?: string | null;
   state?: string | null;
+  org?: string | null;
+  orgType?: string | null;
 }
 
 function matches(data: ThreeWData, row: ThreeWData['rows'][number], filters: ThreeWFilters, ignore?: keyof ThreeWFilters) {
-  const [monthIdx, stateIdx, , clusterIdx] = row;
+  const [monthIdx, stateIdx, , clusterIdx, orgIdx] = row;
   if (ignore !== 'month' && filters.month && data.months[monthIdx] !== filters.month) return false;
   if (ignore !== 'cluster' && filters.cluster && data.clusters[clusterIdx] !== filters.cluster) return false;
   if (ignore !== 'state' && filters.state && data.states[stateIdx] !== filters.state) return false;
+  if (ignore !== 'org' && filters.org && data.orgs[orgIdx].acronym !== filters.org) return false;
+  if (ignore !== 'orgType' && filters.orgType && data.orgs[orgIdx].type !== filters.orgType) return false;
   return true;
 }
 
@@ -98,7 +102,7 @@ export interface OrgAggregate {
 }
 
 export function aggregateByOrg(data: ThreeWData, filters: ThreeWFilters, topN = 10): OrgAggregate[] {
-  const rows = filterRows(data, filters);
+  const rows = filterRows(data, filters, 'org');
   const byOrg = new Map<number, { activities: number; states: Set<number> }>();
   for (const [, stateIdx, , , orgIdx] of rows) {
     if (!byOrg.has(orgIdx)) byOrg.set(orgIdx, { activities: 0, states: new Set() });
@@ -119,7 +123,7 @@ export interface OrgTypeAggregate {
 }
 
 export function aggregateByOrgType(data: ThreeWData, filters: ThreeWFilters): OrgTypeAggregate[] {
-  const rows = filterRows(data, filters);
+  const rows = filterRows(data, filters, 'orgType');
   const byType = new Map<string, { activities: number; orgs: Set<number> }>();
   for (const [, , , , orgIdx] of rows) {
     const type = data.orgs[orgIdx].type;

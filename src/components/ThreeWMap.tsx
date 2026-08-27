@@ -192,7 +192,7 @@ export default function ThreeWMap({
         )}
       </MapGL>
 
-      <Box sx={{ position: 'absolute', top: 16, right: { xs: 16, md: 392 }, zIndex: 500, ...floatingPanelSx }}>
+      <Box sx={{ position: 'absolute', top: 16, right: 16, zIndex: 500, ...floatingPanelSx }}>
         <ToggleButtonGroup
           size="small"
           exclusive
