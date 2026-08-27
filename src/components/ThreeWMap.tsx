@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Box, Typography, ToggleButton, ToggleButtonGroup } from '@mui/material';
-import { MapContainer, TileLayer, GeoJSON, CircleMarker, Tooltip as LeafletTooltip } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
+import MapGL, { Source, Layer, Marker, Popup, MapLayerMouseEvent } from 'react-map-gl/maplibre';
+import type { StyleSpecification, ExpressionSpecification } from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import { StateAggregate, LocalityAggregate } from '@/utils/threew';
 
 export type ThreeWMetric = 'activities' | 'orgs' | 'clusters';
@@ -23,12 +24,22 @@ interface ThreeWMapProps {
   onStateSelect: (state: string | null) => void;
 }
 
-function colorForRatio(ratio: number): string {
-  if (ratio <= 0) return '#e0e0e0';
-  if (ratio >= 0.66) return '#7f0000';
-  if (ratio >= 0.33) return '#e34a33';
-  return '#fdbb84';
-}
+const STATES_FILL_LAYER = 'states-fill';
+
+// No Mapbox account/token in use — compose a minimal raster style against
+// the same OpenStreetMap tile server the Leaflet-based FloodMap uses.
+const osmStyle: StyleSpecification = {
+  version: 8,
+  sources: {
+    osm: {
+      type: 'raster',
+      tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png', 'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png', 'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png'],
+      tileSize: 256,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    },
+  },
+  layers: [{ id: 'osm', type: 'raster', source: 'osm' }],
+};
 
 function getRadius(count: number, max: number): number {
   if (max <= 0 || count <= 0) return 0;
@@ -43,41 +54,62 @@ export default function ThreeWMap({
   onMetricChange,
   onStateSelect,
 }: ThreeWMapProps) {
-  const [geoJsonData, setGeoJsonData] = useState<any>(null);
+  const [admin1, setAdmin1] = useState<any>(null);
+  const [hovered, setHovered] = useState<{ lng: number; lat: number; properties: any } | null>(null);
 
   useEffect(() => {
     fetch('/data/sdn_admin1.geojson')
       .then((res) => res.json())
-      .then((data) => setGeoJsonData(data));
+      .then(setAdmin1);
   }, []);
 
-  const byState = new Map(stateAggregates.map((s) => [s.state, s]));
-  const maxValue = Math.max(0, ...stateAggregates.map((s) => s[metric]));
-  const maxLocalityCount = Math.max(0, ...localityAggregates.map((l) => l.activities));
+  const byState = useMemo(() => new Map(stateAggregates.map((s) => [s.state, s])), [stateAggregates]);
+  const maxValue = useMemo(() => Math.max(0, ...stateAggregates.map((s) => s[metric])), [stateAggregates, metric]);
+  const maxLocalityCount = useMemo(() => Math.max(0, ...localityAggregates.map((l) => l.activities)), [localityAggregates]);
 
-  const style = (feature: any) => {
-    const agg = byState.get(feature.properties.adm1_name);
-    const value = agg?.[metric] ?? 0;
-    const isSelected = feature.properties.adm1_name === selectedState;
+  const enrichedGeoJson = useMemo(() => {
+    if (!admin1) return null;
     return {
-      fillColor: colorForRatio(maxValue > 0 ? value / maxValue : 0),
-      weight: isSelected ? 3 : 2,
-      opacity: 1,
-      color: isSelected ? '#333' : '#fff',
-      fillOpacity: value > 0 ? 0.75 : 0.3,
+      ...admin1,
+      features: admin1.features.map((feature: any) => {
+        const agg = byState.get(feature.properties.adm1_name);
+        const value = agg?.[metric] ?? 0;
+        return {
+          ...feature,
+          properties: {
+            ...feature.properties,
+            value,
+            ratio: maxValue > 0 ? value / maxValue : 0,
+            isSelected: feature.properties.adm1_name === selectedState,
+            activities: agg?.activities ?? 0,
+            orgs: agg?.orgs ?? 0,
+            clusters: agg?.clusters ?? 0,
+          },
+        };
+      }),
     };
+  }, [admin1, byState, metric, maxValue, selectedState]);
+
+  const fillColorExpression: ExpressionSpecification = [
+    'case',
+    ['<=', ['get', 'ratio'], 0], '#e0e0e0',
+    ['>=', ['get', 'ratio'], 0.66], '#7f0000',
+    ['>=', ['get', 'ratio'], 0.33], '#e34a33',
+    '#fdbb84',
+  ];
+
+  const handleClick = (event: MapLayerMouseEvent) => {
+    const feature = event.features?.[0];
+    if (feature) onStateSelect(feature.properties?.adm1_name ?? null);
   };
 
-  const onEachFeature = (feature: any, layer: any) => {
-    const agg = byState.get(feature.properties.adm1_name);
-    layer.bindTooltip(
-      `<strong>${feature.properties.adm1_name}</strong><br/>${agg?.activities ?? 0} activities · ${agg?.orgs ?? 0} orgs · ${agg?.clusters ?? 0} clusters`
-    );
-    layer.on({
-      mouseover: (e: any) => e.target.setStyle({ weight: 3, color: '#666', fillOpacity: 0.9 }),
-      mouseout: (e: any) => e.target.setStyle(style(feature)),
-      click: () => onStateSelect(feature.properties.adm1_name),
-    });
+  const handleMouseMove = (event: MapLayerMouseEvent) => {
+    const feature = event.features?.[0];
+    if (feature) {
+      setHovered({ lng: event.lngLat.lng, lat: event.lngLat.lat, properties: feature.properties });
+    } else {
+      setHovered(null);
+    }
   };
 
   const visibleLocalities = selectedState
@@ -115,39 +147,69 @@ export default function ThreeWMap({
       </Box>
 
       <Box sx={{ position: 'relative', flex: 1 }}>
-        <MapContainer
-          center={[16, 28]}
-          zoom={5}
-          minZoom={5}
+        <MapGL
+          initialViewState={{ longitude: 28, latitude: 16, zoom: 5 }}
+          minZoom={4.5}
           maxZoom={8}
-          style={{ height: '100%', width: '100%' }}
-          scrollWheelZoom={true}
-          maxBounds={[
-            [8, 18],
-            [24, 42],
-          ]}
-          maxBoundsViscosity={1.0}
+          maxBounds={[18, 8, 42, 24]}
+          mapStyle={osmStyle}
+          interactiveLayerIds={enrichedGeoJson ? [STATES_FILL_LAYER] : []}
+          onClick={handleClick}
+          onMouseMove={handleMouseMove}
+          onMouseLeave={() => setHovered(null)}
+          reuseMaps
+          style={{ width: '100%', height: '100%' }}
         >
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-
-          {geoJsonData && <GeoJSON key={metric} data={geoJsonData} style={style} onEachFeature={onEachFeature} />}
+          {enrichedGeoJson && (
+            <Source id="states" type="geojson" data={enrichedGeoJson}>
+              <Layer
+                id={STATES_FILL_LAYER}
+                type="fill"
+                paint={{
+                  'fill-color': fillColorExpression,
+                  'fill-opacity': ['case', ['>', ['get', 'value'], 0], 0.75, 0.3],
+                }}
+              />
+              <Layer
+                id="states-outline"
+                type="line"
+                paint={{
+                  'line-color': ['case', ['get', 'isSelected'], '#333', '#fff'],
+                  'line-width': ['case', ['get', 'isSelected'], 3, 2],
+                }}
+              />
+            </Source>
+          )}
 
           {visibleLocalities.map((l, idx) => (
-            <CircleMarker
-              key={`loc-${idx}`}
-              center={[l.locality.lat as number, l.locality.lon as number]}
-              radius={getRadius(l.activities, maxLocalityCount)}
-              pathOptions={{ fillColor: '#1565c0', fillOpacity: 0.6, color: '#0d47a1', weight: 1 }}
-            >
-              <LeafletTooltip>
-                {l.locality.name}: {l.activities} activities
-              </LeafletTooltip>
-            </CircleMarker>
+            <Marker key={`loc-${idx}`} longitude={l.locality.lon as number} latitude={l.locality.lat as number}>
+              <div
+                title={`${l.locality.name}: ${l.activities} activities`}
+                style={{
+                  width: getRadius(l.activities, maxLocalityCount) * 2,
+                  height: getRadius(l.activities, maxLocalityCount) * 2,
+                  borderRadius: '50%',
+                  background: 'rgba(21, 101, 192, 0.6)',
+                  border: '1px solid #0d47a1',
+                }}
+              />
+            </Marker>
           ))}
-        </MapContainer>
+
+          {hovered && (
+            <Popup
+              longitude={hovered.lng}
+              latitude={hovered.lat}
+              closeButton={false}
+              closeOnClick={false}
+              offset={12}
+            >
+              <strong>{hovered.properties.adm1_name}</strong>
+              <br />
+              {hovered.properties.activities} activities · {hovered.properties.orgs} orgs · {hovered.properties.clusters} clusters
+            </Popup>
+          )}
+        </MapGL>
 
         <Box
           sx={{
