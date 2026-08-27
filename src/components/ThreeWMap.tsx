@@ -149,6 +149,15 @@ export default function ThreeWMap({
     ? localityAggregates.filter((l) => l.locality.state === selectedState)
     : [];
 
+  const lowMax = Math.floor(maxValue * 0.33);
+  const mediumMax = Math.floor(maxValue * 0.66);
+  const legendBuckets = [
+    { label: 'None', color: RAMP_NONE, range: '0' },
+    { label: 'Low', color: RAMP_LOW, range: lowMax > 0 ? `1–${lowMax}` : '0' },
+    { label: 'Medium', color: RAMP_MEDIUM, range: `${lowMax + 1}–${mediumMax}` },
+    { label: 'High', color: RAMP_HIGH, range: `${mediumMax + 1}+` },
+  ];
+
   return (
     <Box sx={{ height: '100%', position: 'relative' }}>
       <MapGL
@@ -217,21 +226,29 @@ export default function ThreeWMap({
         )}
       </MapGL>
 
-      <Box sx={{ position: 'absolute', bottom: 20, left: 20, zIndex: 500, p: 2, ...floatingPanelSx }}>
-        <Typography variant="caption" sx={{ fontWeight: 600, display: 'block', mb: 1 }}>
+      <Box sx={{ position: 'absolute', bottom: 20, left: 20, zIndex: 500, p: 1.5, ...floatingPanelSx }}>
+        <Typography variant="caption" sx={{ fontWeight: 600, display: 'block', mb: 0.75 }}>
           {metricLabels[metric]} by State
         </Typography>
-        {[
-          { label: 'High', color: RAMP_HIGH },
-          { label: 'Medium', color: RAMP_MEDIUM },
-          { label: 'Low', color: RAMP_LOW },
-          { label: 'None', color: RAMP_NONE },
-        ].map((item) => (
-          <Box key={item.label} sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-            <Box sx={{ width: 16, height: 16, bgcolor: item.color, borderRadius: 1 }} />
-            <Typography variant="caption">{item.label}</Typography>
-          </Box>
-        ))}
+        <Box sx={{ display: 'flex' }}>
+          {legendBuckets.map((bucket, i) => (
+            <Box key={bucket.label} sx={{ width: 56, textAlign: 'center' }}>
+              <Box
+                sx={{
+                  height: 12,
+                  bgcolor: bucket.color,
+                  borderTopLeftRadius: i === 0 ? 4 : 0,
+                  borderBottomLeftRadius: i === 0 ? 4 : 0,
+                  borderTopRightRadius: i === legendBuckets.length - 1 ? 4 : 0,
+                  borderBottomRightRadius: i === legendBuckets.length - 1 ? 4 : 0,
+                }}
+              />
+              <Typography variant="caption" sx={{ fontSize: '0.62rem', display: 'block', mt: 0.5, lineHeight: 1.2 }}>
+                {bucket.range}
+              </Typography>
+            </Box>
+          ))}
+        </Box>
       </Box>
     </Box>
   );
