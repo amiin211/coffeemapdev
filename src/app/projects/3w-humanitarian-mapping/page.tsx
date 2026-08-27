@@ -20,6 +20,7 @@ import GroupsIcon from '@mui/icons-material/Groups';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import CloseIcon from '@mui/icons-material/Close';
 import AppLayout from '@/components/AppLayout';
+import DashboardHeader from '@/components/DashboardHeader';
 import ThreeWStatCards from '@/components/ThreeWStatCards';
 import { unBlue } from '@/theme/unColors';
 import {
@@ -201,30 +202,24 @@ function DashboardContent() {
           bgcolor: unBlue.light,
         }}
       >
-        <Box
-          sx={{
-            px: 3,
-            py: 1.5,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            background: `linear-gradient(135deg, ${unBlue.dark} 0%, ${unBlue.DEFAULT} 100%)`,
-            color: 'white',
-            flexShrink: 0,
-          }}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <GroupsIcon sx={{ fontSize: 26 }} />
-            <Box>
-              <Typography variant="h6" sx={{ fontWeight: 700, fontFamily: 'Fira Code, monospace', lineHeight: 1.2 }}>
-                3W Humanitarian Mapping
-              </Typography>
-              <Typography variant="caption" sx={{ opacity: 0.9 }}>
-                Who, What, Where — Sudan Response Monitoring
-              </Typography>
-            </Box>
-          </Box>
-          <IconButton onClick={() => setAboutOpen(true)} sx={{ color: 'white' }} aria-label="About this dashboard">
+        <Box sx={{ position: 'relative', flexShrink: 0 }}>
+          <DashboardHeader
+            title="3W Humanitarian Mapping"
+            subtitle="Who, What, Where — Sudan Response Monitoring"
+            icon={<GroupsIcon sx={{ fontSize: 28 }} />}
+            source="OCHA Sudan – 2026 HRP Response Monitoring, Consolidated 3W Data (Jan–Jun 2026)"
+            author="Amin Adnan Gasim"
+            date="Jan–Jun 2026"
+            gradientFrom={unBlue.DEFAULT}
+            gradientTo={unBlue.dark}
+            borderRadius={0}
+            mb={0}
+          />
+          <IconButton
+            onClick={() => setAboutOpen(true)}
+            sx={{ position: 'absolute', top: 12, right: 12, color: 'white' }}
+            aria-label="About this dashboard"
+          >
             <InfoOutlinedIcon />
           </IconButton>
         </Box>
@@ -307,12 +302,6 @@ function DashboardContent() {
             reported activities from 165 organizations across 13 clusters, matched against
             official Sudan administrative boundaries, to make coverage gaps and partner
             presence immediately visible at both the state and locality level.
-          </Typography>
-          <Typography variant="caption" color="text.secondary" display="block">
-            Source: OCHA Sudan – 2026 HRP Response Monitoring, Consolidated 3W Data (Jan–Jun 2026)
-          </Typography>
-          <Typography variant="caption" color="text.secondary" display="block">
-            Author: Amin Adnan Gasim · Period: Jan–Jun 2026
           </Typography>
         </Box>
       </Drawer>

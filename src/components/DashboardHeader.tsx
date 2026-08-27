@@ -11,6 +11,10 @@ interface DashboardHeaderProps {
   title?: string;
   subtitle?: string;
   icon?: React.ReactNode;
+  gradientFrom?: string;
+  gradientTo?: string;
+  borderRadius?: number;
+  mb?: number;
 }
 
 export default function DashboardHeader({
@@ -20,15 +24,19 @@ export default function DashboardHeader({
   title = 'Sudan Flood Dashboard',
   subtitle = 'Humanitarian Impact of Heavy Rains and Flooding',
   icon = <WaterDropIcon sx={{ fontSize: 28 }} />,
+  gradientFrom = '#8d4220',
+  gradientTo = '#5d2e10',
+  borderRadius = 2,
+  mb = 3,
 }: DashboardHeaderProps) {
   return (
     <Box
       sx={{
-        background: 'linear-gradient(135deg, #8d4220 0%, #5d2e10 100%)',
+        background: `linear-gradient(135deg, ${gradientFrom} 0%, ${gradientTo} 100%)`,
         color: 'white',
         py: 1.5,
-        mb: 3,
-        borderRadius: 2,
+        mb,
+        borderRadius,
       }}
     >
       <Container maxWidth="lg">
