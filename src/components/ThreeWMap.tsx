@@ -159,6 +159,12 @@ export default function ThreeWMap({
     RAMP_LOW,
   ];
 
+  // Once a state is selected, fade every other state's fill to near-transparent
+  // so the selected state (and its admin2 localities) stand out on their own.
+  const fillOpacityExpression: ExpressionSpecification = selectedState
+    ? ['case', ['get', 'isSelected'], 0.75, 0.05]
+    : ['case', ['>', ['get', 'value'], 0], 0.75, 0.3];
+
   const handleClick = (event: MapLayerMouseEvent) => {
     const feature = event.features?.[0];
     if (feature) onStateSelect(feature.properties?.adm1_name ?? null);
@@ -210,7 +216,7 @@ export default function ThreeWMap({
               type="fill"
               paint={{
                 'fill-color': fillColorExpression,
-                'fill-opacity': ['case', ['>', ['get', 'value'], 0], 0.75, 0.3],
+                'fill-opacity': fillOpacityExpression,
               }}
             />
             <Layer

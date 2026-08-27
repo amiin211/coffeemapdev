@@ -14,3 +14,4 @@ build
 enviro-*.json
 *.key
 credentials.json
+.tmp-screenshot.mjs
