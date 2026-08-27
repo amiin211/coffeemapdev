@@ -33,7 +33,20 @@ const osmStyle: StyleSpecification = {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     },
   },
-  layers: [{ id: 'osm', type: 'raster', source: 'osm' }],
+  layers: [
+    {
+      id: 'osm',
+      type: 'raster',
+      source: 'osm',
+      paint: {
+        // Plain gray basemap: desaturate the OSM tiles so the choropleth
+        // colors are the only color on the map.
+        'raster-saturation': -1,
+        'raster-brightness-min': 0.35,
+        'raster-brightness-max': 1,
+      },
+    },
+  ],
 };
 
 function getRadius(count: number, max: number): number {
