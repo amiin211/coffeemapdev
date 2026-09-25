@@ -206,7 +206,6 @@ export default function ThreeWMap({
         onMouseMove={handleMouseMove}
         onMouseLeave={() => setHovered(null)}
         onLoad={() => setMapLoaded(true)}
-        reuseMaps
         style={{ width: '100%', height: '100%' }}
       >
         {enrichedGeoJson && (

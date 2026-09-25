@@ -1,0 +1,201 @@
+'use client';
+
+import { Box, Typography } from '@mui/material';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  Filler,
+  Tooltip,
+  Legend,
+  type Plugin,
+} from 'chart.js';
+import { Bar, Line } from 'react-chartjs-2';
+import { CROP_COLORS, CropIndex, INDEX_LABEL, formatDate, formatMonthYear } from '@/utils/crop';
+
+if (typeof window !== 'undefined') {
+  ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Filler, Tooltip, Legend);
+}
+
+const FIELD_COLOR = '#2E7D32';
+const REFERENCE_COLOR = '#90A4AE';
+const ANOMALY_COLOR = '#D50000';
+
+const axisStyle = {
+  grid: { color: 'rgba(0,0,0,0.06)' },
+  ticks: { font: { size: 10 }, color: '#666' },
+  border: { display: false },
+};
+
+// Vertical rule at the selected date.
+const dateMarker: Plugin<'line'> = {
+  id: 'dateMarker',
+  afterDatasetsDraw(chart, _args, opts: any) {
+    if (opts?.index == null) return;
+    const x = chart.scales.x.getPixelForValue(opts.index);
+    const { top, bottom } = chart.chartArea;
+    const ctx = chart.ctx;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(27,94,32,0.75)';
+    ctx.setLineDash([4, 3]);
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(x, top);
+    ctx.lineTo(x, bottom);
+    ctx.stroke();
+    ctx.restore();
+  },
+};
+
+interface TimeSeriesChartProps {
+  dates: string[];
+  values: (number | null)[];
+  reference?: (number | null)[]; // farmland-wide mean, for comparison
+  label: string;
+  index: CropIndex;
+  anomalies: number[];
+  dateIndex: number;
+  onDateClick: (i: number) => void;
+  height: number;
+}
+
+export function TimeSeriesChart({ dates, values, reference, label, index, anomalies, dateIndex, onDateClick, height }: TimeSeriesChartProps) {
+  const anomalySet = new Set(anomalies);
+  const datasets: any[] = [
+    {
+      label,
+      data: values,
+      borderColor: FIELD_COLOR,
+      backgroundColor: `${FIELD_COLOR}1f`,
+      fill: true,
+      borderWidth: 2,
+      tension: 0.25,
+      spanGaps: true,
+      // Anomalies drawn as red markers on the curve; other points hidden.
+      pointRadius: values.map((_, i) => (anomalySet.has(i) ? 4.5 : 0)),
+      pointHoverRadius: values.map((_, i) => (anomalySet.has(i) ? 6 : 4)),
+      pointBackgroundColor: values.map((_, i) => (anomalySet.has(i) ? ANOMALY_COLOR : FIELD_COLOR)),
+      pointBorderColor: '#fff',
+      pointBorderWidth: 1.5,
+    },
+  ];
+  if (reference) {
+    datasets.push({
+      label: 'All fields (mean)',
+      data: reference,
+      borderColor: REFERENCE_COLOR,
+      borderWidth: 1.5,
+      borderDash: [4, 3],
+      pointRadius: 0,
+      pointHoverRadius: 3,
+      tension: 0.25,
+      spanGaps: true,
+    });
+  }
+
+  const options: any = {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: { duration: 300 },
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { display: !!reference, position: 'top', align: 'end', labels: { boxWidth: 14, boxHeight: 2, font: { size: 10 } } },
+      tooltip: {
+        callbacks: {
+          title: (items: any[]) => formatDate(dates[items[0].dataIndex]),
+          label: (item: any) => (item.raw == null ? `${item.dataset.label}: no clear view` : `${item.dataset.label}: ${item.raw.toFixed(2)}`),
+          afterBody: (items: any[]) => (anomalySet.has(items[0].dataIndex) ? 'Anomaly: below seasonal mean − 2σ' : ''),
+        },
+      },
+      dateMarker: { index: dateIndex },
+    },
+    scales: {
+      x: {
+        ...axisStyle,
+        grid: { display: false },
+        ticks: {
+          ...axisStyle.ticks,
+          maxRotation: 0,
+          autoSkip: false,
+          // One tick per quarter.
+          callback: (_: unknown, i: number) => {
+            const d = dates[i];
+            const prev = dates[i - 1];
+            return d && (!prev || d.slice(0, 7) !== prev.slice(0, 7)) && ['01', '04', '07', '10'].includes(d.slice(5, 7))
+              ? formatMonthYear(d)
+              : null;
+          },
+        },
+      },
+      y: { ...axisStyle, min: index === 'ndvi' ? -0.1 : -0.1, suggestedMax: 0.8, title: { display: true, text: INDEX_LABEL[index], font: { size: 10 } } },
+    },
+    onClick: (_: unknown, elements: { index: number }[]) => {
+      if (elements.length) onDateClick(elements[0].index);
+    },
+  };
+
+  return (
+    <Box sx={{ height }}>
+      <Line data={{ labels: dates, datasets }} options={options} plugins={[dateMarker]} />
+    </Box>
+  );
+}
+
+interface CropSummaryChartProps {
+  entries: { crop: string; fields: number; area: number }[];
+  selected: string | null;
+  onSelect: (crop: string | null) => void;
+  height: number;
+}
+
+export function CropSummaryChart({ entries, selected, onSelect, height }: CropSummaryChartProps) {
+  const data = {
+    labels: entries.map((e) => e.crop),
+    datasets: [
+      {
+        label: 'Area (ha)',
+        data: entries.map((e) => e.area),
+        backgroundColor: entries.map((e) => `${CROP_COLORS[e.crop]}${!selected || e.crop === selected ? 'dd' : '44'}`),
+        borderRadius: 4,
+        barPercentage: 0.8,
+      },
+    ],
+  };
+  const options: any = {
+    responsive: true,
+    maintainAspectRatio: false,
+    indexAxis: 'y',
+    animation: { duration: 300 },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: (item: any) => `${Math.round(item.raw).toLocaleString()} ha`,
+          afterLabel: (item: any) => `${entries[item.dataIndex].fields} fields`,
+        },
+      },
+    },
+    scales: { x: { ...axisStyle, beginAtZero: true, title: { display: true, text: 'hectares', font: { size: 10 } } }, y: { ...axisStyle, grid: { display: false } } },
+    onClick: (_: unknown, elements: { index: number }[]) => {
+      if (!elements.length) return;
+      const crop = entries[elements[0].index].crop;
+      onSelect(crop === selected ? null : crop);
+    },
+    onHover: (event: any, elements: unknown[]) => {
+      if (event.native?.target) event.native.target.style.cursor = elements.length ? 'pointer' : 'default';
+    },
+  };
+  return (
+    <Box sx={{ height }}>
+      <Typography variant="subtitle2" sx={{ fontFamily: 'Roboto, sans-serif', mb: 0.5 }}>
+        Crop Classification (latest season)
+      </Typography>
+      <Box sx={{ height: height - 28 }}>
+        <Bar data={data} options={options} />
+      </Box>
+    </Box>
+  );
+}
