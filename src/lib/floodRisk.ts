@@ -1,10 +1,34 @@
 // Client-side GeoAI for the Blue Nile (Sennar / Gezira) flood risk dashboard.
 //
 // Everything runs in the browser: rasters are fetched from public tile APIs,
-// decoded from PNG pixels, and processed on one shared grid. The grid is the
-// Web Mercator pixel grid of zoom GRID_ZOOM clipped to the AOI, so every tile
-// pixel lands on exactly one cell, and results drop onto the map as image
-// overlays with no resampling.
+// decoded from PNG pixels, and processed on one shared grid (see geoRaster.ts:
+// the Web Mercator pixel grid of zoom GRID_ZOOM clipped to the AOI).
+import {
+  Frame,
+  Grid,
+  Progress,
+  boxBlur,
+  cellLon,
+  clamp,
+  clamp01,
+  decodeImage,
+  distanceTransform,
+  fetchTileMosaic,
+  makeGrid as makeGridFor,
+  mosaicTileUrl,
+  overpass,
+  pxToMercatorX,
+  pxToMercatorY,
+  rasterizeLine,
+  registerMosaic,
+  scaledFrame,
+  shiftDate,
+  toDataUrl,
+  TILE,
+} from '@/lib/geoRaster';
+
+export { DEM_SOURCE, cellAt, computeSlope, fetchDem, gridCorners, shiftDate } from '@/lib/geoRaster';
+export type { Grid } from '@/lib/geoRaster';
 
 // ------------------------------------------------------------------ config --
 export const AOI = { minLon: 32.0, maxLon: 35.0, minLat: 12.0, maxLat: 15.0 };
@@ -14,26 +38,6 @@ export const GRID_ZOOM = 9; // ~300 m cells at 13° N
 export const SAR_ZOOM = GRID_ZOOM + 1;
 const SAR_SCALE = 2 ** (SAR_ZOOM - GRID_ZOOM);
 
-// DEM: AWS Terrain Tiles (Terrarium encoding, keyless) by default. With a
-// MapTiler key the MapTiler Terrain-RGB tiles are used instead.
-const MAPTILER_KEY = process.env.NEXT_PUBLIC_MAPTILER_KEY ?? '';
-export const DEM_SOURCE = MAPTILER_KEY
-  ? {
-      name: 'MapTiler Terrain RGB',
-      tiles: `https://api.maptiler.com/tiles/terrain-rgb-v2/{z}/{x}/{y}.webp?key=${MAPTILER_KEY}`,
-      tileSize: 512,
-      encoding: 'mapbox' as const,
-      maxzoom: 12,
-    }
-  : {
-      name: 'AWS Terrain Tiles (Terrarium)',
-      tiles: 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png',
-      tileSize: 256,
-      encoding: 'terrarium' as const,
-      maxzoom: 15,
-    };
-
-const PC_API = 'https://planetarycomputer.microsoft.com/api/data/v1';
 export const SENTINEL_HUB_ENDPOINTS = {
   cdse: {
     label: 'Copernicus Data Space',
@@ -48,11 +52,6 @@ export const SENTINEL_HUB_ENDPOINTS = {
 };
 export type SentinelHubEndpoint = keyof typeof SENTINEL_HUB_ENDPOINTS;
 
-const OVERPASS_MIRRORS = [
-  'https://overpass-api.de/api/interpreter',
-  'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
-  'https://overpass.kumi.systems/api/interpreter',
-];
 export const RIVERS_SNAPSHOT = '/data/flood-risk/rivers-osm.geojson';
 
 // Backscatter is exchanged as 8-bit PNG: dB mapped linearly from
@@ -86,176 +85,10 @@ export const DEFAULT_WEIGHTS: Weights = { elevation: 0.3, slope: 0.1, distance: 
 export const DEFAULT_THRESHOLDS = { vv: -18, vh: -24 }; // dB, for terrain-flattened gamma0
 
 // ------------------------------------------------------------------- grid --
-const TILE = 256;
-const EARTH_RADIUS = 6378137;
-const worldPx = (zoom: number) => TILE * 2 ** zoom;
-const lonToPx = (lon: number, zoom: number) => ((lon + 180) / 360) * worldPx(zoom);
-const latToPx = (lat: number, zoom: number) => {
-  const r = (lat * Math.PI) / 180;
-  return ((1 - Math.log(Math.tan(Math.PI / 4 + r / 2)) / Math.PI) / 2) * worldPx(zoom);
-};
-const pxToLon = (x: number, zoom: number) => (x / worldPx(zoom)) * 360 - 180;
-const pxToLat = (y: number, zoom: number) =>
-  (Math.atan(Math.sinh(Math.PI * (1 - (2 * y) / worldPx(zoom)))) * 180) / Math.PI;
-
-// A block of Web Mercator pixels at one zoom level.
-export interface Frame {
-  zoom: number;
-  x0: number; // global pixel of the first column / row at `zoom`
-  y0: number;
-  width: number;
-  height: number;
-}
-
-export interface Grid extends Frame {
-  west: number;
-  east: number;
-  north: number;
-  south: number;
-  rowLat: Float64Array; // latitude of each row's centre
-  rowCellSize: Float64Array; // ground size of a (square) cell in each row, m
-}
-
-export function makeGrid(zoom = GRID_ZOOM): Grid {
-  const x0 = Math.floor(lonToPx(AOI.minLon, zoom));
-  const x1 = Math.ceil(lonToPx(AOI.maxLon, zoom));
-  const y0 = Math.floor(latToPx(AOI.maxLat, zoom));
-  const y1 = Math.ceil(latToPx(AOI.minLat, zoom));
-  const height = y1 - y0;
-  const rowLat = new Float64Array(height);
-  const rowCellSize = new Float64Array(height);
-  for (let j = 0; j < height; j++) {
-    rowLat[j] = pxToLat(y0 + j + 0.5, zoom);
-    rowCellSize[j] = ((2 * Math.PI * EARTH_RADIUS) / worldPx(zoom)) * Math.cos((rowLat[j] * Math.PI) / 180);
-  }
-  return {
-    zoom, x0, y0, width: x1 - x0, height,
-    west: pxToLon(x0, zoom), east: pxToLon(x1, zoom), north: pxToLat(y0, zoom), south: pxToLat(y1, zoom),
-    rowLat, rowCellSize,
-  };
-}
+export const makeGrid = () => makeGridFor(AOI, GRID_ZOOM);
 
 // The same area as the grid, SAR_SCALE times finer, for the SAR rasters.
-export function sarFrame(g: Grid): Frame {
-  return { zoom: SAR_ZOOM, x0: g.x0 * SAR_SCALE, y0: g.y0 * SAR_SCALE, width: g.width * SAR_SCALE, height: g.height * SAR_SCALE };
-}
-
-// Corner coordinates for a MapLibre image source covering the grid.
-export function gridCorners(g: Grid): [[number, number], [number, number], [number, number], [number, number]] {
-  return [[g.west, g.north], [g.east, g.north], [g.east, g.south], [g.west, g.south]];
-}
-
-export function cellAt(g: Grid, lon: number, lat: number): number | null {
-  const i = Math.floor(lonToPx(lon, g.zoom) - g.x0);
-  const j = Math.floor(latToPx(lat, g.zoom) - g.y0);
-  return i < 0 || j < 0 || i >= g.width || j >= g.height ? null : j * g.width + i;
-}
-
-const cellLon = (g: Grid, i: number) => pxToLon(g.x0 + i + 0.5, g.zoom);
-
-// ---------------------------------------------------------- tile fetching --
-type Progress = (message: string) => void;
-
-// Decodes an image's raw pixel values (no colour management or alpha
-// premultiplication, which would corrupt encoded data).
-async function decodeImage(blob: Blob): Promise<ImageData> {
-  const bitmap = await createImageBitmap(blob, { colorSpaceConversion: 'none', premultiplyAlpha: 'none' });
-  const canvas = document.createElement('canvas');
-  canvas.width = bitmap.width;
-  canvas.height = bitmap.height;
-  const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
-  ctx.drawImage(bitmap, 0, 0);
-  bitmap.close();
-  return ctx.getImageData(0, 0, canvas.width, canvas.height);
-}
-
-async function pool<T>(items: T[], limit: number, fn: (item: T) => Promise<void>) {
-  let next = 0;
-  await Promise.all(
-    Array.from({ length: Math.min(limit, items.length) }, async () => {
-      while (next < items.length) await fn(items[next++]);
-    }),
-  );
-}
-
-// Fetches every tile covering the frame and copies their pixels into one RGBA
-// buffer the size of the frame. Tiles are fetched at the zoom where one tile
-// pixel = one frame pixel (one level up for 512 px tiles). Missing tiles stay
-// transparent (alpha 0).
-async function fetchTileMosaic(
-  g: Frame,
-  urlFor: (z: number, x: number, y: number) => string,
-  tileSize: number,
-  onTile?: (done: number, total: number) => void,
-): Promise<Uint8ClampedArray> {
-  const z = g.zoom - Math.log2(tileSize / TILE);
-  const out = new Uint8ClampedArray(g.width * g.height * 4);
-  const tiles: [number, number][] = [];
-  for (let ty = Math.floor(g.y0 / tileSize); ty <= Math.floor((g.y0 + g.height - 1) / tileSize); ty++) {
-    for (let tx = Math.floor(g.x0 / tileSize); tx <= Math.floor((g.x0 + g.width - 1) / tileSize); tx++) tiles.push([tx, ty]);
-  }
-  let done = 0;
-  await pool(tiles, 12, async ([tx, ty]) => {
-    const res = await fetch(urlFor(z, tx, ty));
-    if (res.ok) {
-      const img = await decodeImage(await res.blob());
-      for (let py = 0; py < tileSize; py++) {
-        const j = ty * tileSize + py - g.y0;
-        if (j < 0 || j >= g.height) continue;
-        for (let px = 0; px < tileSize; px++) {
-          const i = tx * tileSize + px - g.x0;
-          if (i < 0 || i >= g.width) continue;
-          const src = (py * img.width + px) * 4;
-          out.set(img.data.subarray(src, src + 4), (j * g.width + i) * 4);
-        }
-      }
-    }
-    onTile?.(++done, tiles.length);
-  });
-  return out;
-}
-
-const fillTemplate = (template: string, z: number, x: number, y: number) =>
-  template.replace('{z}', String(z)).replace('{x}', String(x)).replace('{y}', String(y));
-
-// -------------------------------------------------------------------- DEM --
-// Terrain tiles store elevation in the RGB channels of a PNG/WebP:
-//   Mapbox / MapTiler Terrain-RGB: h = (R * 256 * 256 + G * 256 + B) * 0.1 - 10000
-//   Terrarium (AWS):               h = R * 256 + G + B / 256 - 32768
-// Both give metres above sea level; we decode every pixel into a Float32 grid.
-export async function fetchDem(g: Grid, progress: Progress): Promise<Float32Array> {
-  const rgba = await fetchTileMosaic(
-    g,
-    (z, x, y) => fillTemplate(DEM_SOURCE.tiles, z, x, y),
-    DEM_SOURCE.tileSize,
-    (d, n) => progress(`Elevation tiles ${d}/${n}`),
-  );
-  const dem = new Float32Array(g.width * g.height);
-  for (let k = 0; k < dem.length; k++) {
-    const r = rgba[k * 4], gr = rgba[k * 4 + 1], b = rgba[k * 4 + 2];
-    dem[k] = DEM_SOURCE.encoding === 'mapbox'
-      ? (r * 256 * 256 + gr * 256 + b) * 0.1 - 10000
-      : r * 256 + gr + b / 256 - 32768;
-  }
-  return dem;
-}
-
-// Slope in degrees from central differences, using each row's real cell size.
-export function computeSlope(g: Grid, dem: Float32Array): Float32Array {
-  const { width: w, height: h } = g;
-  const slope = new Float32Array(w * h);
-  for (let j = 0; j < h; j++) {
-    const jn = Math.max(j - 1, 0), js = Math.min(j + 1, h - 1);
-    const size = g.rowCellSize[j];
-    for (let i = 0; i < w; i++) {
-      const iw = Math.max(i - 1, 0), ie = Math.min(i + 1, w - 1);
-      const dzdx = (dem[j * w + ie] - dem[j * w + iw]) / ((ie - iw) * size);
-      const dzdy = (dem[js * w + i] - dem[jn * w + i]) / ((js - jn) * size);
-      slope[j * w + i] = (Math.atan(Math.hypot(dzdx, dzdy)) * 180) / Math.PI;
-    }
-  }
-  return slope;
-}
+export const sarFrame = (g: Grid): Frame => scaledFrame(g, SAR_SCALE);
 
 // ----------------------------------------------------------------- rivers --
 export type RiverCollection = GeoJSON.FeatureCollection<GeoJSON.LineString, { name: string }>;
@@ -268,31 +101,20 @@ export async function fetchRiversSnapshot(): Promise<RiverCollection> {
 // busy, so mirrors are tried in turn; returns null if all of them fail.
 export async function fetchRiversOverpass(): Promise<RiverCollection | null> {
   const { minLat, minLon, maxLat, maxLon } = AOI;
-  const query = `[out:json][timeout:90];way["waterway"="river"](${minLat},${minLon},${maxLat},${maxLon});out geom;`;
-  for (const mirror of OVERPASS_MIRRORS) {
-    try {
-      const res = await fetch(mirror, {
-        method: 'POST',
-        body: new URLSearchParams({ data: query }),
-        signal: AbortSignal.timeout(100_000),
-      });
-      if (!res.ok) continue;
-      const json: { elements: { geometry?: { lon: number; lat: number }[]; tags?: Record<string, string> }[] } = await res.json();
-      return {
-        type: 'FeatureCollection',
-        features: json.elements
-          .filter((e) => e.geometry && e.geometry.length > 1)
-          .map((e) => ({
-            type: 'Feature',
-            properties: { name: e.tags?.['name:en'] || e.tags?.name || '' },
-            geometry: { type: 'LineString', coordinates: e.geometry!.map((p) => [p.lon, p.lat]) },
-          })),
-      };
-    } catch {
-      // try the next mirror
-    }
-  }
-  return null;
+  const json = await overpass<{ elements: { geometry?: { lon: number; lat: number }[]; tags?: Record<string, string> }[] }>(
+    `[out:json][timeout:90];way["waterway"="river"](${minLat},${minLon},${maxLat},${maxLon});out geom;`,
+  );
+  if (!json) return null;
+  return {
+    type: 'FeatureCollection',
+    features: json.elements
+      .filter((e) => e.geometry && e.geometry.length > 1)
+      .map((e) => ({
+        type: 'Feature',
+        properties: { name: e.tags?.['name:en'] || e.tags?.name || '' },
+        geometry: { type: 'LineString', coordinates: e.geometry!.map((p) => [p.lon, p.lat]) },
+      })),
+  };
 }
 
 // Distance to the nearest river for every cell, plus which river cell that is.
@@ -300,66 +122,9 @@ export async function fetchRiversOverpass(): Promise<RiverCollection | null> {
 // transform (Felzenszwalb & Huttenlocher) finds each cell's nearest river cell
 // in two 1-D passes (columns, then rows).
 export function computeRiverDistance(g: Grid, rivers: RiverCollection) {
-  const { width: w, height: h } = g;
-  const n = w * h;
-  const INF = 1e20;
-  const f = new Float64Array(n).fill(INF);
-
-  for (const feature of rivers.features) {
-    const pts = feature.geometry.coordinates.map(([lon, lat]) => [lonToPx(lon, g.zoom) - g.x0, latToPx(lat, g.zoom) - g.y0]);
-    for (let s = 1; s < pts.length; s++) {
-      const [ax, ay] = pts[s - 1], [bx, by] = pts[s];
-      const steps = Math.ceil(Math.hypot(bx - ax, by - ay) * 2) + 1; // half-cell steps
-      for (let t = 0; t <= steps; t++) {
-        const i = Math.floor(ax + ((bx - ax) * t) / steps);
-        const j = Math.floor(ay + ((by - ay) * t) / steps);
-        if (i >= 0 && j >= 0 && i < w && j < h) f[j * w + i] = 0;
-      }
-    }
-  }
-
-  const size = Math.max(w, h);
-  const line = new Float64Array(size), d = new Float64Array(size), z = new Float64Array(size + 1);
-  const arg = new Int32Array(size), v = new Int32Array(size);
-
-  // 1-D squared distance transform of `line[0..len)`, recording the argmin.
-  const dt1d = (len: number) => {
-    let k = 0;
-    v[0] = 0; z[0] = -Infinity; z[1] = Infinity;
-    for (let q = 1; q < len; q++) {
-      let s = (line[q] + q * q - (line[v[k]] + v[k] * v[k])) / (2 * q - 2 * v[k]);
-      while (s <= z[k]) {
-        k--;
-        s = (line[q] + q * q - (line[v[k]] + v[k] * v[k])) / (2 * q - 2 * v[k]);
-      }
-      k++; v[k] = q; z[k] = s; z[k + 1] = Infinity;
-    }
-    k = 0;
-    for (let q = 0; q < len; q++) {
-      while (z[k + 1] < q) k++;
-      d[q] = (q - v[k]) ** 2 + line[v[k]];
-      arg[q] = v[k];
-    }
-  };
-
-  const colD = new Float64Array(n), colArg = new Int32Array(n);
-  for (let i = 0; i < w; i++) {
-    for (let j = 0; j < h; j++) line[j] = f[j * w + i];
-    dt1d(h);
-    for (let j = 0; j < h; j++) { colD[j * w + i] = d[j]; colArg[j * w + i] = arg[j]; }
-  }
-  const distance = new Float32Array(n); // metres
-  const nearest = new Int32Array(n).fill(-1); // index of the nearest river cell
-  for (let j = 0; j < h; j++) {
-    for (let i = 0; i < w; i++) line[i] = colD[j * w + i];
-    dt1d(w);
-    for (let i = 0; i < w; i++) {
-      if (d[i] >= INF / 2) { distance[j * w + i] = Infinity; continue; }
-      distance[j * w + i] = Math.sqrt(d[i]) * g.rowCellSize[j];
-      nearest[j * w + i] = colArg[j * w + arg[i]] * w + arg[i];
-    }
-  }
-  return { distance, nearest };
+  const seeds = new Uint8Array(g.width * g.height);
+  for (const feature of rivers.features) rasterizeLine(g, feature.geometry.coordinates, seeds);
+  return distanceTransform(g, seeds);
 }
 
 // Height above the nearest river (a simple "HAND" index): floodplains sit a
@@ -377,24 +142,6 @@ export function computeHeightAboveRiver(g: Grid, dem: Float32Array, nearest: Int
   const hand = new Float32Array(dem.length);
   for (let k = 0; k < dem.length; k++) hand[k] = nearest[k] < 0 ? Infinity : Math.max(0, dem[k] - base[k]);
   return hand;
-}
-
-// In-place separable box blur (running sums, edges clamped).
-function boxBlur(values: Float32Array, w: number, h: number, r: number) {
-  const pass = (len: number, count: number, index: (line: number, i: number) => number) => {
-    const tmp = new Float64Array(len);
-    for (let line = 0; line < count; line++) {
-      let sum = 0;
-      for (let i = -r; i <= r; i++) sum += values[index(line, Math.min(Math.max(i, 0), len - 1))];
-      for (let i = 0; i < len; i++) {
-        tmp[i] = sum / (2 * r + 1);
-        sum += values[index(line, Math.min(i + r + 1, len - 1))] - values[index(line, Math.max(i - r, 0))];
-      }
-      for (let i = 0; i < len; i++) values[index(line, i)] = tmp[i];
-    }
-  };
-  pass(w, h, (row, i) => row * w + i);
-  pass(h, w, (col, i) => i * w + col);
 }
 
 // --------------------------------------------------------------- rainfall --
@@ -483,13 +230,7 @@ async function fetchSarPlanetary(g: Frame, start: string, end: string, progress:
     'filter-lang': 'cql2-json',
     filter: { op: 'a_contains', args: [{ property: 'sar:polarizations' }, ['VV', 'VH']] },
   };
-  const reg = await fetch(`${PC_API}/mosaic/register`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(search),
-  });
-  if (!reg.ok) throw new Error(`Planetary Computer: ${reg.status} ${await reg.text()}`);
-  const { searchid } = await reg.json();
+  const searchid = await registerMosaic(search);
 
   const query = new URLSearchParams({
     collection: 'sentinel-1-rtc',
@@ -500,7 +241,7 @@ async function fetchSarPlanetary(g: Frame, start: string, end: string, progress:
   for (let b = 0; b < 3; b++) query.append('rescale', `${DB_MIN},${DB_MAX}`);
   const rgba = await fetchTileMosaic(
     g,
-    (z, x, y) => `${PC_API}/mosaic/${searchid}/tiles/WebMercatorQuad/${z}/${x}/${y}.png?${query}`,
+    mosaicTileUrl(searchid, query),
     TILE,
     (d, n) => progress(`SAR tiles ${start} → ${end}: ${d}/${n}`),
   );
@@ -526,8 +267,7 @@ async function fetchSarSentinelHub(
   progress: Progress,
 ): Promise<SarImage> {
   progress(`SAR ${start} → ${end}: Sentinel Hub request`);
-  const m = (px: number) => (px / worldPx(g.zoom)) * 2 * Math.PI * EARTH_RADIUS - Math.PI * EARTH_RADIUS;
-  const bbox = [m(g.x0), -m(g.y0 + g.height), m(g.x0 + g.width), -m(g.y0)];
+  const bbox = [pxToMercatorX(g.x0, g.zoom), pxToMercatorY(g.y0 + g.height, g.zoom), pxToMercatorX(g.x0 + g.width, g.zoom), pxToMercatorY(g.y0, g.zoom)];
   const res = await fetch(SENTINEL_HUB_ENDPOINTS[source.endpoint].process, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${source.token}`, Accept: 'image/png' },
@@ -647,8 +387,6 @@ export interface Layers {
   sarWater: Float32Array | null;
 }
 
-const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
-const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
 export function featureVector(layers: Layers, k: number, rainRange: [number, number]) {
   const { slope, distance, hand, rain, sarWater } = layers;
@@ -714,19 +452,6 @@ export function summarize(g: Grid, risk: Float32Array, mask: FloodMask | null, r
 }
 
 // -------------------------------------------------------------- rendering --
-// Paints a grid-sized RGBA image and returns it as a PNG data URL for a
-// MapLibre image source.
-function toDataUrl(g: Frame, paint: (k: number, out: Uint8ClampedArray, o: number) => void) {
-  const canvas = document.createElement('canvas');
-  canvas.width = g.width;
-  canvas.height = g.height;
-  const ctx = canvas.getContext('2d')!;
-  const img = ctx.createImageData(g.width, g.height);
-  for (let k = 0; k < g.width * g.height; k++) paint(k, img.data, k * 4);
-  ctx.putImageData(img, 0, 0);
-  return canvas.toDataURL('image/png');
-}
-
 export function renderRisk(g: Grid, risk: Float32Array) {
   return toDataUrl(g, (k, out, o) => {
     const c = RISK_CLASSES[riskClass(risk[k])];
@@ -753,11 +478,4 @@ export function renderRainfall(g: Grid, rain: Float32Array) {
     for (let c = 0; c < 3; c++) out[o + c] = RAIN_RAMP[a][c] * (1 - f) + RAIN_RAMP[a + 1][c] * f;
     out[o + 3] = 150;
   });
-}
-
-// ------------------------------------------------------------------ dates --
-export function shiftDate(date: string, days: number) {
-  const d = new Date(`${date}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
 }

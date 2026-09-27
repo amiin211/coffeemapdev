@@ -55,6 +55,15 @@ export const projects: Project[] = [
     externalUrl: '/projects/blue-nile-flood-risk',
   },
   {
+    id: 'riyadh-urban-heat',
+    title: 'Riyadh Urban Heat & Tree Canopy Equity',
+    description: 'Client-side GeoAI for Riyadh — Landsat surface temperature hotspots, Sentinel-2 NDVI and tree canopy, OSM trees and parks, a TensorFlow.js heat-risk model and canopy-equity priority zones for planting, all computed in the browser.',
+    category: 'geoai',
+    tags: ['Landsat 8/9', 'Sentinel-2', 'TensorFlow.js', 'MapLibre GL JS', 'Planetary Computer', 'ESA WorldCover', 'NASA POWER', 'Overpass API', 'Next.js', 'TypeScript'],
+    image: '/images/urban-heat.png',
+    externalUrl: '/projects/riyadh-urban-heat',
+  },
+  {
     id: '3d-mosque-viewer',
     title: '3D Mosque Viewer',
     description: 'Interactive 3D environment of a mosque site in Aseer, Saudi Arabia — DTM terrain draped with orthophoto, vegetation, live traffic, and day / night lighting.',

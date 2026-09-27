@@ -102,6 +102,24 @@ Web Mercator grid (zoom 9), so results overlay the map with no resampling.
   rainfall and the SAR water share, binned into Low / Medium / High / Very High. Thresholds
   and weights are adjustable; **Recompute Risk** reruns the model.
 
+## Riyadh Urban Heat & Tree Canopy Equity
+
+`/projects/riyadh-urban-heat` maps urban heat and tree canopy equity for Riyadh
+(46.4–47.4° E, 24.3–25.0° N), entirely client-side (`src/lib/urbanHeat.ts`, shared raster
+tools in `src/lib/geoRaster.ts`) on a ~70 m Web Mercator grid (zoom 11):
+
+- **Heat:** Landsat 8/9 Collection 2 surface temperature (band 10 → °C) and **NDVI** from
+  Sentinel-2 L2A (2022+ offset corrected), least-cloudy mosaics from Planetary Computer.
+- **Land cover:** ESA WorldCover 2021 (building density, tree cover, urban mask).
+- **OSM:** trees (`natural=tree`) and parks (`leisure=park`) via Overpass, starting from the
+  snapshots in `public/data/urban-heat/` and swapping in the live result.
+- **Air climate:** NASA POWER daily air temperature and solar radiation.
+- **Model:** k-means heat hotspots; exact distance transforms to tree canopy and parks;
+  vegetation access vs heat exposure gives **equity = access − heat**; a TensorFlow.js
+  heat-risk model (w1·LST + w2·building density + w3·(1 − NDVI)); priority zones are the top 15%
+  of built-up cells by risk × (1 − access). District summaries for Ishbiliyah, Al-Malaz,
+  Al-Murabba, Ad-Diriyah, Wadi Hanifa and eastern districts.
+
 ## 3D Mosque Viewer
 
 `/projects/3d-mosque-viewer` is a Three.js scene (`src/lib/mosqueEnvironment.ts`,

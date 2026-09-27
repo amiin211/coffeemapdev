@@ -36,6 +36,7 @@ The site is built by **Amin Adnan Gasim**, a Sudanese geospatial engineer based 
 | `/projects/acled-conflict-dashboard` | Sudan Conflicts (ACLED) |
 | `/projects/geoai-crop-monitoring` | GeoAI Crop Monitoring |
 | `/projects/blue-nile-flood-risk` | Blue Nile Flood Risk |
+| `/projects/riyadh-urban-heat` | Riyadh Urban Heat & Tree Canopy Equity |
 | `/projects/3d-mosque-viewer` | 3D Mosque Viewer |
 
 The navigation bar links to Home, About, Expertise (`/#capabilities`) and Contact (`/#contact`).
@@ -102,6 +103,19 @@ Users can change the dates, radar thresholds and model weights, recompute the ma
 
 *Sentinel‑1 SAR · MapLibre GL JS · Planetary Computer · Sentinel Hub · Open‑Meteo · Overpass API · Next.js · TypeScript*
 
+#### Riyadh Urban Heat & Tree Canopy Equity — *GeoAI*
+`/projects/riyadh-urban-heat`
+
+A fully client-side urban heat island and tree canopy equity analysis for Riyadh. The browser fetches Landsat 8/9 land surface temperature and Sentinel-2 NDVI (Planetary Computer), ESA WorldCover land cover, OpenStreetMap trees and parks (Overpass) and NASA POWER air climate, then on a ~70 m grid:
+
+- finds heat hotspots with k-means clustering of urban surface temperature;
+- builds a tree canopy raster from NDVI, WorldCover and OSM trees, and measures distance to canopy and parks with exact distance transforms;
+- scores **tree canopy equity = vegetation access − heat exposure** for every built-up cell;
+- runs a TensorFlow.js heat-risk model (land surface temperature, building density, lack of vegetation) with adjustable weights, and flags the top 15% of cells as priority planting zones;
+- summarizes focus districts (Ishbiliyah, Al-Malaz, Al-Murabba, Ad-Diriyah, Wadi Hanifa, eastern districts).
+
+*Landsat 8/9 · Sentinel-2 · TensorFlow.js · MapLibre GL JS · Planetary Computer · ESA WorldCover · NASA POWER · Overpass API · Next.js · TypeScript*
+
 #### 3D Mosque Viewer — *BIM & Infrastructure*
 `/projects/3d-mosque-viewer`
 
@@ -141,9 +155,11 @@ Short articles listed on the home page (`src/data/insights.ts`):
 | Sentinel‑2 L2A (ESA Copernicus) via Microsoft Planetary Computer | GeoAI Crop Monitoring | Prebuilt field data + live index tiles |
 | Sentinel‑1 RTC via Microsoft Planetary Computer | Blue Nile Flood Risk | Live, keyless mosaic tiles |
 | Sentinel Hub / Copernicus Data Space Process API | Blue Nile Flood Risk (optional) | Live, user‑supplied token |
-| AWS Terrain Tiles (Terrarium) / MapTiler Terrain‑RGB | Blue Nile Flood Risk | Live tiles |
+| AWS Terrain Tiles (Terrarium) / MapTiler Terrain‑RGB | Blue Nile Flood Risk, Riyadh Urban Heat | Live tiles |
+| Landsat 8/9 C2 L2 surface temperature, Sentinel‑2 L2A, ESA WorldCover via Planetary Computer | Riyadh Urban Heat | Live, keyless mosaic tiles |
+| NASA POWER daily point API | Riyadh Urban Heat | Live, keyless |
 | Open‑Meteo historical weather API | Blue Nile Flood Risk | Live, keyless |
-| OpenStreetMap via Overpass API | Blue Nile Flood Risk | Live, with a bundled snapshot fallback |
+| OpenStreetMap via Overpass API | Blue Nile Flood Risk, Riyadh Urban Heat | Live, with bundled snapshot fallbacks |
 | Aseer mosque model, DTM and orthophoto | 3D Mosque Viewer | Static assets in `public/data/3d/` |
 | OpenStreetMap / MapLibre demotiles basemaps | All maps | Live tiles |
 
@@ -158,6 +174,8 @@ Short articles listed on the home page (`src/data/insights.ts`):
 **Mapping & 3D:** MapLibre GL JS through `react-map-gl`, Three.js (Leaflet is installed but not currently used)
 
 **Charts:** Chart.js through `react-chartjs-2`
+
+**Client-side ML:** TensorFlow.js (core + WebGL / CPU backends)
 
 **Data tooling (offline):** Node.js scripts, Python with GDAL, Rasterio, NumPy and OpenCV
 
@@ -176,6 +194,7 @@ Short articles listed on the home page (`src/data/insights.ts`):
 │   │   ├── 3d/               # Mosque GLB, DTM heightmap, orthophoto, models, HDRI
 │   │   ├── crop/             # Crop fields GeoJSON and index time series
 │   │   ├── flood-risk/       # OSM rivers snapshot for Blue Nile Flood Risk
+│   │   ├── urban-heat/       # OSM trees and parks snapshots for Riyadh Urban Heat
 │   │   └── *.json / *.geojson
 │   └── images/               # Project card thumbnails
 ├── scripts/                  # Offline data builders (see below)
@@ -183,7 +202,7 @@ Short articles listed on the home page (`src/data/insights.ts`):
 │   ├── app/                  # Next.js routes (home, about, expertise, projects/*)
 │   ├── components/           # Shared layout, cards, and per-dashboard maps / charts / panels
 │   ├── data/                 # Site content: projects, capabilities, insights, tech stack
-│   ├── lib/                  # Client-side engines (floodRisk.ts, mosqueEnvironment.ts)
+│   ├── lib/                  # Client-side engines (geoRaster.ts shared raster tools, floodRisk.ts, urbanHeat.ts, mosqueEnvironment.ts)
 │   ├── theme/                # MUI theme, fonts and dashboard color palettes
 │   └── utils/                # Data helpers per dashboard and category filters
 ├── README.md
