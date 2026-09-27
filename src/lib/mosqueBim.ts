@@ -59,21 +59,22 @@ export interface BimSelection {
   type: BimType;
 }
 
-// Colour per BIM category for the "colour by category" view (Tableau 10
-// based, so neighbouring categories stay distinguishable).
+// Colour per BIM category for the "colour by category" view: white, green and
+// brown for the big surfaces (walls, domes, roofs, floors), muted earthy
+// tones for the smaller categories. No reds.
 export const CATEGORY_COLORS: Record<string, string> = {
-  Walls: '#4e79a7',
-  'Wall Sweeps': '#a0cbe8',
-  Windows: '#76b7b2',
-  Doors: '#f28e2b',
-  Roofs: '#e15759',
-  Domes: '#b07aa1',
-  Floors: '#a7a39c',
-  Stairs: '#9c755f',
-  Railings: '#ff9da7',
-  'Site Structures': '#edc948',
-  Lighting: '#d4a6c8',
-  Landscape: '#59a14f',
+  Walls: '#f4f1ea', // white
+  Domes: '#2e7d32', // green
+  Roofs: '#8b5a2b', // brown
+  Floors: '#c9ad85', // light brown
+  'Wall Sweeps': '#e3d3b0', // sand
+  Windows: '#6f9c7a', // sage green
+  Doors: '#5b3a1e', // dark brown
+  Stairs: '#a08878', // taupe
+  Railings: '#9e9e9e', // grey
+  'Site Structures': '#d6e8c3', // pale green
+  Lighting: '#4e342e', // espresso
+  Landscape: '#7cb342', // leaf green
 };
 export const UNCATEGORISED_COLOR = '#bab0ac';
 

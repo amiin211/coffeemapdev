@@ -177,10 +177,10 @@ export class MosqueEnvironment {
   private realisticMaterials = new Map<THREE.Mesh, THREE.Material | THREE.Material[]>();
   private categoryMaterials = new Map<string, THREE.MeshStandardMaterial>();
   private selectedKey: string | null = null;
-  // Magenta stands apart from every category colour.
+  // Bright blue stands apart from the white / green / brown palettes.
   private highlightMaterial = new THREE.MeshStandardMaterial({
-    color: 0xe040fb,
-    emissive: 0xaa00ff,
+    color: 0x29b6f6,
+    emissive: 0x0277bd,
     emissiveIntensity: 0.45,
     roughness: 0.5,
     side: THREE.DoubleSide,
