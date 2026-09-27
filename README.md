@@ -120,6 +120,7 @@ ported from the standalone `~/environment` Vite project) with assets in `public/
   it opens in terrain mode at night (`START_IN_TERRAIN` / `START_AT_NIGHT` in `CONFIG`).
 
 - BIM: click any of the 674 Revit elements for its properties, or download the schedule as CSV.
+  The model opens coloured by BIM category (with a legend); a button switches to realistic colours.
   The GLB only kept Revit names (family, type, element ID), so `public/data/3d/bim.json` is an
   **illustrative** Saudi-market dataset: SBC / SASO references, construction, U-values,
   quantities measured from the geometry, indicative SAR costs, levels, zones, Hijri dates:

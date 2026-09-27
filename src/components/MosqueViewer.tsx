@@ -9,8 +9,10 @@ import GrassIcon from '@mui/icons-material/Grass';
 import DownloadIcon from '@mui/icons-material/Download';
 import CloseIcon from '@mui/icons-material/Close';
 import TouchAppIcon from '@mui/icons-material/TouchApp';
+import PaletteIcon from '@mui/icons-material/Palette';
+import CategoryIcon from '@mui/icons-material/Category';
 import { CONFIG, MosqueEnvironment } from '@/lib/mosqueEnvironment';
-import { BimSelection, UNIT_LABEL, formatSAR, quantityLabel, scheduleCsv } from '@/lib/mosqueBim';
+import { BimData, BimSelection, CATEGORY_COLORS, ColorMode, UNCATEGORISED_COLOR, UNIT_LABEL, formatSAR, quantityLabel, scheduleCsv } from '@/lib/mosqueBim';
 
 const buttonSx = {
   minWidth: 140,
@@ -132,6 +134,34 @@ function PropertiesPanel({ selection, disclaimer, onClose }: { selection: BimSel
   );
 }
 
+const floatingDarkSx = {
+  color: 'white',
+  bgcolor: 'rgba(20, 28, 40, 0.75)',
+  backdropFilter: 'blur(4px)',
+  borderRadius: 1,
+} as const;
+
+// Categories in the model with their element counts, most common first.
+function CategoryLegend({ bim }: { bim: BimData }) {
+  const counts: Record<string, number> = {};
+  for (const e of Object.values(bim.elements)) {
+    const category = bim.types[e.type].category;
+    counts[category] = (counts[category] ?? 0) + 1;
+  }
+  return (
+    <Box sx={{ ...floatingDarkSx, px: 1.5, py: 1, pointerEvents: 'none' }}>
+      <Typography variant="caption" sx={{ fontWeight: 700, display: 'block', mb: 0.5 }}>BIM categories</Typography>
+      {Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([category, n]) => (
+        <Box key={category} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ width: 12, height: 12, borderRadius: 0.5, flexShrink: 0, bgcolor: CATEGORY_COLORS[category] ?? UNCATEGORISED_COLOR }} />
+          <Typography variant="caption" sx={{ flex: 1, lineHeight: 1.45 }}>{category}</Typography>
+          <Typography variant="caption" sx={{ opacity: 0.7, pl: 1.5 }}>{n}</Typography>
+        </Box>
+      ))}
+    </Box>
+  );
+}
+
 export default function MosqueViewer() {
   const containerRef = useRef<HTMLDivElement>(null);
   const worldRef = useRef<MosqueEnvironment | null>(null);
@@ -141,6 +171,7 @@ export default function MosqueViewer() {
   const [terrain, setTerrain] = useState(CONFIG.START_IN_TERRAIN);
   const [selection, setSelection] = useState<BimSelection | null>(null);
   const [hasBim, setHasBim] = useState(false);
+  const [colorMode, setColorMode] = useState<ColorMode>(CONFIG.START_COLOR_MODE);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -177,6 +208,11 @@ export default function MosqueViewer() {
   const toggleTerrain = () => {
     worldRef.current?.setTerrainMode(!terrain);
     setTerrain(!terrain);
+  };
+  const toggleColorMode = () => {
+    const next = colorMode === 'category' ? 'realistic' : 'category';
+    worldRef.current?.setColorMode(next);
+    setColorMode(next);
   };
   const downloadSchedule = () => {
     const bim = worldRef.current?.bim;
@@ -215,6 +251,17 @@ export default function MosqueViewer() {
             {terrain ? 'Grass mode' : 'Terrain mode'}
           </Button>
           {hasBim && (
+            <Button
+              variant="contained"
+              disableElevation
+              startIcon={colorMode === 'category' ? <PaletteIcon /> : <CategoryIcon />}
+              onClick={toggleColorMode}
+              sx={buttonSx}
+            >
+              {colorMode === 'category' ? 'Realistic colours' : 'Category colours'}
+            </Button>
+          )}
+          {hasBim && (
             <Button variant="contained" disableElevation startIcon={<DownloadIcon />} onClick={downloadSchedule} sx={buttonSx}>
               BIM schedule (CSV)
             </Button>
@@ -222,29 +269,18 @@ export default function MosqueViewer() {
         </Stack>
       )}
 
-      {status === 'ready' && hasBim && !selection && bim && (
-        <Box
-          sx={{
-            position: 'absolute',
-            left: 16,
-            bottom: 16,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1,
-            px: 1.5,
-            py: 0.75,
-            color: 'white',
-            bgcolor: 'rgba(20, 28, 40, 0.75)',
-            backdropFilter: 'blur(4px)',
-            borderRadius: 1,
-            pointerEvents: 'none',
-          }}
-        >
-          <TouchAppIcon fontSize="small" />
-          <Typography variant="caption" sx={{ fontWeight: 500 }}>
-            Click any building element for its BIM data · {Object.keys(bim.elements).length} elements
-          </Typography>
-        </Box>
+      {status === 'ready' && hasBim && bim && (
+        <Stack spacing={1} sx={{ position: 'absolute', left: 16, bottom: 16, alignItems: 'flex-start' }}>
+          {colorMode === 'category' && <CategoryLegend bim={bim} />}
+          {!selection && (
+            <Box sx={{ ...floatingDarkSx, display: 'flex', alignItems: 'center', gap: 1, px: 1.5, py: 0.75, pointerEvents: 'none' }}>
+              <TouchAppIcon fontSize="small" />
+              <Typography variant="caption" sx={{ fontWeight: 500 }}>
+                Click any building element for its BIM data · {Object.keys(bim.elements).length} elements
+              </Typography>
+            </Box>
+          )}
+        </Stack>
       )}
 
       {selection && bim && (

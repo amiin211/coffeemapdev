@@ -6,7 +6,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 // HDRLoader is three's current name for RGBELoader (deprecated alias since r180).
 import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js';
-import { BIM_URL, BimData, BimSelection } from '@/lib/mosqueBim';
+import { BIM_URL, BimData, BimSelection, CATEGORY_COLORS, ColorMode, UNCATEGORISED_COLOR } from '@/lib/mosqueBim';
 
 const DATA = '/data/3d';
 
@@ -27,6 +27,8 @@ export const CONFIG = {
   ORTHO: `${DATA}/ortho2.jpg`,
   START_IN_TERRAIN: true,
   START_AT_NIGHT: true,
+  // 'category' colours each element by its BIM category; 'realistic' uses MOSQUE_COLORS.
+  START_COLOR_MODE: 'category' as ColorMode,
   TERRAIN_WIDTH: 507.5, // 1015 px x 0.5 m
   TERRAIN_DEPTH: 819.5, // 1639 px x 0.5 m
   TERRAIN_SEGMENTS: 512,
@@ -171,10 +173,14 @@ export class MosqueEnvironment {
   bim: BimData | null = null;
   onSelect: (selection: BimSelection | null) => void = () => {};
   private raycaster = new THREE.Raycaster();
-  private highlighted: { mesh: THREE.Mesh; material: THREE.Material | THREE.Material[] }[] = [];
+  colorMode: ColorMode = CONFIG.START_COLOR_MODE;
+  private realisticMaterials = new Map<THREE.Mesh, THREE.Material | THREE.Material[]>();
+  private categoryMaterials = new Map<string, THREE.MeshStandardMaterial>();
+  private selectedKey: string | null = null;
+  // Magenta stands apart from every category colour.
   private highlightMaterial = new THREE.MeshStandardMaterial({
-    color: 0xffb300,
-    emissive: 0xff6f00,
+    color: 0xe040fb,
+    emissive: 0xaa00ff,
     emissiveIntensity: 0.45,
     roughness: 0.5,
     side: THREE.DoubleSide,
@@ -276,6 +282,7 @@ export class MosqueEnvironment {
     this.parkCars(rand);
 
     this.createNightLights();
+    this.setColorMode(this.colorMode);
     this.frameCamera();
     this.setTerrainMode(CONFIG.START_IN_TERRAIN);
     this.setNight(CONFIG.START_AT_NIGHT);
@@ -308,6 +315,9 @@ export class MosqueEnvironment {
         }));
       }
       obj.material = materials.get(color);
+    });
+    model.traverse((obj) => {
+      if (obj instanceof THREE.Mesh) this.realisticMaterials.set(obj, obj.material);
     });
 
     // The geometry sits ~1 km from its origin, so centre it on (0, 0, 0)
@@ -625,20 +635,51 @@ export class MosqueEnvironment {
 
   // Selects an element by its node name (null clears the selection).
   select(key: string | null) {
-    for (const { mesh, material } of this.highlighted) mesh.material = material;
-    this.highlighted = [];
     const element = key ? this.bim?.elements[key] : undefined;
-    const obj = key ? this.mosque.getObjectByName(key) : undefined;
-    if (!key || !element || !obj || !this.bim) {
-      this.onSelect(null);
-      return;
+    this.selectedKey = element && key && this.mosque.getObjectByName(key) ? key : null;
+    this.applyMaterials();
+    this.onSelect(this.selectedKey && element && this.bim
+      ? { key: this.selectedKey, element, type: this.bim.types[element.type] }
+      : null);
+  }
+
+  // Realistic colours, or one colour per BIM category (elements the BIM data
+  // doesn't cover stay in their realistic colours).
+  setColorMode(mode: ColorMode) {
+    this.colorMode = mode;
+    this.applyMaterials();
+  }
+
+  private categoryMaterial(category: string) {
+    let material = this.categoryMaterials.get(category);
+    if (!material) {
+      material = new THREE.MeshStandardMaterial({
+        color: CATEGORY_COLORS[category] ?? UNCATEGORISED_COLOR,
+        roughness: 0.7,
+        metalness: 0,
+        side: THREE.DoubleSide,
+      });
+      this.categoryMaterials.set(category, material);
     }
-    obj.traverse((o) => {
-      if (!(o instanceof THREE.Mesh)) return;
-      this.highlighted.push({ mesh: o, material: o.material });
-      o.material = this.highlightMaterial;
-    });
-    this.onSelect({ key, element, type: this.bim.types[element.type] });
+    return material;
+  }
+
+  // Sets every mosque mesh's material from the colour mode and selection.
+  // Revit elements are the model's top-level children; parts hang below them.
+  private applyMaterials() {
+    for (const element of this.mosque.children) {
+      const record = this.bim?.elements[element.name];
+      const category = record && this.bim ? this.bim.types[record.type].category : null;
+      const selected = element.name === this.selectedKey;
+      element.traverse((o) => {
+        if (!(o instanceof THREE.Mesh)) return;
+        o.material = selected
+          ? this.highlightMaterial
+          : this.colorMode === 'category' && category
+            ? this.categoryMaterial(category)
+            : this.realisticMaterials.get(o) ?? o.material;
+      });
+    }
   }
 
   // ---------------------------------------------------------------- update --
@@ -672,6 +713,7 @@ export class MosqueEnvironment {
     this.renderer.domElement.removeEventListener('pointerdown', this.handlePointerDown);
     this.renderer.domElement.removeEventListener('pointerup', this.handlePointerUp);
     this.highlightMaterial.dispose();
+    this.categoryMaterials.forEach((m) => m.dispose());
     this.controls.dispose();
     const textures = new Set<THREE.Texture>();
     this.scene.traverse((obj) => {

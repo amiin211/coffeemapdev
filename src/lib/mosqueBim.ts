@@ -59,6 +59,26 @@ export interface BimSelection {
   type: BimType;
 }
 
+// Colour per BIM category for the "colour by category" view (Tableau 10
+// based, so neighbouring categories stay distinguishable).
+export const CATEGORY_COLORS: Record<string, string> = {
+  Walls: '#4e79a7',
+  'Wall Sweeps': '#a0cbe8',
+  Windows: '#76b7b2',
+  Doors: '#f28e2b',
+  Roofs: '#e15759',
+  Domes: '#b07aa1',
+  Floors: '#a7a39c',
+  Stairs: '#9c755f',
+  Railings: '#ff9da7',
+  'Site Structures': '#edc948',
+  Lighting: '#d4a6c8',
+  Landscape: '#59a14f',
+};
+export const UNCATEGORISED_COLOR = '#bab0ac';
+
+export type ColorMode = 'realistic' | 'category';
+
 export const UNIT_LABEL = { m2: 'm²', m: 'm', nr: 'nr' } as const;
 
 export const formatSAR = ([lo, hi]: [number, number]) => `SAR ${lo.toLocaleString()} – ${hi.toLocaleString()}`;
