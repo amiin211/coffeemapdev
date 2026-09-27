@@ -6,6 +6,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 // HDRLoader is three's current name for RGBELoader (deprecated alias since r180).
 import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js';
+import { BIM_URL, BimData, BimSelection } from '@/lib/mosqueBim';
 
 const DATA = '/data/3d';
 
@@ -166,6 +167,20 @@ export class MosqueEnvironment {
   private resizeObserver: ResizeObserver;
   private lastTime = performance.now();
 
+  // BIM: click a mosque element to select it and read its properties.
+  bim: BimData | null = null;
+  onSelect: (selection: BimSelection | null) => void = () => {};
+  private raycaster = new THREE.Raycaster();
+  private highlighted: { mesh: THREE.Mesh; material: THREE.Material | THREE.Material[] }[] = [];
+  private highlightMaterial = new THREE.MeshStandardMaterial({
+    color: 0xffb300,
+    emissive: 0xff6f00,
+    emissiveIntensity: 0.45,
+    roughness: 0.5,
+    side: THREE.DoubleSide,
+  });
+  private pointerDown: { x: number; y: number } | null = null;
+
   constructor(container: HTMLElement) {
     this.container = container;
     this.scene.background = new THREE.Color(0x87ceeb);
@@ -208,6 +223,10 @@ export class MosqueEnvironment {
       renderer.setSize(container.clientWidth, container.clientHeight);
     });
     this.resizeObserver.observe(container);
+
+    // A click (not an orbit drag) picks an element.
+    renderer.domElement.addEventListener('pointerdown', this.handlePointerDown);
+    renderer.domElement.addEventListener('pointerup', this.handlePointerUp);
   }
 
   private aspect() {
@@ -221,7 +240,7 @@ export class MosqueEnvironment {
     const textures = new THREE.TextureLoader(manager);
 
     const vehicleTypes = Object.keys(VEHICLES);
-    const [mosque, tree, palm, hdri, grassTex, orthoTex, height, route, ...vehicles] = await Promise.all([
+    const [mosque, tree, palm, hdri, grassTex, orthoTex, height, route, bim, ...vehicles] = await Promise.all([
       gltf.loadAsync(`${DATA}/mosque.glb`),
       gltf.loadAsync(`${DATA}/tree.glb`),
       gltf.loadAsync(`${DATA}/palm.glb`),
@@ -230,9 +249,12 @@ export class MosqueEnvironment {
       textures.loadAsync(CONFIG.ORTHO),
       loadHeightData(CONFIG.HEIGHTMAP, CONFIG.HEIGHTMAP_ENCODING),
       fetch(CONFIG.SITE_ROUTE).then((r) => r.json() as Promise<{ points: [number, number][] }>),
+      // The viewer still works without BIM data.
+      fetch(BIM_URL).then((r) => (r.ok ? (r.json() as Promise<BimData>) : null)).catch(() => null),
       ...vehicleTypes.map((type) => gltf.loadAsync(VEHICLES[type].url)),
     ]);
     this.vehicleModels = Object.fromEntries(vehicleTypes.map((type, i) => [type, vehicles[i].scene]));
+    this.bim = bim;
 
     hdri.mapping = THREE.EquirectangularReflectionMapping;
     this.hdri = hdri;
@@ -582,6 +604,43 @@ export class MosqueEnvironment {
     cam.updateProjectionMatrix();
   }
 
+  // ------------------------------------------------------------------- BIM --
+  private handlePointerDown = (e: PointerEvent) => {
+    this.pointerDown = { x: e.clientX, y: e.clientY };
+  };
+
+  private handlePointerUp = (e: PointerEvent) => {
+    const down = this.pointerDown;
+    this.pointerDown = null;
+    if (!down || !this.bim || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 5) return;
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    const ndc = new THREE.Vector2(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
+    this.raycaster.setFromCamera(ndc, this.camera);
+    const hit = this.raycaster.intersectObject(this.mosque, true)[0];
+    // Revit elements are the model's top-level children; parts hang below them.
+    let obj: THREE.Object3D | null = hit?.object ?? null;
+    while (obj && obj.parent !== this.mosque) obj = obj.parent;
+    this.select(obj?.name ?? null);
+  };
+
+  // Selects an element by its node name (null clears the selection).
+  select(key: string | null) {
+    for (const { mesh, material } of this.highlighted) mesh.material = material;
+    this.highlighted = [];
+    const element = key ? this.bim?.elements[key] : undefined;
+    const obj = key ? this.mosque.getObjectByName(key) : undefined;
+    if (!key || !element || !obj || !this.bim) {
+      this.onSelect(null);
+      return;
+    }
+    obj.traverse((o) => {
+      if (!(o instanceof THREE.Mesh)) return;
+      this.highlighted.push({ mesh: o, material: o.material });
+      o.material = this.highlightMaterial;
+    });
+    this.onSelect({ key, element, type: this.bim.types[element.type] });
+  }
+
   // ---------------------------------------------------------------- update --
   start() {
     this.lastTime = performance.now();
@@ -610,6 +669,9 @@ export class MosqueEnvironment {
   dispose() {
     this.renderer.setAnimationLoop(null);
     this.resizeObserver.disconnect();
+    this.renderer.domElement.removeEventListener('pointerdown', this.handlePointerDown);
+    this.renderer.domElement.removeEventListener('pointerup', this.handlePointerUp);
+    this.highlightMaterial.dispose();
     this.controls.dispose();
     const textures = new Set<THREE.Texture>();
     this.scene.traverse((obj) => {
