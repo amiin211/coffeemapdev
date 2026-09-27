@@ -137,6 +137,16 @@ ported from the standalone `~/environment` Vite project) with assets in `public/
 - Day (HDRI sky) / night (dark sky, pole and flood point lights) and grass / terrain toggles;
   it opens in terrain mode at night (`START_IN_TERRAIN` / `START_AT_NIGHT` in `CONFIG`).
 
+- BIM: click any of the 674 Revit elements for its properties, or download the schedule as CSV.
+  The model opens coloured by BIM category (with a legend); a button switches to realistic colours.
+  The GLB only kept Revit names (family, type, element ID), so `public/data/3d/bim.json` is an
+  **illustrative** Saudi-market dataset: SBC / SASO references, construction, U-values,
+  quantities measured from the geometry, indicative SAR costs, levels, zones, Hijri dates:
+
+  ```bash
+  node scripts/build-bim-data.mjs
+  ```
+
 The local `3d/` folder stays git-ignored because of its multi-GB source rasters.
 
 ## License

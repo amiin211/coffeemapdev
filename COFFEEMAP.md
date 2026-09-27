@@ -121,7 +121,9 @@ A fully client-side urban heat island and tree canopy equity analysis for Riyadh
 
 An interactive 3D environment of a mosque site in Aseer, Saudi Arabia. The mosque model is colored per mesh; the ground switches between grass and a 0.5 m DTM draped with the site orthophoto. Trees, palms, site traffic and parked cars fill the scene, and it switches between a daytime HDRI sky and night lighting (pole lights and floodlights). It opens in terrain mode at night.
 
-*Three.js · glTF · WebGL · DTM · GDAL · Next.js · TypeScript*
+Every one of the 674 Revit-derived elements is clickable: it highlights and opens a BIM properties panel (English / Arabic names, IFC class, UniFormat code, level and zone, construction, Saudi Building Code and SASO references, U-values, quantities measured from the geometry, indicative SAR costs, Gregorian / Hijri install dates, warranty and maintenance). The model opens coloured by BIM category (walls, windows, doors, roofs, domes, lighting, site structures and more, with a legend), and a button switches back to realistic colours. The full schedule downloads as CSV. The BIM data is illustrative, generated for the Saudi market by `scripts/build-bim-data.mjs`, because the model itself only kept Revit names.
+
+*Three.js · BIM · Revit · glTF · WebGL · DTM · GDAL · Next.js · TypeScript*
 
 ### Planned projects
 
@@ -191,7 +193,7 @@ Short articles listed on the home page (`src/data/insights.ts`):
 .
 ├── public/
 │   ├── data/                 # Prebuilt datasets and static assets per project
-│   │   ├── 3d/               # Mosque GLB, DTM heightmap, orthophoto, models, HDRI
+│   │   ├── 3d/               # Mosque GLB, BIM data, DTM heightmap, orthophoto, models, HDRI
 │   │   ├── crop/             # Crop fields GeoJSON and index time series
 │   │   ├── flood-risk/       # OSM rivers snapshot for Blue Nile Flood Risk
 │   │   ├── urban-heat/       # OSM trees and parks snapshots for Riyadh Urban Heat
@@ -202,7 +204,7 @@ Short articles listed on the home page (`src/data/insights.ts`):
 │   ├── app/                  # Next.js routes (home, about, expertise, projects/*)
 │   ├── components/           # Shared layout, cards, and per-dashboard maps / charts / panels
 │   ├── data/                 # Site content: projects, capabilities, insights, tech stack
-│   ├── lib/                  # Client-side engines (geoRaster.ts shared raster tools, floodRisk.ts, urbanHeat.ts, mosqueEnvironment.ts)
+│   ├── lib/                  # Client-side engines (geoRaster.ts shared raster tools, floodRisk.ts, urbanHeat.ts, mosqueEnvironment.ts, mosqueBim.ts)
 │   ├── theme/                # MUI theme, fonts and dashboard color palettes
 │   └── utils/                # Data helpers per dashboard and category filters
 ├── README.md
@@ -220,6 +222,7 @@ The local `3d/` folder (the standalone Vite viewer and its multi‑GB source ras
 | `node scripts/build-acled-data.mjs <xlsx>` | Builds `acled_data.json` from an ACLED Sudan export, joined to COD boundaries by pcode |
 | `node scripts/build-threew-data.mjs <csv>` | Builds `threew_data.json` from an OCHA 3W response monitoring CSV |
 | `python scripts/build-crop-data.py [AOI.geojson]` | Detects centre pivots and builds crop fields and NDVI / EVI time series from Sentinel‑2 |
+| `node scripts/build-bim-data.mjs` | Builds the illustrative Saudi-market BIM dataset (`public/data/3d/bim.json`) for the 3D Mosque Viewer |
 | `python3 scripts/build-dtm16.py <dtm.tif> <out.png>` | Encodes the Aseer DTM as a 16‑bit (R·256 + G) heightmap PNG for the 3D viewer |
 
 ---
