@@ -3,6 +3,10 @@
 import { Box, Container, Typography, Grid } from '@mui/material';
 import CapabilityCard from '@/components/CapabilityCard';
 import { capabilities } from '@/data/capabilities';
+import { projects } from '@/data/projects';
+
+// Only areas with at least one project get a card (each links to its projects).
+const shownCapabilities = capabilities.filter((cap) => projects.some((p) => p.category === cap.category));
 
 const Capabilities = () => {
   return (
@@ -42,8 +46,8 @@ const Capabilities = () => {
         </Box>
 
         <Grid container spacing={3}>
-          {capabilities.map((capability) => (
-            <Grid item xs={12} sm={6} md={3} key={capability.id}>
+          {shownCapabilities.map((capability) => (
+            <Grid item xs={12} sm={6} md={12 / shownCapabilities.length} key={capability.id}>
               <CapabilityCard capability={capability} />
             </Grid>
           ))}

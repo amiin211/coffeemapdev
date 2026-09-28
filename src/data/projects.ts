@@ -3,9 +3,10 @@ export interface Project {
   title: string;
   description: string;
   category: string;
+  categoryLabel?: string; // card tag, when more specific than the category's name
   tags: string[];
   image: string;
-  externalUrl?: string;
+  externalUrl: string; // project page, or an absolute URL for an external demo
 }
 
 export const projects: Project[] = [
@@ -22,7 +23,7 @@ export const projects: Project[] = [
     id: '3w-humanitarian-mapping',
     title: '3W Humanitarian Mapping',
     description: 'Who What Where dashboard tracking Sudan humanitarian activities, active partners, and coverage gaps using real OCHA 3W response monitoring data.',
-    category: 'enterprise-gis',
+    category: 'web-mapping',
     tags: ['Next.js', 'TypeScript', 'MapLibre GL JS', 'Chart.js', 'Material UI', 'Node.js', 'GeoJSON', 'OCHA 3W Data'],
     image: '/images/3w.png',
     externalUrl: '/projects/3w-humanitarian-mapping',
@@ -41,6 +42,7 @@ export const projects: Project[] = [
     title: 'GeoAI Crop Monitoring',
     description: 'Sentinel-2 crop monitoring for irrigated farms in Al Jouf, Saudi Arabia — auto-detected centre pivots, NDVI/EVI time series, crop classification and anomaly alerts.',
     category: 'geoai',
+    categoryLabel: 'GeoAI - Agriculture',
     tags: ['Python', 'OpenCV', 'Rasterio', 'NumPy', 'STAC API', 'Planetary Computer', 'Sentinel-2', 'Next.js', 'TypeScript', 'MapLibre GL JS', 'Chart.js'],
     image: '/images/crop.png',
     externalUrl: '/projects/geoai-crop-monitoring',
@@ -59,6 +61,7 @@ export const projects: Project[] = [
     title: 'Blue Nile Flood Risk',
     description: 'Client-side GeoAI flood risk mapping for Sennar and Gezira, Sudan — Sentinel-1 SAR flood detection, DEM slope, rainfall and river distance combined in an adjustable risk model, all computed in the browser.',
     category: 'geoai',
+    categoryLabel: 'GeoAI - Hydrology',
     tags: ['Sentinel-1 SAR', 'MapLibre GL JS', 'Planetary Computer', 'Sentinel Hub', 'Open-Meteo', 'Overpass API', 'Next.js', 'TypeScript'],
     image: '/images/flood-risk.png',
     externalUrl: '/projects/blue-nile-flood-risk',
@@ -68,6 +71,7 @@ export const projects: Project[] = [
     title: 'Riyadh Urban Heat & Tree Canopy Equity',
     description: 'Client-side GeoAI for Riyadh — Landsat surface temperature hotspots, Sentinel-2 NDVI and tree canopy, OSM trees and parks, a TensorFlow.js heat-risk model and canopy-equity priority zones for planting, all computed in the browser.',
     category: 'geoai',
+    categoryLabel: 'GeoAI - Environment',
     tags: ['Landsat 8/9', 'Sentinel-2', 'TensorFlow.js', 'MapLibre GL JS', 'Planetary Computer', 'ESA WorldCover', 'NASA POWER', 'Overpass API', 'Next.js', 'TypeScript'],
     image: '/images/urban-heat.png',
     externalUrl: '/projects/riyadh-urban-heat',
@@ -80,37 +84,5 @@ export const projects: Project[] = [
     tags: ['Three.js', 'BIM', 'Revit', 'glTF', 'WebGL', 'DTM', 'GDAL', 'Next.js', 'TypeScript'],
     image: '/images/3d.png',
     externalUrl: '/projects/3d-mosque-viewer',
-  },
-  {
-    id: 'infrastructure-conflict-webgis',
-    title: 'Infrastructure Conflict Detection WebGIS',
-    description: 'Web-based platform for detecting and visualizing infrastructure conflicts in urban development projects.',
-    category: 'web-mapping',
-    tags: ['Mapbox', 'Three.js', 'PostGIS', 'React'],
-    image: '/images/project-3.jpg',
-  },
-  {
-    id: 'satellite-drought-monitoring',
-    title: 'Satellite Drought Monitoring',
-    description: 'NDVI and vegetation index analysis using Google Earth Engine for agricultural early warning systems.',
-    category: 'geoai',
-    tags: ['Google Earth Engine', 'Python', 'D3.js'],
-    image: '/images/project-4.jpg',
-  },
-  {
-    id: '3d-bim-infrastructure-viewer',
-    title: '3D BIM Infrastructure Viewer',
-    description: 'Web-based 3D viewer integrating Revit models with geospatial context for infrastructure management.',
-    category: 'gis-bim',
-    tags: ['Cesium', 'Revit', 'Three.js', 'Blender'],
-    image: '/images/project-5.jpg',
-  },
-  {
-    id: 'arcgis-online-dashboard',
-    title: 'ArcGIS Online Infrastructure Dashboard',
-    description: 'Enterprise dashboard for monitoring and managing civil infrastructure assets across multiple regions.',
-    category: 'enterprise-gis',
-    tags: ['ArcGIS Online', 'ArcGIS Dashboards', 'PostGIS'],
-    image: '/images/project-6.jpg',
   },
 ];

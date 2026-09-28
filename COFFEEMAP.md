@@ -38,6 +38,8 @@ The site is built by **Amin Adnan Gasim**, a Sudanese geospatial engineer based 
 | `/projects/blue-nile-flood-risk` | Blue Nile Flood Risk |
 | `/projects/riyadh-urban-heat` | Riyadh Urban Heat & Tree Canopy Equity |
 | `/projects/3d-mosque-viewer` | 3D Mosque Viewer |
+| `/projects/serverless-geoai-architecture` | Serverless GeoAI Architecture |
+| `/insights/[slug]` | Insight articles |
 
 The navigation bar links to Home, About, Expertise (`/#capabilities`) and Contact (`/#contact`).
 
@@ -67,7 +69,7 @@ An interactive humanitarian dashboard of the 2024 rainy-season floods and the ch
 
 *Next.js · TypeScript · MapLibre GL JS · Chart.js · Material UI · GeoJSON · OCHA data*
 
-#### 3W Humanitarian Mapping — *Enterprise GIS*
+#### 3W Humanitarian Mapping — *Web Mapping*
 `/projects/3w-humanitarian-mapping`
 
 A *Who does What Where* dashboard of Sudan's humanitarian response: activities, active partners and coverage gaps from OCHA 3W response monitoring data. Selecting a state fades the others and shows its admin‑2 (locality) boundaries.
@@ -125,25 +127,19 @@ Every one of the 674 Revit-derived elements is clickable: it highlights and open
 
 *Three.js · BIM · Revit · glTF · WebGL · DTM · GDAL · Next.js · TypeScript*
 
-### Planned projects
+#### Serverless GeoAI Architecture — *GeoAI*
+`/projects/serverless-geoai-architecture`
 
-Listed on the site as upcoming work (no demo yet):
-
-| Project | Category | Summary |
-|---|---|---|
-| Infrastructure Conflict Detection WebGIS | Web Mapping | Detecting and visualizing infrastructure conflicts in urban development projects (Mapbox, Three.js, PostGIS, React) |
-| Satellite Drought Monitoring | GeoAI | NDVI and vegetation index analysis in Google Earth Engine for agricultural early warning |
-| 3D BIM Infrastructure Viewer | BIM & Infrastructure | Revit models in geospatial context for infrastructure management (Cesium, Three.js, Blender) |
-| ArcGIS Online Infrastructure Dashboard | Enterprise GIS | Enterprise monitoring of civil infrastructure assets across regions |
+An interactive diagram of how the GeoAI dashboards run with no VPS, database or Python at runtime: compute in the browser, or precompute once and stream imagery.
 
 ### Insights
 
-Short articles listed on the home page (`src/data/insights.ts`):
+Articles listed on the home page (`src/data/insights.ts`), written in Markdown in `content/articles/` and rendered to static pages at `/insights/<slug>`:
 
-- Integrating BIM into Web GIS
-- Satellite NDVI Monitoring with Earth Engine
-- Building Scalable WebGIS Platforms
-- PostGIS Spatial Indexing Strategies
+- Serverless GeoAI: The Architecture Behind CoffeeMap.dev
+- Flood Risk Mapping on the Blue Nile, Entirely in the Browser
+- Where Riyadh Needs Trees Most
+- Crop Monitoring for Al Jouf Without a Server
 
 ---
 
@@ -153,7 +149,7 @@ Short articles listed on the home page (`src/data/insights.ts`):
 |---|---|---|
 | OCHA humanitarian data (floods, cholera, 3W) | Sudan Flood Dashboard, 3W Mapping | Prebuilt JSON in `public/data/` |
 | ACLED Sudan political violence export | Sudan Conflicts | Prebuilt `public/data/acled_data.json` |
-| Sudan COD administrative boundaries (admin 0–2) | Sudan dashboards | `public/data/sdn_admin*.geojson` |
+| Sudan COD administrative boundaries (admin 1–2) | Sudan dashboards | `public/data/sdn_admin*.geojson` |
 | Sentinel‑2 L2A (ESA Copernicus) via Microsoft Planetary Computer | GeoAI Crop Monitoring | Prebuilt field data + live index tiles |
 | Sentinel‑1 RTC via Microsoft Planetary Computer | Blue Nile Flood Risk | Live, keyless mosaic tiles |
 | Sentinel Hub / Copernicus Data Space Process API | Blue Nile Flood Risk (optional) | Live, user‑supplied token |
@@ -173,15 +169,13 @@ Short articles listed on the home page (`src/data/insights.ts`):
 
 **UI:** Material UI (MUI) 5 with Emotion; Roboto typography; per‑dashboard color themes (UN blue, agricultural green, water blue)
 
-**Mapping & 3D:** MapLibre GL JS through `react-map-gl` for every map, Three.js for 3D; label glyphs self-hosted in `public/fonts/`
+**Mapping & 3D:** MapLibre GL JS through `react-map-gl` for every map, Three.js for 3D; label glyphs self-hosted in `public/fonts/`, and the MapLibre web worker copied into `public/maplibre/` before dev and build (`scripts/copy-maplibre-worker.mjs`)
 
 **Charts:** Chart.js through `react-chartjs-2`
 
 **Client-side ML:** TensorFlow.js (core + WebGL / CPU backends)
 
 **Data tooling (offline):** Node.js scripts, Python with GDAL, Rasterio, NumPy and OpenCV
-
-**Testing / screenshots:** Playwright (dev dependency)
 
 **Wider expertise showcased:** ArcGIS / ArcGIS Online, QGIS, PostGIS, Google Earth Engine, Cesium, Mapbox, D3.js, Power BI, Revit, Blender, Civil 3D, AutoCAD Map 3D, Pix4D
 
@@ -235,6 +229,7 @@ npm run dev        # development server on http://localhost:3000
 npm run build      # production build
 npm run start      # serve the production build
 npm run typecheck  # TypeScript check
+npm run lint       # ESLint
 ```
 
 Optional environment variable:

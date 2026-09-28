@@ -19,15 +19,11 @@ interface ProjectCardProps {
 }
 
 const ProjectCard = ({ project }: ProjectCardProps) => {
-  const isExternal = project.externalUrl?.startsWith('http');
-
-  // The whole card is the link (when there is one); the "View Demo" button
-  // below is just a visual cue inside it, since links can't be nested.
-  const linkProps = project.externalUrl
-    ? isExternal
-      ? { component: 'a' as const, href: project.externalUrl, target: '_blank', rel: 'noopener noreferrer' }
-      : { component: Link, href: project.externalUrl }
-    : {};
+  // The whole card is the link; the "View Demo" button below is just a
+  // visual cue inside it, since links can't be nested.
+  const linkProps = project.externalUrl.startsWith('http')
+    ? { component: 'a' as const, href: project.externalUrl, target: '_blank', rel: 'noopener noreferrer' }
+    : { component: Link, href: project.externalUrl };
 
   return (
     <Card
@@ -38,12 +34,10 @@ const ProjectCard = ({ project }: ProjectCardProps) => {
         flexDirection: 'column',
         textDecoration: 'none',
         color: 'inherit',
-        ...(project.externalUrl && {
-          cursor: 'pointer',
-          transition: 'transform 0.2s, box-shadow 0.2s',
-          '&:hover': { transform: 'translateY(-4px)', boxShadow: 6 },
-          '&:hover .view-demo': { backgroundColor: 'rgba(74, 55, 40, 0.08)', borderColor: 'primary.dark' },
-        }),
+        cursor: 'pointer',
+        transition: 'transform 0.2s, box-shadow 0.2s',
+        '&:hover': { transform: 'translateY(-4px)', boxShadow: 6 },
+        '&:hover .view-demo': { backgroundColor: 'rgba(74, 55, 40, 0.08)', borderColor: 'primary.dark' },
       }}
     >
       <Box
@@ -67,12 +61,9 @@ const ProjectCard = ({ project }: ProjectCardProps) => {
             objectFit: 'cover',
             opacity: 0.8,
           }}
-          onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
-            e.currentTarget.style.display = 'none';
-          }}
         />
         <Chip
-          label={getCategoryLabel(project.category)}
+          label={project.categoryLabel ?? getCategoryLabel(project.category)}
           size="small"
           sx={{
             position: 'absolute',

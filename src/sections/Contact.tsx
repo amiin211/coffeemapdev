@@ -6,9 +6,16 @@ import EmailIcon from '@mui/icons-material/Email';
 import XIcon from '@mui/icons-material/X';
 import GitHubIcon from '@mui/icons-material/GitHub';
 
+const CONTACT_EMAIL = 'info@coffeemap.dev';
+
 const Contact = () => {
-  const handleSubmit = (e: React.FormEvent) => {
+  // No backend: hand the message to the visitor's email app, pre-addressed.
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const form = new FormData(e.currentTarget);
+    const subject = `CoffeeMap.dev enquiry from ${form.get('name')}`;
+    const body = `${form.get('message')}\n\n— ${form.get('name')} (${form.get('email')})`;
+    window.location.href = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
 
   return (
@@ -62,6 +69,7 @@ const Contact = () => {
             >
               <Stack spacing={3}>
                 <TextField
+                  name="name"
                   label="Name"
                   fullWidth
                   required
@@ -72,6 +80,7 @@ const Contact = () => {
                   }}
                 />
                 <TextField
+                  name="email"
                   label="Email"
                   type="email"
                   fullWidth
@@ -83,6 +92,7 @@ const Contact = () => {
                   }}
                 />
                 <TextField
+                  name="message"
                   label="Message"
                   multiline
                   rows={4}
@@ -269,7 +279,7 @@ const Contact = () => {
 
                 <Box
                   component="a"
-                  href="mailto:info@coffeemap.dev"
+                  href={`mailto:${CONTACT_EMAIL}`}
                   sx={{
                     display: 'flex',
                     alignItems: 'center',
@@ -306,7 +316,7 @@ const Contact = () => {
                       Email
                     </Typography>
                     <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                      info@coffeemap.dev
+                      {CONTACT_EMAIL}
                     </Typography>
                   </Box>
                 </Box>
