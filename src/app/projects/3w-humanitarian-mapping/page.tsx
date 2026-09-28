@@ -448,8 +448,6 @@ function DashboardContent() {
   );
 }
 
-export const revalidate = 0;
-
 export default function ThreeWHumanitarianMapping() {
   return <DashboardContent />;
 }

@@ -9,12 +9,11 @@ build
 .vercel
 *.log
 .DS_Store
-.D_Store
 *:Zone.Identifier
 enviro-*.json
 *.key
 credentials.json
-.tmp-screenshot.mjs
+.tmp-*.mjs
 
 # build-crop-data.py per-scene cache
 .cache/

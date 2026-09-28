@@ -1,6 +1,5 @@
 import { Metadata } from 'next';
 import { roboto } from '@/theme/fonts';
-import ClientWrapper from './ClientWrapper';
 
 export const metadata: Metadata = {
   title: 'CoffeeMap.dev - Geospatial Engineering Platform',

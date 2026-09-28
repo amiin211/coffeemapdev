@@ -1,5 +1,6 @@
 'use client';
 
+import { use } from 'react';
 import { Box, Container, Typography, Grid } from '@mui/material';
 import MapIcon from '@mui/icons-material/Map';
 import PublicIcon from '@mui/icons-material/Public';
@@ -22,15 +23,16 @@ const iconMap: Record<string, React.ReactNode> = {
 };
 
 interface ExpertisePageProps {
-  params: {
+  params: Promise<{
     category: string;
-  };
+  }>;
 }
 
 export default function ExpertisePage({ params }: ExpertisePageProps) {
-  const capability = capabilities.find((cap) => cap.category === params.category);
-  const filteredProjects = projects.filter((proj) => proj.category === params.category);
-  const filteredInsights = insights.filter((insight) => insight.category === params.category);
+  const { category } = use(params);
+  const capability = capabilities.find((cap) => cap.category === category);
+  const filteredProjects = projects.filter((proj) => proj.category === category);
+  const filteredInsights = insights.filter((insight) => insight.category === category);
 
   if (!capability) {
     return (

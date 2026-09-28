@@ -63,7 +63,7 @@ Projects and insights are grouped into four categories (`src/data/capabilities.t
 #### Sudan Flood Dashboard — *Web Mapping*
 `/projects/sudan-flood-dashboard`
 
-An interactive humanitarian dashboard tracking the flood crisis, displacement and disease outbreaks (cholera) across Sudan's states, using OCHA data. State-level map, summary statistics, charts and a detail panel per state.
+An interactive humanitarian dashboard of the 2024 rainy-season floods and the cholera outbreak that followed, from OCHA's Flash Update No. 04 (5 September 2024) and Federal Ministry of Health figures. A MapLibre choropleth of people affected (or cholera cases) by state with proportional cholera circles and hover figures; clicking a state (on the map, in the ranked state list or in a chart) zooms to it, outlines its localities, highlights the flood-affected ones and switches the stat tiles, details panel and housing chart to that state.
 
 *Next.js · TypeScript · MapLibre GL JS · Chart.js · Material UI · GeoJSON · OCHA data*
 
@@ -169,11 +169,11 @@ Short articles listed on the home page (`src/data/insights.ts`):
 
 ## Technology
 
-**Framework:** Next.js 14 (App Router), React 18, TypeScript
+**Framework:** Next.js 16 (App Router), React 19, TypeScript
 
 **UI:** Material UI (MUI) 5 with Emotion; Roboto typography; per‑dashboard color themes (UN blue, agricultural green, water blue)
 
-**Mapping & 3D:** MapLibre GL JS through `react-map-gl`, Three.js (Leaflet is installed but not currently used)
+**Mapping & 3D:** MapLibre GL JS through `react-map-gl` for every map, Three.js for 3D; label glyphs self-hosted in `public/fonts/`
 
 **Charts:** Chart.js through `react-chartjs-2`
 

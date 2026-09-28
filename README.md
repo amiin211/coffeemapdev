@@ -15,13 +15,14 @@ CoffeeMap.dev is a small space for experimenting with geospatial engineering. It
 
 ## Tech Stack
 
-- Next.js 14
-- React 18
+- Next.js 16
+- React 19
 - TypeScript
 - Material UI (MUI)
-- Leaflet, Mapbox, Cesium
-- Google Earth Engine
-- PostGIS
+- MapLibre GL JS (via react-map-gl) for all web maps
+- Three.js (3D Mosque Viewer)
+- Chart.js, TensorFlow.js
+- Microsoft Planetary Computer, Overpass, Open-Meteo, NASA POWER (client-side data)
 
 ## Getting Started
 
