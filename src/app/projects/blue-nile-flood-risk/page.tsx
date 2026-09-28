@@ -77,7 +77,7 @@ interface Data {
   rainDays: number;
 }
 
-type Stats = ReturnType<typeof summarize> & { coverage: number | null };
+type Stats = ReturnType<typeof summarize> & { coverage: number | null; rainDays: number };
 
 function StatTile({ label, value, color }: { label: string; value: string; color: string }) {
   return (
@@ -116,7 +116,9 @@ export default function BlueNileFloodRisk() {
   const data = useRef<Data | null>(null);
   const gridRef = useRef<Grid | null>(null);
   const params = useRef({ thresholds, weights });
-  params.current = { thresholds, weights };
+  useEffect(() => {
+    params.current = { thresholds, weights };
+  });
 
   // Flood mask (from the current thresholds) -> risk (from the current
   // weights) -> map images and stats.
@@ -132,7 +134,7 @@ export default function BlueNileFloodRisk() {
       flood: d.mask ? renderFlood(g, d.mask) : undefined,
       rainfall: d.rain ? renderRainfall(g, d.rain) : undefined,
     });
-    setStats({ ...summarize(g, d.risk, d.mask, d.rain), coverage: d.sarPost?.coverage ?? null });
+    setStats({ ...summarize(g, d.risk, d.mask, d.rain), coverage: d.sarPost?.coverage ?? null, rainDays: d.rainDays });
   }, []);
 
   const setRiverNetwork = useCallback((collection: RiverCollection) => {
@@ -263,7 +265,7 @@ export default function BlueNileFloodRisk() {
     <Box sx={{ display: 'flex', gap: 1.25, flexWrap: 'wrap' }}>
       <StatTile label="SAR flood extent" value={stats ? km2(stats.floodKm2) : '–'} color={water.DEFAULT} />
       <StatTile label="High + very high risk" value={stats ? km2(stats.highKm2) : '–'} color="#c62828" />
-      <StatTile label={`Mean rainfall (${data.current?.rainDays ?? event.rainDays} d)`} value={stats?.meanRain != null ? `${stats.meanRain.toFixed(0)} mm` : '–'} color="#1565c0" />
+      <StatTile label={`Mean rainfall (${stats?.rainDays ?? event.rainDays} d)`} value={stats?.meanRain != null ? `${stats.meanRain.toFixed(0)} mm` : '–'} color="#1565c0" />
       <StatTile label="SAR coverage (flood date)" value={stats?.coverage != null ? `${Math.round(stats.coverage * 100)}%` : '–'} color="#455a64" />
     </Box>
   );

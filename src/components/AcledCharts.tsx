@@ -1,7 +1,7 @@
 'use client';
 
 import { Box, Typography } from '@mui/material';
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip } from 'chart.js';
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip, type ChartEvent, type TooltipItem } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
 import { MonthlyPoint, NamedTotals, formatMonth } from '@/utils/acled';
 import { unBlue } from '@/theme/unColors';
@@ -20,8 +20,9 @@ const axisStyle = {
   border: { display: false },
 };
 
-function setPointer(event: any, elements: unknown[], clickable: boolean) {
-  if (event.native?.target) event.native.target.style.cursor = clickable && elements.length ? 'pointer' : 'default';
+function setPointer(event: ChartEvent, elements: unknown[], clickable: boolean) {
+  const target = event.native?.target as HTMLElement | null | undefined;
+  if (target) target.style.cursor = clickable && elements.length ? 'pointer' : 'default';
 }
 
 interface MonthlyChartProps {
@@ -61,7 +62,7 @@ export function MonthlyChart({ series, measure, monthRange, partialNote, onMonth
       legend: { display: false },
       tooltip: {
         callbacks: {
-          afterLabel: (item: any) => (item.dataIndex === last && partialNote ? partialNote : ''),
+          afterLabel: (item: TooltipItem<'bar'>) => (item.dataIndex === last && partialNote ? partialNote : ''),
         },
       },
     },
@@ -72,7 +73,7 @@ export function MonthlyChart({ series, measure, monthRange, partialNote, onMonth
     onClick: (_: unknown, elements: { index: number }[]) => {
       if (elements.length && onMonthClick) onMonthClick(elements[0].index);
     },
-    onHover: (event: any, elements: unknown[]) => setPointer(event, elements, !!onMonthClick),
+    onHover: (event: ChartEvent, elements: unknown[]) => setPointer(event, elements, !!onMonthClick),
   };
 
   return (
@@ -121,7 +122,7 @@ export function TopBarChart({ title, entries, measure, selected, onSelect, heigh
       legend: { display: false },
       tooltip: {
         callbacks: {
-          afterLabel: (item: any) =>
+          afterLabel: (item: TooltipItem<'bar'>) =>
             `${other === 'events' ? 'Events' : 'Fatalities'}: ${entries[item.dataIndex][other].toLocaleString()}`,
         },
       },
@@ -135,7 +136,7 @@ export function TopBarChart({ title, entries, measure, selected, onSelect, heigh
       const name = entries[elements[0].index].name;
       onSelect(name === selected ? null : name);
     },
-    onHover: (event: any, elements: unknown[]) => setPointer(event, elements, !!onSelect),
+    onHover: (event: ChartEvent, elements: unknown[]) => setPointer(event, elements, !!onSelect),
   };
 
   return (

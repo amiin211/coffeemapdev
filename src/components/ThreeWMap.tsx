@@ -2,12 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Typography } from '@mui/material';
-import MapGL, { Source, Layer, Marker, Popup, MapLayerMouseEvent } from 'react-map-gl/maplibre';
+import MapGL, { Source, Layer, Marker, Popup, MapLayerMouseEvent, MapRef } from 'react-map-gl/maplibre';
 import type { StyleSpecification, ExpressionSpecification } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { StateAggregate, LocalityAggregate } from '@/utils/threew';
 import { ThreeWMetric, metricLabels } from '@/utils/threewMetric';
 import { unBlue, unChoroplethRamp } from '@/theme/unColors';
+import { Admin1Collection, Admin2Collection, collectionBounds } from '@/utils/geo';
 
 interface ThreeWMapProps {
   stateAggregates: StateAggregate[];
@@ -54,28 +55,12 @@ function getRadius(count: number, max: number): number {
   return Math.max(6, Math.min(28, (count / max) * 28));
 }
 
-// Computed once the real boundary data loads, rather than a hand-tuned
-// center/zoom, so the whole country fits regardless of the map's aspect ratio.
-function computeBounds(geojson: any): [[number, number], [number, number]] {
-  let west = Infinity;
-  let south = Infinity;
-  let east = -Infinity;
-  let north = -Infinity;
-
-  const visit = (coords: any): void => {
-    if (typeof coords[0] === 'number') {
-      const [lng, lat] = coords;
-      if (lng < west) west = lng;
-      if (lng > east) east = lng;
-      if (lat < south) south = lat;
-      if (lat > north) north = lat;
-    } else {
-      coords.forEach(visit);
-    }
-  };
-
-  geojson.features.forEach((f: any) => visit(f.geometry.coordinates));
-  return [[west, south], [east, north]];
+// Properties of the enriched state features shown in the hover popup.
+interface HoveredState {
+  adm1_name: string;
+  activities: number;
+  orgs: number;
+  clusters: number;
 }
 
 const floatingPanelSx = {
@@ -92,11 +77,11 @@ export default function ThreeWMap({
   metric,
   onStateSelect,
 }: ThreeWMapProps) {
-  const [admin1, setAdmin1] = useState<any>(null);
-  const [admin2, setAdmin2] = useState<any>(null);
-  const [hovered, setHovered] = useState<{ lng: number; lat: number; properties: any } | null>(null);
+  const [admin1, setAdmin1] = useState<Admin1Collection | null>(null);
+  const [admin2, setAdmin2] = useState<Admin2Collection | null>(null);
+  const [hovered, setHovered] = useState<{ lng: number; lat: number; properties: HoveredState } | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
-  const mapRef = useRef<any>(null);
+  const mapRef = useRef<MapRef>(null);
 
   useEffect(() => {
     fetch('/data/sdn_admin1.geojson')
@@ -107,9 +92,11 @@ export default function ThreeWMap({
       .then(setAdmin2);
   }, []);
 
+  // Fit to the real boundary data once it loads, rather than a hand-tuned
+  // center/zoom, so the whole country fits regardless of the map's aspect ratio.
   useEffect(() => {
     if (mapLoaded && admin1 && mapRef.current) {
-      mapRef.current.fitBounds(computeBounds(admin1), { padding: 30, duration: 0 });
+      mapRef.current.fitBounds(collectionBounds(admin1), { padding: 30, duration: 0 });
     }
   }, [mapLoaded, admin1]);
 
@@ -121,7 +108,7 @@ export default function ThreeWMap({
     if (!admin1) return null;
     return {
       ...admin1,
-      features: admin1.features.map((feature: any) => {
+      features: admin1.features.map((feature) => {
         const agg = byState.get(feature.properties.adm1_name);
         const value = agg?.[metric] ?? 0;
         return {
@@ -147,7 +134,7 @@ export default function ThreeWMap({
     if (!admin2 || !selectedState) return null;
     return {
       ...admin2,
-      features: admin2.features.filter((f: any) => f.properties.adm1_name === selectedState),
+      features: admin2.features.filter((f) => f.properties.adm1_name === selectedState),
     };
   }, [admin2, selectedState]);
 
@@ -173,7 +160,7 @@ export default function ThreeWMap({
   const handleMouseMove = (event: MapLayerMouseEvent) => {
     const feature = event.features?.[0];
     if (feature) {
-      setHovered({ lng: event.lngLat.lng, lat: event.lngLat.lat, properties: feature.properties });
+      setHovered({ lng: event.lngLat.lng, lat: event.lngLat.lat, properties: feature.properties as HoveredState });
     } else {
       setHovered(null);
     }

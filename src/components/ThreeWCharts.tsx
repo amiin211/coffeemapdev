@@ -13,6 +13,7 @@ import {
   Title,
   Tooltip,
   Legend,
+  type ChartEvent,
 } from 'chart.js';
 import { Bar, Pie, Doughnut, Line } from 'react-chartjs-2';
 import { OrgAggregate, ClusterAggregate, OrgTypeAggregate, MonthlyTrendPoint } from '@/utils/threew';
@@ -112,8 +113,9 @@ export function TopOrgsBarChart({ orgs, selectedOrg, onOrgClick, height = 240, b
       const acronym = orgs[elements[0].index].org.acronym;
       onOrgClick(acronym === selectedOrg ? '' : acronym);
     },
-    onHover: (event: any, elements: unknown[]) => {
-      if (event.native?.target) event.native.target.style.cursor = onOrgClick && elements.length ? 'pointer' : 'default';
+    onHover: (event: ChartEvent, elements: unknown[]) => {
+      const target = event.native?.target as HTMLElement | null | undefined;
+      if (target) target.style.cursor = onOrgClick && elements.length ? 'pointer' : 'default';
     },
   };
 
@@ -162,8 +164,9 @@ export function ClusterBreakdownPieChart({ clusters, selectedCluster, onClusterC
       const cluster = clusters[elements[0].index].cluster;
       onClusterClick(cluster === selectedCluster ? '' : cluster);
     },
-    onHover: (event: any, elements: unknown[]) => {
-      if (event.native?.target) event.native.target.style.cursor = onClusterClick && elements.length ? 'pointer' : 'default';
+    onHover: (event: ChartEvent, elements: unknown[]) => {
+      const target = event.native?.target as HTMLElement | null | undefined;
+      if (target) target.style.cursor = onClusterClick && elements.length ? 'pointer' : 'default';
     },
   };
 
@@ -220,8 +223,9 @@ export function OrgTypeDoughnutChart({ orgTypes, selectedOrgType, onOrgTypeClick
       const type = orgTypes[elements[0].index].type;
       onOrgTypeClick(type === selectedOrgType ? '' : type);
     },
-    onHover: (event: any, elements: unknown[]) => {
-      if (event.native?.target) event.native.target.style.cursor = onOrgTypeClick && elements.length ? 'pointer' : 'default';
+    onHover: (event: ChartEvent, elements: unknown[]) => {
+      const target = event.native?.target as HTMLElement | null | undefined;
+      if (target) target.style.cursor = onOrgTypeClick && elements.length ? 'pointer' : 'default';
     },
   };
 
@@ -285,8 +289,9 @@ export function MonthlyTrendChart({ trend, selectedMonth, onMonthClick, height =
       const month = trend[elements[0].index].month;
       onMonthClick(month === selectedMonth ? '' : month);
     },
-    onHover: (event: any, elements: unknown[]) => {
-      if (event.native?.target) event.native.target.style.cursor = onMonthClick && elements.length ? 'pointer' : 'default';
+    onHover: (event: ChartEvent, elements: unknown[]) => {
+      const target = event.native?.target as HTMLElement | null | undefined;
+      if (target) target.style.cursor = onMonthClick && elements.length ? 'pointer' : 'default';
     },
   };
 

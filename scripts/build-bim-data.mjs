@@ -434,6 +434,7 @@ const data = {
     },
     totalCostSAR: totalCost,
   },
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- strip build-only fields
   types: Object.fromEntries(TYPES.map(({ match, tag, ...t }) => [t.id, t])),
   summary,
   elements,

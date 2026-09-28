@@ -11,6 +11,10 @@ import {
   Filler,
   Tooltip,
   Legend,
+  type ChartDataset,
+  type ChartEvent,
+  type ChartOptions,
+  type ChartType,
   type Plugin,
 } from 'chart.js';
 import { Bar, Line } from 'react-chartjs-2';
@@ -30,10 +34,21 @@ const axisStyle = {
   border: { display: false },
 };
 
+interface DateMarkerOptions {
+  index?: number;
+}
+
+declare module 'chart.js' {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- must match Chart.js's generic signature
+  interface PluginOptionsByType<TType extends ChartType> {
+    dateMarker?: DateMarkerOptions;
+  }
+}
+
 // Vertical rule at the selected date.
-const dateMarker: Plugin<'line'> = {
+const dateMarker: Plugin<'line', DateMarkerOptions> = {
   id: 'dateMarker',
-  afterDatasetsDraw(chart, _args, opts: any) {
+  afterDatasetsDraw(chart, _args, opts) {
     if (opts?.index == null) return;
     const x = chart.scales.x.getPixelForValue(opts.index);
     const { top, bottom } = chart.chartArea;
@@ -64,7 +79,7 @@ interface TimeSeriesChartProps {
 
 export function TimeSeriesChart({ dates, values, reference, label, index, anomalies, dateIndex, onDateClick, height }: TimeSeriesChartProps) {
   const anomalySet = new Set(anomalies);
-  const datasets: any[] = [
+  const datasets: ChartDataset<'line', (number | null)[]>[] = [
     {
       label,
       data: values,
@@ -96,7 +111,7 @@ export function TimeSeriesChart({ dates, values, reference, label, index, anomal
     });
   }
 
-  const options: any = {
+  const options: ChartOptions<'line'> = {
     responsive: true,
     maintainAspectRatio: false,
     animation: { duration: 300 },
@@ -105,9 +120,9 @@ export function TimeSeriesChart({ dates, values, reference, label, index, anomal
       legend: { display: !!reference, position: 'top', align: 'end', labels: { boxWidth: 14, boxHeight: 2, font: { size: 10 } } },
       tooltip: {
         callbacks: {
-          title: (items: any[]) => formatDate(dates[items[0].dataIndex]),
-          label: (item: any) => (item.raw == null ? `${item.dataset.label}: no clear view` : `${item.dataset.label}: ${item.raw.toFixed(2)}`),
-          afterBody: (items: any[]) => (anomalySet.has(items[0].dataIndex) ? 'Anomaly: below seasonal mean − 2σ' : ''),
+          title: (items) => formatDate(dates[items[0].dataIndex]),
+          label: (item) => (item.raw == null ? `${item.dataset.label}: no clear view` : `${item.dataset.label}: ${(item.raw as number).toFixed(2)}`),
+          afterBody: (items) => (anomalySet.has(items[0].dataIndex) ? 'Anomaly: below seasonal mean − 2σ' : ''),
         },
       },
       dateMarker: { index: dateIndex },
@@ -164,7 +179,7 @@ export function CropSummaryChart({ entries, selected, onSelect, height }: CropSu
       },
     ],
   };
-  const options: any = {
+  const options: ChartOptions<'bar'> = {
     responsive: true,
     maintainAspectRatio: false,
     indexAxis: 'y',
@@ -173,8 +188,8 @@ export function CropSummaryChart({ entries, selected, onSelect, height }: CropSu
       legend: { display: false },
       tooltip: {
         callbacks: {
-          label: (item: any) => `${Math.round(item.raw).toLocaleString()} ha`,
-          afterLabel: (item: any) => `${entries[item.dataIndex].fields} fields`,
+          label: (item) => `${Math.round(item.raw as number).toLocaleString()} ha`,
+          afterLabel: (item) => `${entries[item.dataIndex].fields} fields`,
         },
       },
     },
@@ -184,8 +199,9 @@ export function CropSummaryChart({ entries, selected, onSelect, height }: CropSu
       const crop = entries[elements[0].index].crop;
       onSelect(crop === selected ? null : crop);
     },
-    onHover: (event: any, elements: unknown[]) => {
-      if (event.native?.target) event.native.target.style.cursor = elements.length ? 'pointer' : 'default';
+    onHover: (event: ChartEvent, elements: unknown[]) => {
+      const target = event.native?.target as HTMLElement | null | undefined;
+      if (target) target.style.cursor = elements.length ? 'pointer' : 'default';
     },
   };
   return (

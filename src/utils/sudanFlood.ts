@@ -113,24 +113,3 @@ export const DESTROYED_COLOR = '#b71c1c';
 export const DAMAGED_COLOR = '#ef8a3c';
 
 export const fmt = (v: number | null | undefined) => (v == null ? '–' : v.toLocaleString());
-
-// Bounding box of a GeoJSON geometry (for zooming to a state).
-export function geometryBounds(geometry: GeoJSON.Geometry): [[number, number], [number, number]] {
-  let w = Infinity, s = Infinity, e = -Infinity, n = -Infinity;
-  const visit = (c: unknown): void => {
-    if (Array.isArray(c) && typeof c[0] === 'number') {
-      const [x, y] = c as number[];
-      w = Math.min(w, x); e = Math.max(e, x); s = Math.min(s, y); n = Math.max(n, y);
-    } else if (Array.isArray(c)) c.forEach(visit);
-  };
-  if ('coordinates' in geometry) visit(geometry.coordinates);
-  return [[w, s], [e, n]];
-}
-
-export function collectionBounds(fc: GeoJSON.FeatureCollection) {
-  const boxes = fc.features.filter((f) => f.geometry).map((f) => geometryBounds(f.geometry));
-  return [
-    [Math.min(...boxes.map((b) => b[0][0])), Math.min(...boxes.map((b) => b[0][1]))],
-    [Math.max(...boxes.map((b) => b[1][0])), Math.max(...boxes.map((b) => b[1][1]))],
-  ] as [[number, number], [number, number]];
-}

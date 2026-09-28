@@ -114,7 +114,9 @@ export default function RiyadhUrbanHeat() {
   const data = useRef<Data | null>(null);
   const gridRef = useRef<Grid | null>(null);
   const weightsRef = useRef(weights);
-  weightsRef.current = weights;
+  useEffect(() => {
+    weightsRef.current = weights;
+  });
 
   // Weights -> k-means hotspots, TF.js risk, equity and priority -> images, stats.
   const recompute = useCallback(async () => {

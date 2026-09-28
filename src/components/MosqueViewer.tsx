@@ -170,7 +170,7 @@ export default function MosqueViewer() {
   const [night, setNight] = useState(CONFIG.START_AT_NIGHT);
   const [terrain, setTerrain] = useState(CONFIG.START_IN_TERRAIN);
   const [selection, setSelection] = useState<BimSelection | null>(null);
-  const [hasBim, setHasBim] = useState(false);
+  const [bim, setBim] = useState<BimData | null>(null);
   const [colorMode, setColorMode] = useState<ColorMode>(CONFIG.START_COLOR_MODE);
 
   useEffect(() => {
@@ -186,7 +186,7 @@ export default function MosqueViewer() {
         if (disposed) return;
         worldRef.current = world;
         world.start();
-        setHasBim(!!world.bim);
+        setBim(world.bim ?? null);
         setStatus('ready');
       })
       .catch((err) => {
@@ -214,8 +214,8 @@ export default function MosqueViewer() {
     worldRef.current?.setColorMode(next);
     setColorMode(next);
   };
+  const clearSelection = () => worldRef.current?.select(null);
   const downloadSchedule = () => {
-    const bim = worldRef.current?.bim;
     if (!bim) return;
     const url = URL.createObjectURL(new Blob([scheduleCsv(bim)], { type: 'text/csv;charset=utf-8' }));
     const a = document.createElement('a');
@@ -224,8 +224,6 @@ export default function MosqueViewer() {
     a.click();
     URL.revokeObjectURL(url);
   };
-
-  const bim = worldRef.current?.bim;
 
   return (
     <Box ref={containerRef} sx={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden', bgcolor: '#87ceeb' }}>
@@ -250,7 +248,7 @@ export default function MosqueViewer() {
           >
             {terrain ? 'Grass mode' : 'Terrain mode'}
           </Button>
-          {hasBim && (
+          {bim && (
             <Button
               variant="contained"
               disableElevation
@@ -261,7 +259,7 @@ export default function MosqueViewer() {
               {colorMode === 'category' ? 'Realistic colours' : 'Category colours'}
             </Button>
           )}
-          {hasBim && (
+          {bim && (
             <Button variant="contained" disableElevation startIcon={<DownloadIcon />} onClick={downloadSchedule} sx={buttonSx}>
               BIM schedule (CSV)
             </Button>
@@ -269,7 +267,7 @@ export default function MosqueViewer() {
         </Stack>
       )}
 
-      {status === 'ready' && hasBim && bim && (
+      {status === 'ready' && bim && (
         <Stack spacing={1} sx={{ position: 'absolute', left: 16, bottom: 16, alignItems: 'flex-start' }}>
           {colorMode === 'category' && <CategoryLegend bim={bim} />}
           {!selection && (
@@ -284,7 +282,7 @@ export default function MosqueViewer() {
       )}
 
       {selection && bim && (
-        <PropertiesPanel selection={selection} disclaimer={bim.meta.disclaimer} onClose={() => worldRef.current?.select(null)} />
+        <PropertiesPanel selection={selection} disclaimer={bim.meta.disclaimer} onClose={clearSelection} />
       )}
 
       {status !== 'ready' && (

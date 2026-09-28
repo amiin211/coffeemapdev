@@ -23,7 +23,7 @@ export interface FieldProperties {
 
 export interface FieldsCollection {
   type: 'FeatureCollection';
-  features: { type: 'Feature'; geometry: any; properties: FieldProperties }[];
+  features: { type: 'Feature'; geometry: GeoJSON.Polygon; properties: FieldProperties }[];
 }
 
 export interface FieldSeries {
@@ -34,7 +34,7 @@ export interface FieldSeries {
 
 export interface CropTimeSeries {
   generated: string;
-  aoi: any;
+  aoi: GeoJSON.Polygon;
   dates: string[];
   items: string[]; // Sentinel-2 L2A item id per date
   overall: { ndvi: (number | null)[]; evi: (number | null)[] };

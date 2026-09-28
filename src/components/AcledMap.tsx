@@ -2,17 +2,18 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Typography } from '@mui/material';
-import MapGL, { Source, Layer, Popup, NavigationControl, FullscreenControl, MapLayerMouseEvent } from 'react-map-gl/maplibre';
+import MapGL, { Source, Layer, Popup, NavigationControl, FullscreenControl, MapLayerMouseEvent, MapRef } from 'react-map-gl/maplibre';
 import type { ExpressionSpecification } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { LocalityTotals, NamedTotals } from '@/utils/acled';
+import { Admin1Collection, Admin2Collection, featuresBounds } from '@/utils/geo';
 import { unBlue, unChoroplethRamp } from '@/theme/unColors';
 
 export type AcledMetric = 'events' | 'fatalities';
 
 interface AcledMapProps {
-  admin1: any;
-  admin2: any;
+  admin1: Admin1Collection;
+  admin2: Admin2Collection;
   stateTotals: Map<string, NamedTotals>;
   localityTotals: LocalityTotals[];
   periodLabel: string;
@@ -35,25 +36,6 @@ const [RAMP_NONE, RAMP_LOW, RAMP_MEDIUM, RAMP_HIGH] = unChoroplethRamp;
 
 const metricLabel = (metric: AcledMetric) => (metric === 'events' ? 'Events' : 'Fatalities');
 
-function computeBounds(features: any[]): [[number, number], [number, number]] {
-  let west = Infinity;
-  let south = Infinity;
-  let east = -Infinity;
-  let north = -Infinity;
-  const visit = (coords: any): void => {
-    if (typeof coords[0] === 'number') {
-      west = Math.min(west, coords[0]);
-      east = Math.max(east, coords[0]);
-      south = Math.min(south, coords[1]);
-      north = Math.max(north, coords[1]);
-    } else {
-      coords.forEach(visit);
-    }
-  };
-  features.forEach((f) => visit(f.geometry.coordinates));
-  return [[west, south], [east, north]];
-}
-
 const fillColor: ExpressionSpecification = [
   'case',
   ['<=', ['get', 'ratio'], 0], RAMP_NONE,
@@ -68,6 +50,7 @@ const floatingPanelSx = {
 };
 
 interface PopupInfo {
+  view: string; // the selection/period/metric it was opened under
   lng: number;
   lat: number;
   name: string;
@@ -90,29 +73,32 @@ export default function AcledMap({
 }: AcledMapProps) {
   const [popup, setPopup] = useState<PopupInfo | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
-  const mapRef = useRef<any>(null);
+  const mapRef = useRef<MapRef>(null);
 
   // Fly to the selected locality, else the selected state, else all of Sudan.
   useEffect(() => {
     if (!mapLoaded || !mapRef.current) return;
-    const target =
+    const target: GeoJSON.Feature[] =
       (selectedLocality &&
-        admin2.features.filter((f: any) => f.properties.adm2_name === selectedLocality && f.properties.adm1_name === selectedState)) ||
-      (selectedState && admin1.features.filter((f: any) => f.properties.adm1_name === selectedState)) ||
+        admin2.features.filter((f) => f.properties.adm2_name === selectedLocality && f.properties.adm1_name === selectedState)) ||
+      (selectedState && admin1.features.filter((f) => f.properties.adm1_name === selectedState)) ||
       admin1.features;
-    if (target.length) mapRef.current.fitBounds(computeBounds(target), { padding: 40, duration: 800 });
+    if (target.length) mapRef.current.fitBounds(featuresBounds(target), { padding: 40, duration: 800 });
   }, [mapLoaded, admin1, admin2, selectedState, selectedLocality]);
 
-  useEffect(() => setPopup(null), [selectedState, selectedLocality, periodLabel, metric]);
+  // A popup belongs to the view it was opened in; changing the selection,
+  // period or metric hides it.
+  const view = [selectedState, selectedLocality, periodLabel, metric].join('|');
+  const visiblePopup = popup?.view === view ? popup : null;
 
   const stateMax = useMemo(() => Math.max(0, ...Array.from(stateTotals.values()).map((s) => s[metric])), [stateTotals, metric]);
   const localityByPcode = useMemo(() => new Map(localityTotals.map((l) => [l.locality.pcode, l])), [localityTotals]);
   const localityMax = useMemo(() => Math.max(0, ...localityTotals.map((l) => l[metric])), [localityTotals, metric]);
 
-  const statesGeoJson = useMemo(
+  const statesGeoJson = useMemo<GeoJSON.FeatureCollection>(
     () => ({
       ...admin1,
-      features: admin1.features.map((f: any) => {
+      features: admin1.features.map((f) => {
         const value = stateTotals.get(f.properties.adm1_name)?.[metric] ?? 0;
         return {
           ...f,
@@ -130,13 +116,13 @@ export default function AcledMap({
 
   // Locality choropleth only inside the selected state — nationwide, 189
   // localities are too dense to read as fills; the circles cover that view.
-  const localitiesGeoJson = useMemo(() => {
+  const localitiesGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
     if (!selectedState) return { type: 'FeatureCollection', features: [] };
     return {
       ...admin2,
       features: admin2.features
-        .filter((f: any) => f.properties.adm1_name === selectedState)
-        .map((f: any) => {
+        .filter((f) => f.properties.adm1_name === selectedState)
+        .map((f) => {
           const value = localityByPcode.get(f.properties.adm2_pcode)?.[metric] ?? 0;
           return {
             ...f,
@@ -151,7 +137,7 @@ export default function AcledMap({
     };
   }, [admin2, selectedState, selectedLocality, localityByPcode, metric, localityMax]);
 
-  const circlesGeoJson = useMemo(
+  const circlesGeoJson = useMemo<GeoJSON.FeatureCollection<GeoJSON.Point>>(
     () => ({
       type: 'FeatureCollection',
       features: localityTotals
@@ -176,10 +162,10 @@ export default function AcledMap({
   const handleClick = (event: MapLayerMouseEvent) => {
     const feature = event.features?.[0];
     if (!feature) return;
-    const p = feature.properties as any;
+    const p = feature.properties;
     if (feature.layer.id === 'locality-circles') {
-      const [lng, lat] = (feature.geometry as any).coordinates;
-      setPopup({ lng, lat, name: p.name, state: p.state, events: p.events, fatalities: p.fatalities });
+      const [lng, lat] = (feature.geometry as GeoJSON.Point).coordinates;
+      setPopup({ view, lng, lat, name: p.name, state: p.state, events: p.events, fatalities: p.fatalities });
     } else if (feature.layer.id === 'localities-fill') {
       onLocalitySelect(p.adm2_name === selectedLocality ? null : p.adm2_name);
     } else if (feature.layer.id === 'states-fill' && p.adm1_name !== selectedState) {
@@ -188,7 +174,8 @@ export default function AcledMap({
   };
 
   const setCursor = (event: MapLayerMouseEvent) => {
-    mapRef.current.getCanvas().style.cursor = event.features?.length ? 'pointer' : '';
+    const canvas = mapRef.current?.getCanvas();
+    if (canvas) canvas.style.cursor = event.features?.length ? 'pointer' : '';
   };
 
   const legendMax = selectedState ? localityMax : stateMax;
@@ -230,7 +217,7 @@ export default function AcledMap({
           />
         </Source>
 
-        <Source id="localities" type="geojson" data={localitiesGeoJson as any}>
+        <Source id="localities" type="geojson" data={localitiesGeoJson}>
           <Layer id="localities-fill" type="fill" paint={{ 'fill-color': fillColor, 'fill-opacity': 0.85 }} />
         </Source>
 
@@ -255,7 +242,7 @@ export default function AcledMap({
             }}
           />
         </Source>
-        <Source id="localities-lines" type="geojson" data={localitiesGeoJson as any}>
+        <Source id="localities-lines" type="geojson" data={localitiesGeoJson}>
           <Layer
             id="localities-selected"
             type="line"
@@ -264,7 +251,7 @@ export default function AcledMap({
           />
         </Source>
 
-        <Source id="locality-points" type="geojson" data={circlesGeoJson as any}>
+        <Source id="locality-points" type="geojson" data={circlesGeoJson}>
           <Layer
             id="locality-circles"
             type="circle"
@@ -278,17 +265,17 @@ export default function AcledMap({
           />
         </Source>
 
-        {popup && (
-          <Popup longitude={popup.lng} latitude={popup.lat} onClose={() => setPopup(null)} offset={10} maxWidth="260px">
+        {visiblePopup && (
+          <Popup longitude={visiblePopup.lng} latitude={visiblePopup.lat} onClose={() => setPopup(null)} offset={10} maxWidth="260px">
             <Box sx={{ fontFamily: 'Roboto, sans-serif', fontSize: '0.75rem', lineHeight: 1.5 }}>
               <Typography variant="subtitle2" sx={{ fontWeight: 700, lineHeight: 1.3 }}>
-                {popup.name}
+                {visiblePopup.name}
               </Typography>
               <Box sx={{ color: 'text.secondary', mb: 0.5 }}>
-                {popup.state} · {periodLabel}
+                {visiblePopup.state} · {periodLabel}
               </Box>
-              <div><strong>Events:</strong> {popup.events.toLocaleString()}</div>
-              <div><strong>Fatalities:</strong> {popup.fatalities.toLocaleString()}</div>
+              <div><strong>Events:</strong> {visiblePopup.events.toLocaleString()}</div>
+              <div><strong>Fatalities:</strong> {visiblePopup.fatalities.toLocaleString()}</div>
             </Box>
           </Popup>
         )}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Box, Button, FormControl, InputLabel, MenuItem, Select, Slider, Typography } from '@mui/material';
 import { AcledFilters as Filters, formatMonth } from '@/utils/acled';
 import { unBlue } from '@/theme/unColors';
@@ -23,7 +23,13 @@ export default function AcledFilters({ filters, months, stateOptions, localityOp
   // The slider tracks its thumbs locally and only commits on release, so
   // dragging doesn't re-aggregate the whole dashboard on every pixel.
   const [range, setRange] = useState(filters.monthRange);
-  useEffect(() => setRange(filters.monthRange), [filters.monthRange]);
+  // Follow outside changes (reset, chart clicks) by adjusting state during
+  // render, not in an effect: https://react.dev/learn/you-might-not-need-an-effect
+  const [committed, setCommitted] = useState(filters.monthRange);
+  if (committed !== filters.monthRange) {
+    setCommitted(filters.monthRange);
+    setRange(filters.monthRange);
+  }
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>

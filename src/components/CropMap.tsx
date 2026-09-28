@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Typography } from '@mui/material';
-import MapGL, { Source, Layer, Popup, NavigationControl, FullscreenControl, MapLayerMouseEvent } from 'react-map-gl/maplibre';
+import MapGL, { Source, Layer, Popup, NavigationControl, FullscreenControl, MapLayerMouseEvent, MapRef } from 'react-map-gl/maplibre';
 import type { ExpressionSpecification } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import {
@@ -34,8 +34,8 @@ interface CropMapProps {
 const BASEMAP = '/data/basemap_style.json';
 const ANOMALY_COLOR = '#D50000';
 
-function bounds(geometry: any): [[number, number], [number, number]] {
-  const ring: [number, number][] = geometry.coordinates[0];
+function bounds(geometry: GeoJSON.Polygon): [[number, number], [number, number]] {
+  const ring = geometry.coordinates[0];
   const xs = ring.map((c) => c[0]);
   const ys = ring.map((c) => c[1]);
   return [[Math.min(...xs), Math.min(...ys)], [Math.max(...xs), Math.max(...ys)]];
@@ -64,7 +64,7 @@ export default function CropMap({
   const [popup, setPopup] = useState<{ lng: number; lat: number; id: string } | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [minZoom, setMinZoom] = useState(8);
-  const mapRef = useRef<any>(null);
+  const mapRef = useRef<MapRef>(null);
 
   const item = series.items[dateIndex];
   const date = series.dates[dateIndex];
@@ -84,7 +84,7 @@ export default function CropMap({
     if (target) mapRef.current.fitBounds(bounds(target), { padding: selectedField ? 120 : 30, duration: 800, maxZoom: 14 });
   }, [mapLoaded, selectedField, fields, series.aoi]);
 
-  const fieldsGeoJson = useMemo(
+  const fieldsGeoJson = useMemo<GeoJSON.FeatureCollection>(
     () => ({
       ...fields,
       features: fields.features.map((f) => {
@@ -107,7 +107,7 @@ export default function CropMap({
   );
 
   // Everything outside the AOI is shaded so the scene's surroundings recede.
-  const outsideMask = useMemo(
+  const outsideMask = useMemo<GeoJSON.Feature<GeoJSON.Polygon>>(
     () => ({
       type: 'Feature',
       geometry: {
@@ -158,7 +158,8 @@ export default function CropMap({
         interactiveLayerIds={['fields-fill']}
         onClick={handleClick}
         onMouseMove={(e) => {
-          mapRef.current.getCanvas().style.cursor = e.features?.length ? 'pointer' : '';
+          const canvas = mapRef.current?.getCanvas();
+          if (canvas) canvas.style.cursor = e.features?.length ? 'pointer' : '';
         }}
         onLoad={() => setMapLoaded(true)}
         style={{ width: '100%', height: '100%' }}
@@ -179,11 +180,11 @@ export default function CropMap({
           />
         </Source>
 
-        <Source id="outside-aoi" type="geojson" data={outsideMask as any}>
+        <Source id="outside-aoi" type="geojson" data={outsideMask}>
           <Layer id="outside-aoi" type="fill" paint={{ 'fill-color': '#0b1a2e', 'fill-opacity': 0.45 }} />
         </Source>
 
-        <Source id="fields" type="geojson" data={fieldsGeoJson as any}>
+        <Source id="fields" type="geojson" data={fieldsGeoJson}>
           {/* Transparent over the index raster; the field's own mean shows when the raster is off. */}
           <Layer
             id="fields-fill"

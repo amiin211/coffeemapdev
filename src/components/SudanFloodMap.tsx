@@ -12,10 +12,9 @@ import {
   FLOOD_CLASSES,
   FloodData,
   NO_DATA_COLOR,
-  collectionBounds,
   fmt,
-  geometryBounds,
 } from '@/utils/sudanFlood';
+import { collectionBounds, geometryBounds } from '@/utils/geo';
 
 export type MapMode = 'floods' | 'cholera' | 'both';
 

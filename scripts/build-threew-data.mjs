@@ -58,9 +58,6 @@ const records = dataRows.map((r) => ({
 const admin1 = JSON.parse(readFileSync(path.join(repoRoot, 'public/data/sdn_admin1.geojson'), 'utf8'));
 const admin2 = JSON.parse(readFileSync(path.join(repoRoot, 'public/data/sdn_admin2.geojson'), 'utf8'));
 
-const stateCentroids = new Map(
-  admin1.features.map((f) => [f.properties.adm1_name, { lat: f.properties.center_lat, lon: f.properties.center_lon }])
-);
 const localityCentroids = new Map(
   admin2.features.map((f) => [`${f.properties.adm1_name}::${f.properties.adm2_name}`, { lat: f.properties.center_lat, lon: f.properties.center_lon }])
 );

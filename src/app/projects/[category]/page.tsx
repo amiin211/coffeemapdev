@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Box, Container, Typography, Grid, Button, Chip } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -21,23 +21,12 @@ const categoryLabels: Record<string, string> = {
 
 function FilterContent() {
   const searchParams = useSearchParams();
-  const category = searchParams.get('category');
-  const tech = searchParams.get('tech');
-
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(category);
-  const [selectedTech, setSelectedTech] = useState<string | null>(tech);
-
-  useEffect(() => {
-    setSelectedCategory(category);
-  }, [category]);
-
-  useEffect(() => {
-    setSelectedTech(tech);
-  }, [tech]);
+  const selectedCategory = searchParams.get('category');
+  const selectedTech = searchParams.get('tech');
 
   const filteredProjects = projects.filter((p) => {
     if (selectedCategory && p.category !== selectedCategory) return false;
-    if (selectedTech && !p.tags.includes(selectedTech)) return true;
+    if (selectedTech && !p.tags.includes(selectedTech)) return false;
     return true;
   });
 

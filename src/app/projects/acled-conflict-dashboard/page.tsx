@@ -24,6 +24,7 @@ import DashboardHeader from '@/components/DashboardHeader';
 import AcledFilters from '@/components/AcledFilters';
 import type { AcledMetric } from '@/components/AcledMap';
 import { unBlue, unCategorical } from '@/theme/unColors';
+import type { Admin1Collection, Admin2Collection } from '@/utils/geo';
 import {
   AcledData,
   AcledFilters as Filters,
@@ -69,8 +70,8 @@ function StatTile({ label, value, color }: { label: string; value: number | stri
 
 function DashboardContent() {
   const [data, setData] = useState<AcledData | null>(null);
-  const [admin1, setAdmin1] = useState<any>(null);
-  const [admin2, setAdmin2] = useState<any>(null);
+  const [admin1, setAdmin1] = useState<Admin1Collection | null>(null);
+  const [admin2, setAdmin2] = useState<Admin2Collection | null>(null);
   const [filters, setFilters] = useState<Filters>({ monthRange: [0, 0], state: null, locality: null });
   const [metric, setMetric] = useState<AcledMetric>('events');
   const [sidebarOpen, setSidebarOpen] = useState(true);
