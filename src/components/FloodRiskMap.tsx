@@ -15,6 +15,7 @@ import {
   RiverCollection,
   gridCorners,
 } from '@/lib/floodRisk';
+import { MAPLIBRE_WORKER_URL } from '@/lib/maplibre';
 
 export interface LayerVisibility {
   hillshade: boolean;
@@ -83,6 +84,7 @@ export default function FloodRiskMap({ grid, images, rivers, visible, describeCe
   return (
     <Box sx={{ position: 'relative', width: '100%', height: '100%' }}>
       <MapGL
+        workerUrl={MAPLIBRE_WORKER_URL}
         initialViewState={{ bounds: [[AOI.minLon, AOI.minLat], [AOI.maxLon, AOI.maxLat]], fitBoundsOptions: { padding: 20 } }}
         mapStyle={BASEMAP}
         style={{ width: '100%', height: '100%' }}

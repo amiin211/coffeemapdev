@@ -7,6 +7,7 @@ import type { ExpressionSpecification } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { LocalityTotals, NamedTotals } from '@/utils/acled';
 import { Admin1Collection, Admin2Collection, featuresBounds } from '@/utils/geo';
+import { MAPLIBRE_WORKER_URL } from '@/lib/maplibre';
 import { unBlue, unChoroplethRamp } from '@/theme/unColors';
 
 export type AcledMetric = 'events' | 'fatalities';
@@ -190,6 +191,7 @@ export default function AcledMap({
     <Box sx={{ height: '100%', position: 'relative' }}>
       <MapGL
         ref={mapRef}
+        workerUrl={MAPLIBRE_WORKER_URL}
         initialViewState={{ longitude: 30, latitude: 15, zoom: 5 }}
         minZoom={3}
         maxZoom={10}

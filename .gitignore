@@ -15,6 +15,9 @@ enviro-*.json
 credentials.json
 .tmp-*.mjs
 
+# MapLibre worker, copied from node_modules before dev/build
+/public/maplibre/
+
 # build-crop-data.py per-scene cache
 .cache/
 

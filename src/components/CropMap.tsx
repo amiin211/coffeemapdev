@@ -18,6 +18,7 @@ import {
   anomalyAt,
   cropOn,
 } from '@/utils/crop';
+import { MAPLIBRE_WORKER_URL } from '@/lib/maplibre';
 
 interface CropMapProps {
   fields: FieldsCollection;
@@ -151,6 +152,7 @@ export default function CropMap({
     <Box sx={{ height: '100%', position: 'relative' }}>
       <MapGL
         ref={mapRef}
+        workerUrl={MAPLIBRE_WORKER_URL}
         initialViewState={{ longitude: 38.29, latitude: 29.93, zoom: 11 }}
         minZoom={minZoom}
         maxZoom={16}

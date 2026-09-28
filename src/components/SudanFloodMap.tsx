@@ -15,6 +15,7 @@ import {
   fmt,
 } from '@/utils/sudanFlood';
 import { collectionBounds, geometryBounds } from '@/utils/geo';
+import { MAPLIBRE_WORKER_URL } from '@/lib/maplibre';
 
 export type MapMode = 'floods' | 'cholera' | 'both';
 
@@ -192,6 +193,7 @@ export default function SudanFloodMap({ data, mode, selected, onSelect }: SudanF
     <Box sx={{ position: 'relative', width: '100%', height: '100%' }}>
       <MapGL
         ref={mapRef}
+        workerUrl={MAPLIBRE_WORKER_URL}
         initialViewState={{ bounds: sudanBounds, fitBoundsOptions: { padding: 24 } }}
         mapStyle={BASEMAP}
         style={{ width: '100%', height: '100%' }}

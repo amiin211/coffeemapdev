@@ -20,6 +20,7 @@ import {
   TreeCollection,
   gridCorners,
 } from '@/lib/urbanHeat';
+import { MAPLIBRE_WORKER_URL } from '@/lib/maplibre';
 
 export interface UrbanLayerVisibility {
   hillshade: boolean;
@@ -111,6 +112,7 @@ export default function UrbanHeatMap({ grid, images, trees, parks, visible, lstR
     <Box sx={{ position: 'relative', width: '100%', height: '100%' }}>
       <MapGL
         ref={mapRef}
+        workerUrl={MAPLIBRE_WORKER_URL}
         initialViewState={{ bounds: [[AOI.minLon, AOI.minLat], [AOI.maxLon, AOI.maxLat]], fitBoundsOptions: { padding: 20 } }}
         mapStyle={BASEMAP}
         style={{ width: '100%', height: '100%' }}

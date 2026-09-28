@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import { AppRouterCacheProvider } from '@mui/material-nextjs/v16-appRouter';
 import { roboto } from '@/theme/fonts';
 
 export const metadata: Metadata = {
@@ -14,7 +15,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={roboto.className}>
-        {children}
+        {/* Collects MUI/Emotion styles into <head> during SSR, so the server
+            HTML matches the client and pages hydrate cleanly. */}
+        <AppRouterCacheProvider>{children}</AppRouterCacheProvider>
       </body>
     </html>
   );

@@ -9,6 +9,7 @@ import { StateAggregate, LocalityAggregate } from '@/utils/threew';
 import { ThreeWMetric, metricLabels } from '@/utils/threewMetric';
 import { unBlue, unChoroplethRamp } from '@/theme/unColors';
 import { Admin1Collection, Admin2Collection, collectionBounds } from '@/utils/geo';
+import { MAPLIBRE_WORKER_URL } from '@/lib/maplibre';
 
 interface ThreeWMapProps {
   stateAggregates: StateAggregate[];
@@ -183,6 +184,7 @@ export default function ThreeWMap({
     <Box sx={{ height: '100%', position: 'relative' }}>
       <MapGL
         ref={mapRef}
+        workerUrl={MAPLIBRE_WORKER_URL}
         initialViewState={{ longitude: 28, latitude: 16, zoom: 5 }}
         minZoom={4}
         maxZoom={8}
