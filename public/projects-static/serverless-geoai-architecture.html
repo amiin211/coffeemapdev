@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Serverless GeoAI Architecture</title>
+<meta name="description" content="Interactive architecture of CoffeeMap.dev: satellite analysis with no VPS, no database and no Python at runtime.">
+<style>
+:root{--bg:#FBF7F2;--card:#FFFFFF;--ink:#2B1D14;--ink2:#5B4A3D;--muted:#8A796B;--line:#CDBFAF;--edge:#A99888;
+--a:#1F6FB2;--a-bg:#EAF2FB;--a-br:#A9C8E6;--b:#2E7D4F;--b-bg:#EAF5EE;--b-br:#A9D1B8;--c:#8A4FB0;--c-bg:#F4EDF9;--c-br:#CDB4E0;
+--bar:#F1E6D8;--dark:#2B1D14;--dark-ink:#FBF7F2;--dark-ink2:#E2D3C1;--code:#F4EEE6;--focus:#C77D2A}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#17120E;--card:#221A14;--ink:#F3EBE2;--ink2:#CDBFB0;--muted:#9C8C7D;--line:#4A3D32;--edge:#7A6A5C;
+--a:#6FAEE8;--a-bg:#152435;--a-br:#2F5578;--b:#6CC795;--b-bg:#13291C;--b-br:#2E5E43;--c:#C69BE6;--c-bg:#261A31;--c-br:#5A3F70;
+--bar:#2C2219;--dark:#F1E6D8;--dark-ink:#2B1D14;--dark-ink2:#5B4A3D;--code:#1C1611;--focus:#E3A15A}}
+:root[data-theme=dark]{--bg:#17120E;--card:#221A14;--ink:#F3EBE2;--ink2:#CDBFB0;--muted:#9C8C7D;--line:#4A3D32;--edge:#7A6A5C;
+--a:#6FAEE8;--a-bg:#152435;--a-br:#2F5578;--b:#6CC795;--b-bg:#13291C;--b-br:#2E5E43;--c:#C69BE6;--c-bg:#261A31;--c-br:#5A3F70;
+--bar:#2C2219;--dark:#F1E6D8;--dark-ink:#2B1D14;--dark-ink2:#5B4A3D;--code:#1C1611;--focus:#E3A15A}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 Inter,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+.wrap{max-width:1240px;margin:0 auto;padding:24px 16px 40px}
+h1{font-size:clamp(22px,3vw,30px);line-height:1.2;margin:0 0 6px}
+.sub{color:var(--muted);margin:0 0 18px}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px}
+.controls .sep{flex:1 1 auto}
+button.chip{font:inherit;font-size:14px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:7px 13px;border-radius:999px;cursor:pointer;display:inline-flex;gap:7px;align-items:center}
+button.chip:hover{border-color:var(--ink2)}
+button.chip[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+button.chip .dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+.dot.a{background:var(--a)}.dot.b{background:var(--b)}.dot.c{background:var(--c)}.dot.all{background:conic-gradient(var(--a) 0 33%,var(--b) 0 66%,var(--c) 0)}
+button:focus-visible,.node:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.layout{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:1100px){.layout{grid-template-columns:minmax(0,1fr) 340px}}
+.stage{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:10px;overflow-x:auto}
+#arch{display:block;width:100%;min-width:720px;height:auto;font-family:inherit}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 18px 20px;align-self:start}
+@media (min-width:1100px){.panel{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow:auto}}
+.panel .kick{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 4px}
+.panel h2{font-size:20px;line-height:1.25;margin:0 0 10px}
+.panel p{margin:0 0 10px;color:var(--ink2)}
+.panel pre{background:var(--code);border:1px solid var(--line);border-radius:10px;padding:10px 12px;overflow-x:auto;font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;margin:4px 0 12px;color:var(--ink)}
+.uses{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.uses span{font-size:12.5px;border:1px solid var(--line);border-radius:999px;padding:2px 9px;color:var(--ink2)}
+.nav{display:flex;gap:8px;margin-top:14px}
+.rule{margin:16px 2px 0;color:var(--ink2);font-style:italic}
+.legend{display:flex;flex-wrap:wrap;gap:14px;margin:10px 2px 0;font-size:13px;color:var(--muted)}
+.legend i{display:inline-block;width:22px;height:0;border-top:2px solid var(--edge);vertical-align:middle;margin-right:6px}
+.legend i.dash{border-top-style:dashed;border-color:var(--c)}
+/* svg */
+.row-t{font-size:11.5px;font-weight:700;letter-spacing:.12em;fill:var(--muted)}
+.n-t{font-size:14.5px;font-weight:700;fill:var(--ink)}
+.n-b{font-size:13px;fill:var(--ink2)}
+.lane-t{font-size:15px;font-weight:800;letter-spacing:.02em}
+.lane-s{font-size:12.5px;fill:var(--ink2)}
+.node{cursor:pointer;transition:opacity .25s}
+.node rect{stroke-width:1.4;transition:stroke-width .15s,filter .15s}
+.src rect{fill:var(--card);stroke:var(--line)}
+.lane-a>.lane-bg{fill:var(--a-bg);stroke:var(--a);stroke-width:1.8}.lane-a .lane-t{fill:var(--a)}
+.lane-b>.lane-bg{fill:var(--b-bg);stroke:var(--b);stroke-width:1.8}.lane-b .lane-t{fill:var(--b)}
+.lane-c>.lane-bg{fill:var(--c-bg);stroke:var(--c);stroke-width:1.8;stroke-dasharray:7 5}.lane-c .lane-t{fill:var(--c)}
+.lane .badge{fill:var(--c);stroke:none}.badge-t{font-size:11px;font-weight:800;letter-spacing:.08em;fill:var(--bg)}
+.step rect{fill:var(--card)}
+.step-a rect{stroke:var(--a-br)}.step-a .num{fill:var(--a)}
+.step-b rect{stroke:var(--b-br)}.step-b .num{fill:var(--b)}
+.step-c rect{stroke:var(--c-br);stroke-dasharray:5 4}.step-c .num{fill:var(--c)}
+.src .n-t{font-size:13.5px}
+.num-t{font-size:12px;font-weight:800;fill:#fff}
+.bar rect{fill:var(--bar);stroke:var(--line)}
+.bar.dark rect{fill:var(--dark);stroke:var(--dark)}.bar.dark .n-t{fill:var(--dark-ink)}.bar.dark .n-b{fill:var(--dark-ink2)}
+.node:hover rect,.node.sel rect{stroke-width:2.6}
+.src.sel rect,.bar.sel rect,.src:hover rect,.bar:hover rect{stroke:var(--focus)}
+.step.sel rect,.step:hover rect{stroke:var(--focus)}
+.edge{fill:none;stroke:var(--edge);stroke-width:1.6;transition:opacity .25s,stroke .25s}
+.ah{fill:var(--edge)}.ah-a{fill:var(--a)}.ah-b{fill:var(--b)}.ah-c{fill:var(--c)}
+.dim{opacity:.18}
+.edge.hot{stroke-width:2.6}
+.edge.hot.a{stroke:var(--a)}.edge.hot.b{stroke:var(--b)}.edge.hot.c{stroke:var(--c)}
+.flow .edge.hot{stroke-dasharray:7 7;animation:flow 1.1s linear infinite}
+@keyframes flow{to{stroke-dashoffset:-14}}
+@media (prefers-reduced-motion:reduce){.flow .edge.hot{animation:none}.node,.edge{transition:none}}
+.foot{margin-top:18px;font-size:13px;color:var(--muted)}
+.foot a{color:inherit}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <h1>Serverless GeoAI: the architecture</h1>
+  <p class="sub">Three CoffeeMap.dev projects · no VPS · no database · no Python at runtime</p>
+  <div class="controls" role="toolbar" aria-label="Filter by project">
+    <button class="chip" data-project="all" aria-pressed="true"><span class="dot all"></span>All routes</button><button class="chip" data-project="bluenile" aria-pressed="false"><span class="dot a"></span>Blue Nile Flood Risk</button><button class="chip" data-project="riyadh" aria-pressed="false"><span class="dot a"></span>Riyadh Urban Heat</button><button class="chip" data-project="aljouf" aria-pressed="false"><span class="dot b"></span>Al Jouf Crop Monitoring</button><button class="chip" data-project="next" aria-pressed="false"><span class="dot c"></span>Route C: trained models (next)</button>
+    <span class="sep"></span>
+    <button class="chip" id="flow" aria-pressed="false">Animate data flow</button>
+    <button class="chip" id="tour" aria-pressed="false">▶ Walk me through</button>
+  </div>
+  <div class="layout">
+    <div class="stage">
+<svg id="arch" viewBox="0 0 1000 848" xmlns="http://www.w3.org/2000/svg" role="group" aria-label="Serverless GeoAI architecture">
+<defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ah"/></marker><marker id="ar-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ah-a"/></marker><marker id="ar-b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ah-b"/></marker><marker id="ar-c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ah-c"/></marker></defs>
+<g class="lane lane-a node" id="n-laneA" data-id="laneA" tabindex="0" role="button" aria-label="Route A: A · LIVE IN THE BROWSER"><rect class="lane-bg" x="30" y="160" width="300" height="450" rx="16"/><text x="46" y="190" class="lane-t">A · LIVE IN THE BROWSER</text><text x="46" y="211" class="lane-s">Blue Nile · Riyadh Urban Heat</text></g>
+<g class="lane lane-b node" id="n-laneB" data-id="laneB" tabindex="0" role="button" aria-label="Route B: B · PRECOMPUTE ONCE"><rect class="lane-bg" x="350" y="160" width="300" height="450" rx="16"/><text x="366" y="190" class="lane-t">B · PRECOMPUTE ONCE</text><text x="366" y="211" class="lane-s">GeoAI Crop Monitoring, Al Jouf</text></g>
+<g class="lane lane-c node" id="n-laneC" data-id="laneC" tabindex="0" role="button" aria-label="Route C: C · TRAINED MODELS"><rect class="lane-bg" x="670" y="160" width="300" height="450" rx="16"/><text x="686" y="190" class="lane-t">C · TRAINED MODELS</text><text x="686" y="211" class="lane-s">Train offline, infer in browser</text><rect x="900" y="174" width="54" height="22" rx="11" class="badge"/><text x="927" y="189" class="badge-t" text-anchor="middle">NEXT</text></g>
+<g id="edges">
+<path id="e-pc-A" class="edge" d="M119 110 V128 H180 V158" marker-end="url(#ar)"/>
+<path id="e-sh-A" class="edge" d="M309 110 V128 H180 V158" marker-end="url(#ar)"/>
+<path id="e-ter-A" class="edge" d="M499 110 V128 H180 V158" marker-end="url(#ar)"/>
+<path id="e-wx-A" class="edge" d="M689 110 V128 H180 V158" marker-end="url(#ar)"/>
+<path id="e-osm-A" class="edge" d="M879 110 V128 H180 V158" marker-end="url(#ar)"/>
+<path id="e-pc-B" class="edge" d="M119 110 V136 H500 V158" marker-end="url(#ar)"/>
+<path id="e-pc-C" class="edge" d="M119 110 V144 H820 V158" marker-end="url(#ar)"/>
+<path id="e-a1-a2" class="edge" d="M180 303 V317" marker-end="url(#ar)"/>
+<path id="e-a2-a3" class="edge" d="M180 397 V411" marker-end="url(#ar)"/>
+<path id="e-a3-a4" class="edge" d="M180 491 V505" marker-end="url(#ar)"/>
+<path id="e-A-host" class="edge" d="M180 610 V648" marker-end="url(#ar)"/>
+<path id="e-b1-b2" class="edge" d="M500 303 V317" marker-end="url(#ar)"/>
+<path id="e-b2-b3" class="edge" d="M500 397 V411" marker-end="url(#ar)"/>
+<path id="e-b3-b4" class="edge" d="M500 491 V505" marker-end="url(#ar)"/>
+<path id="e-B-host" class="edge" d="M500 610 V648" marker-end="url(#ar)"/>
+<path id="e-c1-c2" class="edge" d="M820 303 V317" marker-end="url(#ar)"/>
+<path id="e-c2-c3" class="edge" d="M820 397 V411" marker-end="url(#ar)"/>
+<path id="e-c3-c4" class="edge" d="M820 491 V505" marker-end="url(#ar)"/>
+<path id="e-C-host" class="edge" d="M820 610 V648" marker-end="url(#ar)"/>
+<path id="e-host-browser" class="edge" d="M500 720 V750" marker-end="url(#ar)"/>
+</g>
+<text x="30" y="14" class="row-t">PUBLIC DATA</text>
+<g class="node src" id="n-pc" data-id="pc" tabindex="0" role="button" aria-label="Planetary Computer"><rect x="30" y="20" width="178" height="90" rx="10"/><text x="44" y="48" class="n-t">Planetary Computer</text><text x="44" y="70" class="n-b">S1, S2, Landsat,</text><text x="44" y="88" class="n-b">WorldCover · keyless</text></g>
+<g class="node src" id="n-sh" data-id="sh" tabindex="0" role="button" aria-label="Sentinel Hub / CDSE"><rect x="220" y="20" width="178" height="90" rx="10"/><text x="234" y="48" class="n-t">Sentinel Hub / CDSE</text><text x="234" y="70" class="n-b">Process API with the</text><text x="234" y="88" class="n-b">visitor&#x27;s own token</text></g>
+<g class="node src" id="n-ter" data-id="ter" tabindex="0" role="button" aria-label="Terrain tiles"><rect x="410" y="20" width="178" height="90" rx="10"/><text x="424" y="48" class="n-t">Terrain tiles</text><text x="424" y="70" class="n-b">AWS Terrarium,</text><text x="424" y="88" class="n-b">MapTiler Terrain-RGB</text></g>
+<g class="node src" id="n-wx" data-id="wx" tabindex="0" role="button" aria-label="Weather APIs"><rect x="600" y="20" width="178" height="90" rx="10"/><text x="614" y="48" class="n-t">Weather APIs</text><text x="614" y="70" class="n-b">Open-Meteo,</text><text x="614" y="88" class="n-b">NASA POWER</text></g>
+<g class="node src" id="n-osm" data-id="osm" tabindex="0" role="button" aria-label="OpenStreetMap"><rect x="790" y="20" width="178" height="90" rx="10"/><text x="804" y="48" class="n-t">OpenStreetMap</text><text x="804" y="70" class="n-b">Overpass + bundled</text><text x="804" y="88" class="n-b">snapshot fallback</text></g>
+<g class="node step step-a" id="n-a1" data-id="a1" tabindex="0" role="button" aria-label="Band math on tile server"><rect x="46" y="225" width="268" height="78" rx="10"/><circle cx="66" cy="264" r="11" class="num"/><text x="66" y="268" class="num-t" text-anchor="middle">1</text><text x="86" y="251" class="n-t">Band math on tile server</text><text x="86" y="272" class="n-b">dB, °C and NDVI upstream,</text><text x="86" y="289" class="n-b">sent as byte-encoded PNGs</text></g>
+<g class="node step step-a" id="n-a2" data-id="a2" tabindex="0" role="button" aria-label="Exact decode"><rect x="46" y="319" width="268" height="78" rx="10"/><circle cx="66" cy="358" r="11" class="num"/><text x="66" y="362" class="num-t" text-anchor="middle">2</text><text x="86" y="345" class="n-t">Exact decode</text><text x="86" y="366" class="n-b">createImageBitmap with no</text><text x="86" y="383" class="n-b">colour or alpha changes</text></g>
+<g class="node step step-a" id="n-a3" data-id="a3" tabindex="0" role="button" aria-label="Tile grid = analysis grid"><rect x="46" y="413" width="268" height="78" rx="10"/><circle cx="66" cy="452" r="11" class="num"/><text x="66" y="456" class="num-t" text-anchor="middle">3</text><text x="86" y="439" class="n-t">Tile grid = analysis grid</text><text x="86" y="460" class="n-b">Web Mercator typed arrays,</text><text x="86" y="477" class="n-b">1.2–1.6 million cells</text></g>
+<g class="node step step-a" id="n-a4" data-id="a4" tabindex="0" role="button" aria-label="Analysis on the device"><rect x="46" y="507" width="268" height="78" rx="10"/><circle cx="66" cy="546" r="11" class="num"/><text x="66" y="550" class="num-t" text-anchor="middle">4</text><text x="86" y="533" class="n-t">Analysis on the device</text><text x="86" y="554" class="n-b">distance transforms, blurs,</text><text x="86" y="571" class="n-b">k-means, TensorFlow.js GPU</text></g>
+<g class="node step step-b" id="n-b1" data-id="b1" tabindex="0" role="button" aria-label="STAC + Rasterio reads"><rect x="366" y="225" width="268" height="78" rx="10"/><circle cx="386" cy="264" r="11" class="num"/><text x="386" y="268" class="num-t" text-anchor="middle">1</text><text x="406" y="251" class="n-t">STAC + Rasterio reads</text><text x="406" y="272" class="n-b">only the Al Jouf window,</text><text x="406" y="289" class="n-b">never the whole scene</text></g>
+<g class="node step step-b" id="n-b2" data-id="b2" tabindex="0" role="button" aria-label="NumPy: indices &amp; series"><rect x="366" y="319" width="268" height="78" rx="10"/><circle cx="386" cy="358" r="11" class="num"/><text x="386" y="362" class="num-t" text-anchor="middle">2</text><text x="406" y="345" class="n-t">NumPy: indices &amp; series</text><text x="406" y="366" class="n-b">NDVI, EVI, masks, composite,</text><text x="406" y="383" class="n-b">bincount per field</text></g>
+<g class="node step step-b" id="n-b3" data-id="b3" tabindex="0" role="button" aria-label="OpenCV: find the fields"><rect x="366" y="413" width="268" height="78" rx="10"/><circle cx="386" cy="452" r="11" class="num"/><text x="386" y="456" class="num-t" text-anchor="middle">3</text><text x="406" y="439" class="n-t">OpenCV: find the fields</text><text x="406" y="460" class="n-b">Hough circles for pivots,</text><text x="406" y="477" class="n-b">contours for block fields</text></g>
+<g class="node step step-b" id="n-b4" data-id="b4" tabindex="0" role="button" aria-label="Static JSON + live tiles"><rect x="366" y="507" width="268" height="78" rx="10"/><circle cx="386" cy="546" r="11" class="num"/><text x="386" y="550" class="num-t" text-anchor="middle">4</text><text x="406" y="533" class="n-t">Static JSON + live tiles</text><text x="406" y="554" class="n-b">fields.geojson + timeseries</text><text x="406" y="571" class="n-b">+ live tiles for any date</text></g>
+<g class="node step step-c" id="n-c1" data-id="c1" tabindex="0" role="button" aria-label="Train offline"><rect x="686" y="225" width="268" height="78" rx="10"/><circle cx="706" cy="264" r="11" class="num"/><text x="706" y="268" class="num-t" text-anchor="middle">1</text><text x="726" y="251" class="n-t">Train offline</text><text x="726" y="272" class="n-b">U-Net and LightGBM on open</text><text x="726" y="289" class="n-b">and hand-labelled data</text></g>
+<g class="node step step-c" id="n-c2" data-id="c2" tabindex="0" role="button" aria-label="Export to ONNX"><rect x="686" y="319" width="268" height="78" rx="10"/><circle cx="706" cy="358" r="11" class="num"/><text x="706" y="362" class="num-t" text-anchor="middle">2</text><text x="726" y="345" class="n-t">Export to ONNX</text><text x="726" y="366" class="n-b">quantised to a few MB</text><text x="726" y="383" class="n-b">(int8 or fp16)</text></g>
+<g class="node step step-c" id="n-c3" data-id="c3" tabindex="0" role="button" aria-label="Model as a static file"><rect x="686" y="413" width="268" height="78" rx="10"/><circle cx="706" cy="452" r="11" class="num"/><text x="706" y="456" class="num-t" text-anchor="middle">3</text><text x="726" y="439" class="n-t">Model as a static file</text><text x="726" y="460" class="n-b">served like any other asset</text><text x="726" y="477" class="n-b">from shared hosting</text></g>
+<g class="node step step-c" id="n-c4" data-id="c4" tabindex="0" role="button" aria-label="Inference in the browser"><rect x="686" y="507" width="268" height="78" rx="10"/><circle cx="706" cy="546" r="11" class="num"/><text x="706" y="550" class="num-t" text-anchor="middle">4</text><text x="726" y="533" class="n-t">Inference in the browser</text><text x="726" y="554" class="n-b">ONNX Runtime Web, WebGPU</text><text x="726" y="571" class="n-b">with a WebAssembly fallback</text></g>
+<g class="node bar" id="n-host" data-id="host" tabindex="0" role="button" aria-label="Static hosting"><rect x="30" y="650" width="940" height="70" rx="10"/><text x="48" y="679" class="n-t">Static hosting</text><text x="48" y="701" class="n-b">Next.js static export on shared hosting: HTML, JS, JSON, snapshots and ONNX models. No VPS, no database, no tile server.</text></g>
+<g class="node bar dark" id="n-browser" data-id="browser" tabindex="0" role="button" aria-label="The visitor&#x27;s browser"><rect x="30" y="752" width="940" height="70" rx="10"/><text x="48" y="781" class="n-t">The visitor&#x27;s browser</text><text x="48" y="803" class="n-b">MapLibre GL, Chart.js, MUI. Results are painted to a canvas and overlaid on the map, aligned to the grid.</text></g>
+</svg>
+      <div class="legend"><span><i></i>Live and running</span><span><i class="dash"></i>Planned: Route C</span><span>Click any box for details</span></div>
+    </div>
+    <aside class="panel" id="panel" aria-live="polite"><p class="kick">How to read this</p><h2>Two routes live, one on the way</h2><p>Every box is clickable. Pick a project above to light up the path its data takes, turn on the data flow, or press <b>Walk me through</b> for a guided tour.</p><p><b style="color:var(--a)">Route A</b> computes everything in the visitor's browser. <b style="color:var(--b)">Route B</b> precomputes once offline and streams imagery live. <b style="color:var(--c)">Route C</b> (next) trains models offline and runs them in the browser.</p><div class="uses"><span>No VPS</span><span>No database</span><span>No Python at runtime</span></div></aside>
+  </div>
+  <p class="rule">Rule of thumb: if it depends on the visitor's settings, compute it in the browser. If it is the same for everyone, compute it once and ship it as a file.</p>
+  <p class="foot">Amin Adnan Gasim · <a href="https://coffeemap.dev">coffeemap.dev</a></p>
+</main>
+<script>
+const D = {"pc": {"k": "Public data", "t": "Microsoft Planetary Computer", "p": ["The main data source for all three projects. Its STAC catalogue finds scenes; its data API renders tiles on the fly, with band math and colour maps evaluated on its own servers.", "Collections used: Sentinel-1 RTC (radar), Sentinel-2 L2A (optical), Landsat 8/9 Collection 2 Level-2 (surface temperature) and ESA WorldCover 2021 (land cover). No account or key is needed."], "u": ["Blue Nile", "Riyadh", "Al Jouf", "Route C"]}, "sh": {"k": "Public data", "t": "Sentinel Hub / Copernicus Data Space", "p": ["An optional radar source for Blue Nile. An evalscript returns VV/VH in decibels for the whole grid in a single Process API call.", "The OAuth login runs in the browser (both token endpoints allow CORS) with the visitor's own credentials. Nothing is stored, and no key of mine is ever in the page."], "u": ["Blue Nile"]}, "ter": {"k": "Public data", "t": "Terrain tiles", "p": ["Elevation encoded in the colour channels of ordinary PNG tiles. AWS Terrarium is keyless; MapTiler Terrain-RGB is used when a key is configured.", "Decoded per pixel into a Float32Array, then used for slope and height above the nearest river."], "c": "Terrarium:     h = R*256 + G + B/256 - 32768\nTerrain-RGB:   h = (R*65536 + G*256 + B)*0.1 - 10000", "u": ["Blue Nile"]}, "wx": {"k": "Public data", "t": "Weather APIs", "p": ["Open-Meteo gives Blue Nile its rainfall: one request for a 7 × 7 lattice of 49 points, summed over the chosen window and interpolated to every cell.", "NASA POWER gives Riyadh its air temperature and solar radiation (mean daily maximum 44 °C in summer 2025). Both are keyless."], "u": ["Blue Nile", "Riyadh"]}, "osm": {"k": "Public data", "t": "OpenStreetMap via Overpass", "p": ["Rivers for Blue Nile; trees and parks for Riyadh. Lines and polygons are rasterised onto the analysis grid.", "Public Overpass servers are often busy (504 errors, an 85-second response in testing), so pages start from a bundled snapshot and swap in live data when a mirror answers."], "u": ["Blue Nile", "Riyadh"]}, "laneA": {"k": "Route A", "t": "Live in the browser", "p": ["Used when the result depends on the visitor's choices: dates, radar thresholds, model weights. Everything is recomputed on their device, so sliders update the map in seconds.", "Blue Nile: about 1.2 million cells at 300 m, full pipeline in about 13 seconds on a laptop. Riyadh: 1.6 million cells at 70 m."], "u": ["Blue Nile", "Riyadh"]}, "laneB": {"k": "Route B", "t": "Precompute once, stream live", "p": ["Used when the answer is the same for everyone and too heavy to redo per visit: every Sentinel-2 scene since April 2023 × every field in Al Jouf.", "An offline Python pipeline writes two small files; the website loads them and streams live imagery for any date. The website never runs Python."], "u": ["Al Jouf"]}, "laneC": {"k": "Route C · next", "t": "Trained models in the browser", "p": ["The next step for the portfolio: replace hand-set rules and thresholds with trained models, without adding a server.", "Training happens offline (like Route B); inference runs on the visitor's device (like Route A). The model is just another static file."], "u": ["Route C"]}, "a1": {"k": "Route A · step 1", "t": "Band math on the tile server", "p": ["The tile server converts raw values into physical units before anything reaches the browser, then packs them into the 0–255 byte of a PNG channel with rescale.", "The precision cost is small and known: about 0.16 dB for radar and 0.24 °C for temperature, both finer than the sensors' own noise."], "c": "# Sentinel-1 to decibels (Blue Nile)\nexpression = 10*log10(vv);10*log10(vh);10*log10(vv)\nrescale    = -35,5\n\n# Landsat surface temperature to °C (Riyadh)\nexpression = lwir11*0.00341802+149.0-273.15\nrescale    = 10,70", "u": ["Blue Nile", "Riyadh"]}, "a2": {"k": "Route A · step 2", "t": "Exact decode in the browser", "p": ["Browsers colour-manage images, which is right for photos and silently wrong for data. Every data tile is decoded with colour conversion and alpha premultiplication switched off, so each byte arrives unchanged.", "The byte is then mapped back to dB, °C, NDVI or metres."], "c": "const bitmap = await createImageBitmap(blob, {\n  colorSpaceConversion: 'none',\n  premultiplyAlpha: 'none',\n});\nctx.drawImage(bitmap, 0, 0);\nconst px = ctx.getImageData(0, 0, bitmap.width, bitmap.height);", "u": ["Blue Nile", "Riyadh"]}, "a3": {"k": "Route A · step 3", "t": "The tile grid is the analysis grid", "p": ["The decision that removes the GIS stack. Analysis runs on the Web Mercator pixel grid of one zoom level, the same grid the map tiles use, so every tile pixel lands on exactly one cell. No reprojection, no resampling, no GDAL.", "Blue Nile: zoom 9, about 300 m cells, 1.2 million cells. Riyadh: zoom 11, about 70 m cells, 1,456 × 1,117. Layers live in Float32Array and Uint8Array."], "u": ["Blue Nile", "Riyadh"]}, "a4": {"k": "Route A · step 4", "t": "Analysis on the visitor's device", "p": ["Algorithms chosen to run in linear time over a million cells: exact Euclidean distance transforms (Felzenszwalb & Huttenlocher), separable box blurs with running sums, and quantile-initialised k-means.", "Riyadh scores 1.6 million cells as one matrix product in TensorFlow.js on the GPU (WebGL), loaded only on that page. Results are painted to a canvas and overlaid on the map."], "u": ["Blue Nile", "Riyadh"]}, "b1": {"k": "Route B · step 1 · pystac-client + Rasterio", "t": "Rasterio fetches the pixels", "p": ["pystac-client finds Sentinel-2 scenes in the Planetary Computer catalogue. Rasterio then reads each cloud-optimised GeoTIFF over HTTP, but only the window over Al Jouf, band by band (B02, B04, B08 and the SCL cloud mask).", "Every array keeps its georeferencing, so pixels stay tied to real coordinates. Reads run in parallel threads and are cached, so a rerun only fetches new scenes."], "c": "from rasterio.windows import from_bounds\n\nwith rasterio.open(signed_href) as src:\n    win = from_bounds(*aoi_bounds_utm, transform=src.transform)\n    nir = src.read(1, window=win)", "u": ["Al Jouf"]}, "b2": {"k": "Route B · step 2 · NumPy", "t": "NumPy does the maths", "p": ["All calculation happens on whole arrays at once: removing the +1000 offset, scaling reflectance to 0–1, NDVI and EVI for every pixel, cloud masking, and the maximum-NDVI composite used to find fields.", "Fields are rasterised once into a label image; np.bincount then averages every field's pixels in a single pass. Thousands of fields cost about the same as one."], "c": "sums   = np.bincount(labels[clear], weights=ndvi[clear], minlength=n)\ncounts = np.bincount(labels[clear], minlength=n)\nfield_mean = sums / np.maximum(counts, 1)", "u": ["Al Jouf"]}, "b3": {"k": "Route B · step 3 · OpenCV", "t": "OpenCV sees the shapes", "p": ["The NDVI composite is treated like a photo. HoughCircles proposes pivots of 200–480 m radius (20–48 pixels at 10 m); a greenness check and a rim-contrast test keep only real ones.", "Morphology cleans the remaining green areas, connectedComponentsWithStats keeps blocks over 8 ha, and findContours with approxPolyDP turns them into polygons. This is classical computer vision: rules, no training data."], "c": "circles = cv2.HoughCircles(blurred, cv2.HOUGH_GRADIENT,\n                           minRadius=20, maxRadius=48, ...)", "u": ["Al Jouf"]}, "b4": {"k": "Route B · step 4", "t": "Static JSON, live imagery", "p": ["Shapely and pyproj turn shapes into mapped polygons (areas, WGS 84). The pipeline writes fields.geojson and timeseries.json, uploaded next to the app like any other asset.", "Imagery is never stored. When the visitor moves the time slider, the map requests that date's NDVI, EVI or true-colour tile straight from Planetary Computer."], "c": "expression = (B08-B04)/(B08+B04-2000)   # NDVI, offset folded in\nrescale    = 0,0.8\ncolormap   = rdylgn", "u": ["Al Jouf"]}, "c1": {"k": "Route C · step 1 · planned", "t": "Train offline", "p": ["Train small models on free compute: a U-Net for flood water on Sentinel-1 (Sen1Floods11 benchmark plus hand-labelled Sudan 2020 scenes) and a LightGBM crop classifier for Al Jouf.", "Validate on areas the model never saw, and keep today's rules as the baseline to beat."], "u": ["Route C"]}, "c2": {"k": "Route C · step 2 · planned", "t": "Export to ONNX", "p": ["Export the trained model to ONNX, the portable format browsers can run, and quantise it (int8 or fp16) to a few megabytes so it loads quickly on a field office connection."], "u": ["Route C"]}, "c3": {"k": "Route C · step 3 · planned", "t": "The model is a static file", "p": ["The .onnx file sits on shared hosting next to the JavaScript and JSON. No model server, no GPU instance, no per-request cost."], "u": ["Route C"]}, "c4": {"k": "Route C · step 4 · planned", "t": "Inference in the browser", "p": ["ONNX Runtime Web runs the model on the visitor's GPU through WebGPU, with a WebAssembly fallback. Tiles come in through Route A's decode and grid steps; the model replaces the thresholds.", "The dashboard will show thresholds and the model side by side, with their accuracy."], "c": "const session = await ort.InferenceSession.create(\n  '/models/floodnet.onnx',\n  { executionProviders: ['webgpu', 'wasm'] });", "u": ["Route C"]}, "host": {"k": "Delivery", "t": "Static hosting", "p": ["A Next.js static export on ordinary shared hosting: HTML, JavaScript, JSON outputs, bundled snapshots and, soon, ONNX models.", "No VPS, no database, no tile server to patch or pay for per request."], "u": ["Blue Nile", "Riyadh", "Al Jouf", "Route C"]}, "browser": {"k": "Delivery", "t": "The visitor's browser", "p": ["MapLibre GL draws the map, Chart.js the time series, MUI the controls. Results are painted to a canvas and added as an image source with four corner coordinates, so they line up exactly with the basemap.", "Heavy libraries such as TensorFlow.js load only on the pages that use them."], "u": ["Blue Nile", "Riyadh", "Al Jouf", "Route C"]}}, P = {"bluenile": {"label": "Blue Nile Flood Risk", "color": "a", "nodes": ["pc", "sh", "ter", "wx", "osm", "laneA", "a1", "a2", "a3", "a4", "host", "browser"], "edges": ["e-pc-A", "e-sh-A", "e-ter-A", "e-wx-A", "e-osm-A", "e-a1-a2", "e-a2-a3", "e-a3-a4", "e-A-host", "e-host-browser"], "tour": ["pc", "ter", "osm", "a1", "a2", "a3", "a4", "browser"]}, "riyadh": {"label": "Riyadh Urban Heat", "color": "a", "nodes": ["pc", "wx", "osm", "laneA", "a1", "a2", "a3", "a4", "host", "browser"], "edges": ["e-pc-A", "e-wx-A", "e-osm-A", "e-a1-a2", "e-a2-a3", "e-a3-a4", "e-A-host", "e-host-browser"], "tour": ["pc", "wx", "a1", "a2", "a3", "a4", "browser"]}, "aljouf": {"label": "Al Jouf Crop Monitoring", "color": "b", "nodes": ["pc", "laneB", "b1", "b2", "b3", "b4", "host", "browser"], "edges": ["e-pc-B", "e-b1-b2", "e-b2-b3", "e-b3-b4", "e-B-host", "e-host-browser"], "tour": ["pc", "b1", "b2", "b3", "b4", "host", "browser"]}, "next": {"label": "Route C: trained models (next)", "color": "c", "nodes": ["pc", "laneC", "c1", "c2", "c3", "c4", "host", "browser"], "edges": ["e-pc-C", "e-c1-c2", "e-c2-c3", "e-c3-c4", "e-C-host", "e-host-browser"], "tour": ["c1", "c2", "c3", "c4", "browser"]}}, ALL_TOUR = ["a1", "a2", "a3", "a4", "b1", "b2", "b3", "b4", "c1", "c2", "c3", "c4", "browser"];
+const svg = document.getElementById('arch');
+const panel = document.getElementById('panel');
+let project = 'all', tourTimer = null, tourIdx = -1, current = null;
+
+function show(id){
+  const d = D[id]; if(!d) return;
+  current = id;
+  document.querySelectorAll('.node.sel').forEach(n=>n.classList.remove('sel'));
+  const el = document.getElementById('n-'+id); if(el) el.classList.add('sel');
+  const esc = s => s.replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+  let h = `<p class="kick">${esc(d.k)}</p><h2>${esc(d.t)}</h2>` + d.p.map(p=>`<p>${esc(p)}</p>`).join('');
+  if(d.c) h += `<pre><code>${esc(d.c)}</code></pre>`;
+  h += `<div class="uses">${d.u.map(u=>`<span>${esc(u)}</span>`).join('')}</div>`;
+  const order = tourList(); const i = order.indexOf(id);
+  if(i>=0) h += `<div class="nav"><button class="chip" data-step="-1" ${i===0?'disabled':''}>← Previous</button><button class="chip" data-step="1" ${i===order.length-1?'disabled':''}>Next →</button></div>`;
+  panel.innerHTML = h;
+  panel.querySelectorAll('[data-step]').forEach(b=>b.onclick=()=>{stopTour();show(order[i+ +b.dataset.step]);});
+}
+
+function tourList(){ return project==='all' ? ALL_TOUR : P[project].tour; }
+
+function setProject(p){
+  project = p;
+  document.querySelectorAll('[data-project]').forEach(b=>b.setAttribute('aria-pressed', b.dataset.project===p));
+  const nodes = svg.querySelectorAll('.node'), edges = svg.querySelectorAll('.edge');
+  const edgeG = document.getElementById('edges');
+  if(p==='all'){
+    nodes.forEach(n=>n.classList.remove('dim'));
+    edges.forEach(e=>{e.classList.remove('dim','hot','a','b','c');
+      const lane = e.id.match(/-(A|B|C)$|^e-(a|b|c)\d|^e-(A|B|C)-host/);
+      const k = lane ? (lane[1]||lane[2]||lane[3]).toLowerCase() : null;
+      if(k){ e.classList.add('hot',k); e.setAttribute('marker-end',`url(#ar-${k})`);} else e.setAttribute('marker-end','url(#ar)');
+    });
+  } else {
+    const s = P[p], keepN = new Set(s.nodes), keepE = new Set(s.edges);
+    nodes.forEach(n=>n.classList.toggle('dim', !keepN.has(n.dataset.id)));
+    edges.forEach(e=>{
+      const on = keepE.has(e.id);
+      e.classList.toggle('dim', !on); e.classList.remove('a','b','c');
+      e.classList.toggle('hot', on);
+      if(on){ e.classList.add(s.color); e.setAttribute('marker-end',`url(#ar-${s.color})`); edgeG.appendChild(e); }
+      else e.setAttribute('marker-end','url(#ar)');
+    });
+  }
+  if(current) show(current);
+}
+
+function stopTour(){ clearInterval(tourTimer); tourTimer=null; tourIdx=-1; const b=document.getElementById('tour'); b.textContent='▶ Walk me through'; b.setAttribute('aria-pressed','false'); }
+function startTour(){
+  const order = tourList(); tourIdx = 0; show(order[0]);
+  const b=document.getElementById('tour'); b.textContent='■ Stop'; b.setAttribute('aria-pressed','true');
+  tourTimer = setInterval(()=>{ tourIdx++; if(tourIdx>=order.length){stopTour();return;} show(order[tourIdx]); }, 4500);
+}
+
+svg.querySelectorAll('.node').forEach(n=>{
+  n.addEventListener('click', ev=>{ ev.stopPropagation(); stopTour(); show(n.dataset.id); });
+  n.addEventListener('keydown', ev=>{ if(ev.key==='Enter'||ev.key===' '){ ev.preventDefault(); stopTour(); show(n.dataset.id);} });
+});
+document.querySelectorAll('[data-project]').forEach(b=>b.onclick=()=>{ stopTour(); setProject(b.dataset.project); });
+document.getElementById('tour').onclick=()=> tourTimer ? stopTour() : startTour();
+document.getElementById('flow').onclick=e=>{ const on = svg.classList.toggle('flow'); e.currentTarget.setAttribute('aria-pressed', on); };
+setProject('all');
+</script>
+</body>
+</html>

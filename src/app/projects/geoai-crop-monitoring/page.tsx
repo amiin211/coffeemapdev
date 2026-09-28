@@ -313,6 +313,7 @@ function DashboardContent() {
               gradientFrom={agriGreen.DEFAULT}
               gradientTo={agriGreen.dark}
               mb={isDesktop ? 1.5 : 3}
+              articleHref="/insights/al-jouf-crop-monitoring"
             />
             <IconButton
               onClick={() => setAboutOpen((v) => !v)}

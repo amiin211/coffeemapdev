@@ -1,0 +1,46 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1318 212' font-family='Inter, Roboto, system-ui, -apple-system, Segoe UI, Helvetica, Arial, sans-serif' role='img' aria-label='Riyadh Urban Heat: the in-browser pipeline'>
+<rect width='1318' height='212' rx='16' fill='#FBF7F2'/>
+<defs><marker id='a' viewBox='0 0 10 10' refX='9' refY='5' markerWidth='7' markerHeight='7' orient='auto'><path d='M0 0L10 5L0 10z' fill='#D84315'/></marker></defs>
+<text x='24' y='36' font-size='17' font-weight='800' fill='#2B1D14'>Riyadh Urban Heat: the in-browser pipeline</text>
+<rect x='24' y='56' width='190' height='128' rx='12' fill='#FFFFFF' stroke='#CDBFAF' stroke-width='1.4'/>
+<circle cx='48' cy='82' r='13' fill='#D84315'/><text x='48' y='87' font-size='13' font-weight='800' fill='#fff' text-anchor='middle'>1</text>
+<text x='70' y='87' font-size='16' font-weight='800' fill='#2B1D14'>Fetch</text>
+<text x='40' y='118' font-size='13' fill='#5B4A3D'>Landsat heat, Sentinel-2,</text>
+<text x='40' y='137' font-size='13' fill='#5B4A3D'>WorldCover, OSM trees</text>
+<text x='40' y='156' font-size='13' fill='#5B4A3D'>&amp; parks, NASA POWER</text>
+<path d='M217 120.0 H237' stroke='#D84315' stroke-width='2' marker-end='url(#a)'/>
+<rect x='240' y='56' width='190' height='128' rx='12' fill='#FFFFFF' stroke='#CDBFAF' stroke-width='1.4'/>
+<circle cx='264' cy='82' r='13' fill='#D84315'/><text x='264' y='87' font-size='13' font-weight='800' fill='#fff' text-anchor='middle'>2</text>
+<text x='286' y='87' font-size='16' font-weight='800' fill='#2B1D14'>Decode</text>
+<text x='256' y='118' font-size='13' fill='#5B4A3D'>each tile onto a</text>
+<text x='256' y='137' font-size='13' fill='#5B4A3D'>70 m grid of</text>
+<text x='256' y='156' font-size='13' fill='#5B4A3D'>1.6 million cells</text>
+<path d='M433 120.0 H453' stroke='#D84315' stroke-width='2' marker-end='url(#a)'/>
+<rect x='456' y='56' width='190' height='128' rx='12' fill='#FFFFFF' stroke='#CDBFAF' stroke-width='1.4'/>
+<circle cx='480' cy='82' r='13' fill='#D84315'/><text x='480' y='87' font-size='13' font-weight='800' fill='#fff' text-anchor='middle'>3</text>
+<text x='502' y='87' font-size='16' font-weight='800' fill='#2B1D14'>Derive</text>
+<text x='472' y='118' font-size='13' fill='#5B4A3D'>canopy, building density,</text>
+<text x='472' y='137' font-size='13' fill='#5B4A3D'>distances to trees</text>
+<text x='472' y='156' font-size='13' fill='#5B4A3D'>and parks</text>
+<path d='M649 120.0 H669' stroke='#D84315' stroke-width='2' marker-end='url(#a)'/>
+<rect x='672' y='56' width='190' height='128' rx='12' fill='#FFFFFF' stroke='#CDBFAF' stroke-width='1.4'/>
+<circle cx='696' cy='82' r='13' fill='#D84315'/><text x='696' y='87' font-size='13' font-weight='800' fill='#fff' text-anchor='middle'>4</text>
+<text x='718' y='87' font-size='16' font-weight='800' fill='#2B1D14'>Score</text>
+<text x='688' y='118' font-size='13' fill='#5B4A3D'>heat exposure, access</text>
+<text x='688' y='137' font-size='13' fill='#5B4A3D'>and equity per</text>
+<text x='688' y='156' font-size='13' fill='#5B4A3D'>built-up cell</text>
+<path d='M865 120.0 H885' stroke='#D84315' stroke-width='2' marker-end='url(#a)'/>
+<rect x='888' y='56' width='190' height='128' rx='12' fill='#FFFFFF' stroke='#CDBFAF' stroke-width='1.4'/>
+<circle cx='912' cy='82' r='13' fill='#D84315'/><text x='912' y='87' font-size='13' font-weight='800' fill='#fff' text-anchor='middle'>5</text>
+<text x='934' y='87' font-size='16' font-weight='800' fill='#2B1D14'>Rank</text>
+<text x='904' y='118' font-size='13' fill='#5B4A3D'>top 15% by risk ×</text>
+<text x='904' y='137' font-size='13' fill='#5B4A3D'>(1 − access) = priority</text>
+<text x='904' y='156' font-size='13' fill='#5B4A3D'>planting zones</text>
+<path d='M1081 120.0 H1101' stroke='#D84315' stroke-width='2' marker-end='url(#a)'/>
+<rect x='1104' y='56' width='190' height='128' rx='12' fill='#FFFFFF' stroke='#CDBFAF' stroke-width='1.4'/>
+<circle cx='1128' cy='82' r='13' fill='#D84315'/><text x='1128' y='87' font-size='13' font-weight='800' fill='#fff' text-anchor='middle'>6</text>
+<text x='1150' y='87' font-size='16' font-weight='800' fill='#2B1D14'>Paint</text>
+<text x='1120' y='118' font-size='13' fill='#5B4A3D'>canvas overlays</text>
+<text x='1120' y='137' font-size='13' fill='#5B4A3D'>aligned to the</text>
+<text x='1120' y='156' font-size='13' fill='#5B4A3D'>map grid</text>
+</svg>

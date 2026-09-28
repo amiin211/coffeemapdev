@@ -322,6 +322,7 @@ export default function BlueNileFloodRisk() {
         gradientFrom={water.DEFAULT}
         gradientTo={water.dark}
         mb={isDesktop ? 1.5 : 3}
+        articleHref="/insights/blue-nile-flood-risk"
       />
       <IconButton onClick={() => setAboutOpen((v) => !v)} sx={{ position: 'absolute', top: 12, right: 12, color: 'white' }} aria-label="About this dashboard">
         <InfoOutlinedIcon />

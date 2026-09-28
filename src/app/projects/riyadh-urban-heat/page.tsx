@@ -386,6 +386,7 @@ export default function RiyadhUrbanHeat() {
         gradientFrom={desert.DEFAULT}
         gradientTo={desert.dark}
         mb={isDesktop ? 1.5 : 3}
+        articleHref="/insights/riyadh-urban-heat"
       />
       <IconButton onClick={() => setAboutOpen((v) => !v)} sx={{ position: 'absolute', top: 12, right: 12, color: 'white' }} aria-label="About this dashboard">
         <InfoOutlinedIcon />

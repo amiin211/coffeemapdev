@@ -46,6 +46,15 @@ export const projects: Project[] = [
     externalUrl: '/projects/geoai-crop-monitoring',
   },
   {
+    id: 'serverless-geoai-architecture',
+    title: 'Serverless GeoAI Architecture',
+    description: 'Interactive architecture of the GeoAI dashboards: two live routes (compute in the browser, or precompute once and stream imagery) and a planned third for trained models, with no VPS, database or Python at runtime.',
+    category: 'geoai',
+    tags: ['Architecture', 'Serverless GeoAI', 'Planetary Computer', 'STAC', 'MapLibre GL JS', 'TensorFlow.js', 'ONNX Runtime Web', 'Static hosting'],
+    image: '/images/serverless-architecture.png',
+    externalUrl: '/projects/serverless-geoai-architecture',
+  },
+  {
     id: 'blue-nile-flood-risk',
     title: 'Blue Nile Flood Risk',
     description: 'Client-side GeoAI flood risk mapping for Sennar and Gezira, Sudan — Sentinel-1 SAR flood detection, DEM slope, rainfall and river distance combined in an adjustable risk model, all computed in the browser.',

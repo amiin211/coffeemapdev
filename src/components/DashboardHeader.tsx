@@ -1,4 +1,6 @@
-import { Box, Typography, Container, Chip } from '@mui/material';
+import Link from 'next/link';
+import { Box, Typography, Container, Chip, Button } from '@mui/material';
+import MenuBookIcon from '@mui/icons-material/MenuBook';
 import WaterDropIcon from '@mui/icons-material/WaterDrop';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import PersonIcon from '@mui/icons-material/Person';
@@ -15,6 +17,7 @@ interface DashboardHeaderProps {
   gradientTo?: string;
   borderRadius?: number;
   mb?: number;
+  articleHref?: string; // "Read the article" button when the project has a write-up
 }
 
 export default function DashboardHeader({
@@ -28,6 +31,7 @@ export default function DashboardHeader({
   gradientTo = '#5d2e10',
   borderRadius = 2,
   mb = 3,
+  articleHref,
 }: DashboardHeaderProps) {
   return (
     <Box
@@ -60,7 +64,29 @@ export default function DashboardHeader({
           </Box>
           
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1 }}>
-            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end' }}>
+              {articleHref && (
+                <Button
+                  component={Link}
+                  href={articleHref}
+                  size="small"
+                  variant="contained"
+                  disableElevation
+                  startIcon={<MenuBookIcon sx={{ fontSize: '16px !important' }} />}
+                  sx={{
+                    bgcolor: 'white',
+                    color: gradientTo,
+                    textTransform: 'none',
+                    fontWeight: 700,
+                    fontSize: '0.75rem',
+                    py: 0.25,
+                    borderRadius: 4,
+                    '&:hover': { bgcolor: 'rgba(255,255,255,0.88)' },
+                  }}
+                >
+                  Read the article
+                </Button>
+              )}
               <Chip 
                 size="small"
                 icon={<CalendarTodayIcon sx={{ color: 'white !important', fontSize: 16 }} />} 
