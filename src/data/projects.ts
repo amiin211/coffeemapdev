@@ -79,9 +79,9 @@ export const projects: Project[] = [
   {
     id: '3d-mosque-viewer',
     title: '3D Mosque Viewer',
-    description: 'Interactive 3D environment of a mosque site in Aseer, Saudi Arabia — clickable BIM data for every Revit element (Saudi codes, quantities, SAR costs, lifecycle), DTM terrain with orthophoto, live traffic and day / night lighting.',
+    description: 'Interactive 3D environment of a mosque site in Aseer, Saudi Arabia — clickable BIM data for every Revit element (Saudi codes, quantities, SAR costs, lifecycle), DTM terrain with orthophoto, live traffic, day / night lighting and a survey drone flying a photogrammetry mission that builds up its photo overlap on the ground.',
     category: 'gis-bim',
-    tags: ['Three.js', 'BIM', 'Revit', 'glTF', 'WebGL', 'DTM', 'GDAL', 'Next.js', 'TypeScript'],
+    tags: ['Three.js', 'BIM', 'Revit', 'glTF', 'WebGL', 'DTM', 'Photogrammetry', 'GDAL', 'Next.js', 'TypeScript'],
     image: '/images/3d.png',
     externalUrl: '/projects/3d-mosque-viewer',
   },

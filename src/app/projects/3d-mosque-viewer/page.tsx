@@ -17,7 +17,7 @@ export default function ThreeDMosqueViewer() {
       <Box sx={{ minHeight: 'calc(100vh - 96px)', display: 'flex', flexDirection: 'column', px: 2, pt: 1.5, pb: 2 }}>
         <DashboardHeader
           title="3D Mosque Viewer"
-          subtitle="Mosque site with BIM data, terrain, traffic and day / night lighting — Aseer, Saudi Arabia"
+          subtitle="Mosque site with BIM data, terrain, traffic, day / night lighting and a drone photogrammetry survey — Aseer, Saudi Arabia"
           icon={<MosqueIcon sx={{ fontSize: 28 }} />}
           source="Mosque GLB model, Aseer DTM (0.5 m) and orthophoto, rendered with Three.js"
           author="Amin Adnan Gasim"
