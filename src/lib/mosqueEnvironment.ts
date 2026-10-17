@@ -1,5 +1,6 @@
 // Mosque environment: the mosque model with per-mesh colors, a grass ground or
-// DTM terrain, vegetation, site traffic, and day (HDRI) / night (point lights) lighting.
+// DTM terrain, vegetation, site traffic, a photogrammetry survey drone, and
+// day (HDRI) / night (point lights) lighting.
 // Ported from the standalone Vite project in ~/environment (1 unit = 1 m).
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -7,6 +8,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 // HDRLoader is three's current name for RGBELoader (deprecated alias since r180).
 import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js';
 import { BIM_URL, BimData, BimSelection, CATEGORY_COLORS, ColorMode, UNCATEGORISED_COLOR } from '@/lib/mosqueBim';
+import { SurveyLayers, SurveyMission, SurveyStatus } from '@/lib/surveyDrone';
 
 const DATA = '/data/3d';
 
@@ -79,6 +81,23 @@ export const CONFIG = {
   POLE_LIGHTS: 12,
   POLE_LIGHT_INTENSITY: 250,
   FLOODLIGHT_INTENSITY: 1000,
+
+  // Survey drone: a lawnmower photogrammetry flight over the mosque model's
+  // bounding box. Line and trigger spacing follow from the altitude, the
+  // camera's field of view and the overlaps.
+  START_SURVEY: true,
+  SURVEY_ALTITUDE: 60, // m above the take-off point
+  SURVEY_FOV_X: 60, // across track, degrees
+  SURVEY_FOV_Y: 45, // along track
+  SURVEY_SIDE_OVERLAP: 0.7,
+  SURVEY_FRONT_OVERLAP: 0.8,
+  SURVEY_SPEED: 10, // m/s on the survey lines
+  SURVEY_TURN_SPEED: 7,
+  SURVEY_TRANSIT_SPEED: 14,
+  SURVEY_CLIMB_SPEED: 4,
+  SURVEY_TIME_SCALE: 2, // the full flight takes ~2 minutes
+  // The 2 m airframe is drawn 4x larger so it reads at site scale.
+  SURVEY_DRONE_SCALE: 4,
 };
 
 const SUN_DIR = new THREE.Vector3(10, 20, 10).normalize();
@@ -168,6 +187,11 @@ export class MosqueEnvironment {
   private bulbMaterial!: THREE.MeshStandardMaterial;
   private resizeObserver: ResizeObserver;
   private lastTime = performance.now();
+
+  // Survey drone; its read-out is reported a few times a second.
+  survey!: SurveyMission;
+  onSurveyStatus: (status: SurveyStatus) => void = () => {};
+  private surveyStatusTimer = 0;
 
   // BIM: click a mosque element to select it and read its properties.
   bim: BimData | null = null;
@@ -276,6 +300,7 @@ export class MosqueEnvironment {
     this.scene.add(this.terrain);
 
     this.vegetation = this.scatterVegetation(tree.scene, palm.scene);
+    this.survey = this.createSurvey();
 
     const rand = mulberry32(CONFIG.SEED + 1);
     this.createTraffic(route, rand);
@@ -373,6 +398,70 @@ export class MosqueEnvironment {
     const top = values[y0 * width + x0] * (1 - fx) + values[y0 * width + x1] * fx;
     const bottom = values[y1 * width + x0] * (1 - fx) + values[y1 * width + x1] * fx;
     return (top * (1 - fy) + bottom * fy - base) * CONFIG.DISPLACEMENT_SCALE;
+  }
+
+  // Where a ray from above first meets the ground. The terrain is displaced
+  // on the GPU, so a THREE.Raycaster would only find the flat plane; march the
+  // ray over the DTM heightfield instead and refine the hit by bisection.
+  raycastGround = (origin: THREE.Vector3, dir: THREE.Vector3, target: THREE.Vector3) => {
+    if (!this.terrainMode) {
+      const t = dir.y < -1e-6 ? Math.max(-origin.y / dir.y, 0) : 0;
+      return target.copy(origin).addScaledVector(dir, t);
+    }
+    const below = (t: number) => {
+      target.copy(origin).addScaledVector(dir, t);
+      return target.y <= this.heightAt(target.x, target.z);
+    };
+    const STEP = 1;
+    for (let t = 0; t <= 3000; t += STEP) {
+      if (!below(t)) continue;
+      let lo = Math.max(t - STEP, 0), hi = t;
+      for (let k = 0; k < 10; k++) {
+        const mid = (lo + hi) / 2;
+        if (below(mid)) hi = mid;
+        else lo = mid;
+      }
+      below(hi);
+      break;
+    }
+    target.y = this.heightAt(target.x, target.z);
+    return target;
+  };
+
+  // --------------------------------------------------------------- survey --
+  private createSurvey() {
+    const box = new THREE.Box3().setFromObject(this.mosque);
+    const survey = new SurveyMission(
+      {
+        box: { minX: box.min.x, maxX: box.max.x, minZ: box.min.z, maxZ: box.max.z },
+        altitude: CONFIG.SURVEY_ALTITUDE,
+        fovX: CONFIG.SURVEY_FOV_X,
+        fovY: CONFIG.SURVEY_FOV_Y,
+        sideOverlap: CONFIG.SURVEY_SIDE_OVERLAP,
+        frontOverlap: CONFIG.SURVEY_FRONT_OVERLAP,
+        surveySpeed: CONFIG.SURVEY_SPEED,
+        turnSpeed: CONFIG.SURVEY_TURN_SPEED,
+        transitSpeed: CONFIG.SURVEY_TRANSIT_SPEED,
+        climbSpeed: CONFIG.SURVEY_CLIMB_SPEED,
+        timeScale: CONFIG.SURVEY_TIME_SCALE,
+        droneScale: CONFIG.SURVEY_DRONE_SCALE,
+      },
+      this.raycastGround,
+      (x, z) => this.heightAt(x, z),
+    );
+    survey.setLayers({ drone: CONFIG.START_SURVEY });
+    this.scene.add(survey.group);
+    return survey;
+  }
+
+  setSurveyLayers(layers: Partial<SurveyLayers>) {
+    this.survey.setLayers(layers);
+    this.onSurveyStatus(this.survey.status());
+  }
+
+  restartSurvey() {
+    this.survey.restart();
+    this.onSurveyStatus(this.survey.status());
   }
 
   // ------------------------------------------------------------ vegetation --
@@ -577,6 +666,7 @@ export class MosqueEnvironment {
     }
     for (const { light, intensity } of this.nightLights) light.intensity = night ? intensity : 0;
     this.bulbMaterial.emissiveIntensity = night ? 4 : 0;
+    this.survey.setNight(night);
   }
 
   setTerrainMode(on: boolean) {
@@ -587,6 +677,8 @@ export class MosqueEnvironment {
     for (const obj of this.vegetation.children) {
       obj.position.y = this.heightAt(obj.position.x, obj.position.z) - 0.1;
     }
+    // The footprints already taken are re-draped over the new ground.
+    this.survey.reproject();
   }
 
   // ---------------------------------------------------------------- camera --
@@ -703,6 +795,12 @@ export class MosqueEnvironment {
       car.obj.position.copy(_p);
       car.obj.lookAt(_p.add(_tangent));
     }
+    this.survey.update(dt);
+    this.surveyStatusTimer -= dt;
+    if (this.surveyStatusTimer <= 0) {
+      this.surveyStatusTimer = 0.25;
+      this.onSurveyStatus(this.survey.status());
+    }
     this.controls.update();
     this.renderer.render(this.scene, this.camera);
   }
@@ -713,6 +811,7 @@ export class MosqueEnvironment {
     this.renderer.domElement.removeEventListener('pointerdown', this.handlePointerDown);
     this.renderer.domElement.removeEventListener('pointerup', this.handlePointerUp);
     this.highlightMaterial.dispose();
+    this.survey?.dispose();
     this.categoryMaterials.forEach((m) => m.dispose());
     this.controls.dispose();
     const textures = new Set<THREE.Texture>();
