@@ -9,9 +9,21 @@ build
 .vercel
 *.log
 .DS_Store
-.D_Store
 *:Zone.Identifier
 enviro-*.json
 *.key
 credentials.json
-.tmp-screenshot.mjs
+.tmp-*.mjs
+
+# MapLibre worker, copied from node_modules before dev/build
+/public/maplibre/
+
+# build-crop-data.py per-scene cache
+.cache/
+
+# Local copies of the separate 3d viewer (tracked in amiin211/3d; multi-GB data)
+/3d/
+/3d - Copy/
+
+# Deployment bundle from `npm run package`
+/coffeemap-dist.zip

@@ -1,7 +1,8 @@
 'use client';
 
 import { ThemeProvider, CssBaseline, Box } from '@mui/material';
-import theme from '@/theme/theme';
+import theme, { rtlTheme } from '@/theme/theme';
+import { useI18n } from '@/i18n';
 import { roboto } from '@/theme/fonts';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -11,8 +12,9 @@ interface AppLayoutProps {
 }
 
 export default function AppLayout({ children }: AppLayoutProps) {
+  const { isAr } = useI18n();
   return (
-    <ThemeProvider theme={theme}>
+    <ThemeProvider theme={isAr ? rtlTheme : theme}>
       <CssBaseline />
       <style jsx global>{`
         :root {

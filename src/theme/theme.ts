@@ -126,3 +126,6 @@ const theme = createTheme({
 });
 
 export default theme;
+
+// Arabic pages: same design, mirrored. Fonts are swapped by CSS in app/ar/layout.
+export const rtlTheme = createTheme(theme, { direction: 'rtl' });

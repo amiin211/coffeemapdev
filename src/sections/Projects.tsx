@@ -4,6 +4,7 @@ import { Box, Container, Typography, Grid } from '@mui/material';
 import ProjectCard from '@/components/ProjectCard';
 import { projects } from '@/data/projects';
 import { filterProjectsByCategory } from '@/utils/filters';
+import { useI18n } from '@/i18n';
 
 interface ProjectsProps {
   selectedCategory?: string | null;
@@ -11,17 +12,18 @@ interface ProjectsProps {
 
 const Projects = ({ selectedCategory = null }: ProjectsProps) => {
   const filteredProjects = filterProjectsByCategory(projects, selectedCategory);
+  const { tr } = useI18n();
 
   return (
     <Box
       id="projects"
       sx={{
-        py: { xs: 8, md: 12 },
+        py: { xs: 5, md: 7 },
         backgroundColor: 'background.default',
       }}
     >
       <Container maxWidth="lg">
-        <Box sx={{ textAlign: 'center', mb: 6 }}>
+        <Box sx={{ textAlign: 'center', mb: 4 }}>
           <Typography
             variant="h2"
             sx={{
@@ -32,7 +34,7 @@ const Projects = ({ selectedCategory = null }: ProjectsProps) => {
               mb: 2,
             }}
           >
-            Featured Projects
+            {tr('Featured Projects', 'مشاريع مختارة')}
           </Typography>
           <Typography
             variant="body1"
@@ -44,7 +46,7 @@ const Projects = ({ selectedCategory = null }: ProjectsProps) => {
               lineHeight: 1.7,
             }}
           >
-            Explore our portfolio of geospatial engineering solutions across humanitarian and infrastructure domains
+            {tr('Explore our portfolio of geospatial engineering solutions across humanitarian and infrastructure domains', 'استكشف أعمالنا في الهندسة الجيومكانية عبر المجالين الإنساني والبنية التحتية')}
           </Typography>
         </Box>
 
@@ -59,7 +61,7 @@ const Projects = ({ selectedCategory = null }: ProjectsProps) => {
         {filteredProjects.length === 0 && (
           <Box sx={{ textAlign: 'center', py: 8 }}>
             <Typography variant="body1" sx={{ color: 'text.secondary' }}>
-              No projects found for the selected category.
+              {tr('No projects found for the selected category.', 'لا توجد مشاريع في هذه الفئة.')}
             </Typography>
           </Box>
         )}

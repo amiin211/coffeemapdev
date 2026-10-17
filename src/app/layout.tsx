@@ -1,10 +1,11 @@
 import { Metadata } from 'next';
+import { AppRouterCacheProvider } from '@mui/material-nextjs/v16-appRouter';
 import { roboto } from '@/theme/fonts';
-import ClientWrapper from './ClientWrapper';
 
 export const metadata: Metadata = {
   title: 'CoffeeMap.dev - Geospatial Engineering Platform',
   description: 'Brewing Data into Actionable Geospatial Insights',
+  icons: { icon: '/logo-icon.svg' },
 };
 
 export default function RootLayout({
@@ -13,9 +14,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    // lang/dir are switched to Arabic by app/ar/layout before hydration.
+    <html lang="en" suppressHydrationWarning>
       <body className={roboto.className}>
-        {children}
+        {/* Collects MUI/Emotion styles into <head> during SSR, so the server
+            HTML matches the client and pages hydrate cleanly. */}
+        <AppRouterCacheProvider>{children}</AppRouterCacheProvider>
       </body>
     </html>
   );

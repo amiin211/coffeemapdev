@@ -1,0 +1,118 @@
+{
+ "illustrative": true,
+ "note": "Illustrative sample: synthetic terrain, buildings and timeline. Not observed data.",
+ "place": {
+  "en": "Sennar, Sudan",
+  "ar": "سنار، السودان"
+ },
+ "crs": "local",
+ "crs_note": "Local metres from the AOI centre: x east, y north (illustrative; real data uses EPSG:32636).",
+ "origin_utm": null,
+ "width_m": 3000.0,
+ "height_m": 3000.0,
+ "resolution_m": 11.719,
+ "heightmap": {
+  "file": "heightmap.png",
+  "width": 257,
+  "height": 257,
+  "encoding": "rg16",
+  "min_elev_m": 404.277,
+  "max_elev_m": 422.406
+ },
+ "dem_source": "Synthetic river valley (illustrative sample)",
+ "texture": {
+  "file": "texture.jpg",
+  "source": "Procedural placeholder (illustrative sample)",
+  "date": null
+ },
+ "buildings": {
+  "file": "buildings.geojson",
+  "count": 2157,
+  "source": "Procedural (illustrative sample)"
+ },
+ "river_centreline": [
+  [
+   1817.2,
+   -1576.9
+  ],
+  [
+   1647.7,
+   -1406.4
+  ],
+  [
+   1483.9,
+   -1230.3
+  ],
+  [
+   1322.8,
+   -1051.3
+  ],
+  [
+   1159.2,
+   -875.0
+  ],
+  [
+   986.3,
+   -707.9
+  ],
+  [
+   798.4,
+   -555.9
+  ],
+  [
+   592.2,
+   -422.1
+  ],
+  [
+   368.6,
+   -305.7
+  ],
+  [
+   132.4,
+   -201.9
+  ],
+  [
+   -107.8,
+   -102.1
+  ],
+  [
+   -341.8,
+   3.8
+  ],
+  [
+   -559.9,
+   125.7
+  ],
+  [
+   -754.7,
+   270.9
+  ],
+  [
+   -923.0,
+   442.5
+  ],
+  [
+   -1066.4,
+   639.2
+  ],
+  [
+   -1190.5,
+   855.0
+  ],
+  [
+   -1304.2,
+   1081.3
+  ],
+  [
+   -1416.8,
+   1308.7
+  ],
+  [
+   -1536.6,
+   1528.9
+  ]
+ ],
+ "layers": {
+  "flood_extent": null
+ }
+}

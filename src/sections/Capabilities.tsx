@@ -3,18 +3,24 @@
 import { Box, Container, Typography, Grid } from '@mui/material';
 import CapabilityCard from '@/components/CapabilityCard';
 import { capabilities } from '@/data/capabilities';
+import { projects } from '@/data/projects';
+import { useI18n } from '@/i18n';
+
+// Only areas with at least one project get a card (each links to its projects).
+const shownCapabilities = capabilities.filter((cap) => projects.some((p) => p.category === cap.category));
 
 const Capabilities = () => {
+  const { tr } = useI18n();
   return (
     <Box
       id="capabilities"
       sx={{
-        py: { xs: 8, md: 12 },
+        py: { xs: 5, md: 7 },
         backgroundColor: 'background.paper',
       }}
     >
       <Container maxWidth="lg">
-        <Box sx={{ textAlign: 'center', mb: 6 }}>
+        <Box sx={{ textAlign: 'center', mb: 4 }}>
           <Typography
             variant="h2"
             sx={{
@@ -25,7 +31,7 @@ const Capabilities = () => {
               mb: 2,
             }}
           >
-            What We Do
+            {tr('What We Do', 'ماذا نقدّم')}
           </Typography>
           <Typography
             variant="body1"
@@ -37,13 +43,13 @@ const Capabilities = () => {
               lineHeight: 1.7,
             }}
           >
-            End-to-end geospatial solutions spanning data collection, analysis, and visualization
+            {tr('End-to-end geospatial solutions spanning data collection, analysis, and visualization', 'حلول جيومكانية متكاملة تشمل جمع البيانات وتحليلها وعرضها')}
           </Typography>
         </Box>
 
         <Grid container spacing={3}>
-          {capabilities.map((capability) => (
-            <Grid item xs={12} sm={6} md={3} key={capability.id}>
+          {shownCapabilities.map((capability) => (
+            <Grid item xs={12} sm={6} md={12 / shownCapabilities.length} key={capability.id}>
               <CapabilityCard capability={capability} />
             </Grid>
           ))}

@@ -5,9 +5,11 @@ import LinkedInIcon from '@mui/icons-material/LinkedIn';
 import EmailIcon from '@mui/icons-material/Email';
 import XIcon from '@mui/icons-material/X';
 import GitHubIcon from '@mui/icons-material/GitHub';
+import { useI18n } from '@/i18n';
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
+  const { tr } = useI18n();
 
   return (
     <Box
@@ -55,7 +57,7 @@ const Footer = () => {
                   color: 'text.secondary',
                 }}
               >
-                Brewing Data into Actionable Geospatial Insights
+                {tr('Brewing Data into Actionable Geospatial Insights', 'نحوّل البيانات إلى رؤى جيومكانية قابلة للتنفيذ')}
               </Typography>
               <Typography
                 sx={{
@@ -65,7 +67,7 @@ const Footer = () => {
                   mt: 0.5,
                 }}
               >
-                Created by Amin Adnan Gasim
+                {tr('Created by', 'من إعداد')} <b>{tr('Amin Adnan Gasim', 'أمين عدنان قاسم')}</b>
               </Typography>
             </Box>
           </Box>
@@ -73,7 +75,7 @@ const Footer = () => {
           <Stack direction="row" spacing={2} sx={{ height: '100%', alignItems: 'center' }}>
             <Box
               component="a"
-              href="https://x.com/@coffeemapdev"
+              href="https://x.com/coffeemapdev"
               target="_blank"
               rel="noopener noreferrer"
               sx={{
@@ -176,7 +178,7 @@ const Footer = () => {
               color: 'text.secondary',
             }}
           >
-            © {currentYear} CoffeeMap.dev. All rights reserved.
+            © {currentYear} CoffeeMap.dev. {tr('All rights reserved.', 'جميع الحقوق محفوظة.')}
           </Typography>
         </Box>
       </Container>

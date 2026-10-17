@@ -5,22 +5,31 @@ import LinkedInIcon from '@mui/icons-material/LinkedIn';
 import EmailIcon from '@mui/icons-material/Email';
 import XIcon from '@mui/icons-material/X';
 import GitHubIcon from '@mui/icons-material/GitHub';
+import { useI18n } from '@/i18n';
+
+const CONTACT_EMAIL = 'info@coffeemap.dev';
 
 const Contact = () => {
-  const handleSubmit = (e: React.FormEvent) => {
+  const { tr } = useI18n();
+  // No backend: hand the message to the visitor's email app, pre-addressed.
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const form = new FormData(e.currentTarget);
+    const subject = tr(`CoffeeMap.dev enquiry from ${form.get('name')}`, `استفسار عبر CoffeeMap.dev من ${form.get('name')}`);
+    const body = `${form.get('message')}\n\n— ${form.get('name')} (${form.get('email')})`;
+    window.location.href = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
 
   return (
     <Box
       id="contact"
       sx={{
-        py: { xs: 8, md: 12 },
+        py: { xs: 5, md: 7 },
         backgroundColor: 'background.paper',
       }}
     >
       <Container maxWidth="lg">
-        <Box sx={{ textAlign: 'center', mb: 6 }}>
+        <Box sx={{ textAlign: 'center', mb: 4 }}>
           <Typography
             variant="h2"
             sx={{
@@ -31,7 +40,7 @@ const Contact = () => {
               mb: 2,
             }}
           >
-            Get in Touch
+            {tr('Get in Touch', 'تواصل معنا')}
           </Typography>
           <Typography
             variant="body1"
@@ -43,7 +52,7 @@ const Contact = () => {
               lineHeight: 1.7,
             }}
           >
-            Have a project in mind? Let&apos;s discuss how we can help with your geospatial needs.
+            {tr('Have a project in mind? Let’s discuss how we can help with your geospatial needs.', 'لديك مشروع في ذهنك؟ لنتحدث عن كيف يمكننا مساعدتك في احتياجاتك الجيومكانية.')}
           </Typography>
         </Box>
 
@@ -62,7 +71,8 @@ const Contact = () => {
             >
               <Stack spacing={3}>
                 <TextField
-                  label="Name"
+                  name="name"
+                  label={tr('Name', 'الاسم')}
                   fullWidth
                   required
                   sx={{
@@ -72,7 +82,8 @@ const Contact = () => {
                   }}
                 />
                 <TextField
-                  label="Email"
+                  name="email"
+                  label={tr('Email', 'البريد الإلكتروني')}
                   type="email"
                   fullWidth
                   required
@@ -83,7 +94,8 @@ const Contact = () => {
                   }}
                 />
                 <TextField
-                  label="Message"
+                  name="message"
+                  label={tr('Message', 'الرسالة')}
                   multiline
                   rows={4}
                   fullWidth
@@ -108,7 +120,7 @@ const Contact = () => {
                     },
                   }}
                 >
-                  Send Message
+                  {tr('Send Message', 'إرسال الرسالة')}
                 </Button>
               </Stack>
             </Box>
@@ -125,13 +137,13 @@ const Contact = () => {
                   mb: 3,
                 }}
               >
-                Connect With Us
+                {tr('Connect With Us', 'تابعنا')}
               </Typography>
 
               <Stack spacing={2}>
                 <Box
                   component="a"
-                  href="https://x.com/@coffeemapdev"
+                  href="https://x.com/coffeemapdev"
                   target="_blank"
                   rel="noopener noreferrer"
                   sx={{
@@ -167,10 +179,10 @@ const Contact = () => {
                       variant="body1"
                       sx={{ fontWeight: 500, fontFamily: 'Roboto, sans-serif' }}
                     >
-                      X (Twitter)
+                      {tr('X (Twitter)', 'إكس (تويتر)')}
                     </Typography>
                     <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                      @coffeemapdev
+                      <bdi>@coffeemapdev</bdi>
                     </Typography>
                   </Box>
                 </Box>
@@ -213,10 +225,10 @@ const Contact = () => {
                       variant="body1"
                       sx={{ fontWeight: 500, fontFamily: 'Roboto, sans-serif' }}
                     >
-                      LinkedIn
+                      {tr('LinkedIn', 'لينكدإن')}
                     </Typography>
                     <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                      @amiin211
+                      <bdi>@amiin211</bdi>
                     </Typography>
                   </Box>
                 </Box>
@@ -262,14 +274,14 @@ const Contact = () => {
                       GitHub
                     </Typography>
                     <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                      @amiin211
+                      <bdi>@amiin211</bdi>
                     </Typography>
                   </Box>
                 </Box>
 
                 <Box
                   component="a"
-                  href="mailto:info@coffeemap.dev"
+                  href={`mailto:${CONTACT_EMAIL}`}
                   sx={{
                     display: 'flex',
                     alignItems: 'center',
@@ -303,10 +315,10 @@ const Contact = () => {
                       variant="body1"
                       sx={{ fontWeight: 500, fontFamily: 'Roboto, sans-serif' }}
                     >
-                      Email
+                      {tr('Email', 'البريد الإلكتروني')}
                     </Typography>
                     <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                      info@coffeemap.dev
+                      <bdi>{CONTACT_EMAIL}</bdi>
                     </Typography>
                   </Box>
                 </Box>

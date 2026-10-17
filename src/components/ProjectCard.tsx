@@ -13,20 +13,34 @@ import { Project } from '@/data/projects';
 import TechBadge from './TechBadge';
 import { getCategoryLabel } from '@/utils/filters';
 import Link from 'next/link';
+import { useI18n } from '@/i18n';
 
 interface ProjectCardProps {
   project: Project;
 }
 
 const ProjectCard = ({ project }: ProjectCardProps) => {
-  const isExternal = project.externalUrl?.startsWith('http');
+  const { locale, isAr, tr, href } = useI18n();
+  const title = isAr ? project.titleAr : project.title;
+  // The whole card is the link; the "View Demo" button below is just a
+  // visual cue inside it, since links can't be nested.
+  const linkProps = project.externalUrl.startsWith('http')
+    ? { component: 'a' as const, href: project.externalUrl, target: '_blank', rel: 'noopener noreferrer' }
+    : { component: Link, href: href(project.externalUrl) };
 
   return (
     <Card
+      {...linkProps}
       sx={{
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
+        textDecoration: 'none',
+        color: 'inherit',
+        cursor: 'pointer',
+        transition: 'transform 0.2s, box-shadow 0.2s',
+        '&:hover': { transform: 'translateY(-4px)', boxShadow: 6 },
+        '&:hover .view-demo': { backgroundColor: 'rgba(74, 55, 40, 0.08)', borderColor: 'primary.dark' },
       }}
     >
       <Box
@@ -43,19 +57,16 @@ const ProjectCard = ({ project }: ProjectCardProps) => {
         <Box
           component="img"
           src={project.image}
-          alt={project.title}
+          alt={title}
           sx={{
             width: '100%',
             height: '100%',
             objectFit: 'cover',
             opacity: 0.8,
           }}
-          onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
-            e.currentTarget.style.display = 'none';
-          }}
         />
         <Chip
-          label={getCategoryLabel(project.category)}
+          label={(isAr ? project.categoryLabelAr : project.categoryLabel) ?? getCategoryLabel(project.category, locale)}
           size="small"
           sx={{
             position: 'absolute',
@@ -80,7 +91,7 @@ const ProjectCard = ({ project }: ProjectCardProps) => {
             fontSize: '1rem',
           }}
         >
-          {project.title}
+          {title}
         </Typography>
 
         <Typography
@@ -92,7 +103,7 @@ const ProjectCard = ({ project }: ProjectCardProps) => {
             lineHeight: 1.6,
           }}
         >
-          {project.description}
+          {isAr ? project.descriptionAr : project.description}
         </Typography>
 
         <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mb: 2 }}>
@@ -101,70 +112,25 @@ const ProjectCard = ({ project }: ProjectCardProps) => {
           ))}
         </Stack>
 
-        {project.externalUrl ? (
-          isExternal ? (
-            <Button
-              component="a"
-              href={project.externalUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              variant="outlined"
-              size="small"
-              sx={{
-                alignSelf: 'flex-start',
-                borderColor: 'primary.main',
-                color: 'primary.main',
-                fontFamily: 'Roboto, sans-serif',
-                fontSize: '0.75rem',
-                '&:hover': {
-                  backgroundColor: 'rgba(74, 55, 40, 0.08)',
-                  borderColor: 'primary.dark',
-                },
-              }}
-            >
-              View Demo
-            </Button>
-          ) : (
-            <Button
-              component={Link}
-              href={project.externalUrl}
-              variant="outlined"
-              size="small"
-              sx={{
-                alignSelf: 'flex-start',
-                borderColor: 'primary.main',
-                color: 'primary.main',
-                fontFamily: 'Roboto, sans-serif',
-                fontSize: '0.75rem',
-                textDecoration: 'none',
-                '&:hover': {
-                  backgroundColor: 'rgba(74, 55, 40, 0.08)',
-                  borderColor: 'primary.dark',
-                },
-              }}
-            >
-              View Demo
-            </Button>
-          )
-        ) : (
-          <Button
-            variant="outlined"
-            size="small"
-            sx={{
-              alignSelf: 'flex-start',
-              borderColor: 'primary.main',
-              color: 'primary.main',
-              fontFamily: 'Roboto, sans-serif',
-              fontSize: '0.75rem',
-              '&:hover': {
-                backgroundColor: 'rgba(74, 55, 40, 0.08)',
-                borderColor: 'primary.dark',
-              },
-            }}
-          >
-            View Demo
-          </Button>
-        )}
+        <Button
+          component="span"
+          className="view-demo"
+          variant="outlined"
+          size="small"
+          sx={{
+            alignSelf: 'flex-start',
+            borderColor: 'primary.main',
+            color: 'primary.main',
+            fontFamily: 'Roboto, sans-serif',
+            fontSize: '0.75rem',
+            '&:hover': {
+              backgroundColor: 'rgba(74, 55, 40, 0.08)',
+              borderColor: 'primary.dark',
+            },
+          }}
+        >
+          {tr('View Demo', 'عرض المشروع')}
+        </Button>
       </CardContent>
     </Card>
   );
