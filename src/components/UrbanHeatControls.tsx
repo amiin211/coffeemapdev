@@ -5,6 +5,7 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
 import type { Weights } from '@/lib/urbanHeat';
 import type { UrbanLayerVisibility } from '@/components/UrbanHeatMap';
+import { Bi, useI18n } from '@/i18n';
 
 export interface DateWindow {
   start: string;
@@ -24,22 +25,22 @@ interface UrbanHeatControlsProps {
   maxDate: string;
 }
 
-const LAYERS: [keyof UrbanLayerVisibility, string][] = [
-  ['heat', 'Heat (land surface temp.)'],
-  ['hotspots', 'Heat hotspots'],
-  ['vegetation', 'Vegetation (NDVI)'],
-  ['canopy', 'Tree canopy'],
-  ['equity', 'Canopy equity'],
-  ['priority', 'Priority zones'],
-  ['trees', 'Trees (OSM)'],
-  ['parks', 'Parks (OSM)'],
-  ['hillshade', 'Hillshade'],
+const LAYERS: [keyof UrbanLayerVisibility, Bi][] = [
+  ['heat', { en: 'Heat (land surface temp.)', ar: 'الحرارة (حرارة سطح الأرض)' }],
+  ['hotspots', { en: 'Heat hotspots', ar: 'البؤر الحرارية' }],
+  ['vegetation', { en: 'Vegetation (NDVI)', ar: 'الغطاء النباتي (NDVI)' }],
+  ['canopy', { en: 'Tree canopy', ar: 'مظلة الأشجار' }],
+  ['equity', { en: 'Canopy equity', ar: 'عدالة مظلة الأشجار' }],
+  ['priority', { en: 'Priority zones', ar: 'مناطق الأولوية' }],
+  ['trees', { en: 'Trees (OSM)', ar: 'الأشجار (OSM)' }],
+  ['parks', { en: 'Parks (OSM)', ar: 'الحدائق (OSM)' }],
+  ['hillshade', { en: 'Hillshade', ar: 'تظليل التضاريس' }],
 ];
 
-const WEIGHTS: [keyof Weights, string, string][] = [
-  ['heat', 'w1', 'Land surface temperature'],
-  ['density', 'w2', 'Building density'],
-  ['vegetation', 'w3', 'Lack of vegetation (1 − NDVI)'],
+const WEIGHTS: [keyof Weights, string, Bi][] = [
+  ['heat', 'w1', { en: 'Land surface temperature', ar: 'حرارة سطح الأرض' }],
+  ['density', 'w2', { en: 'Building density', ar: 'كثافة المباني' }],
+  ['vegetation', 'w3', { en: 'Lack of vegetation (1 − NDVI)', ar: 'نقص الغطاء النباتي (1 − NDVI)' }],
 ];
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -55,12 +56,13 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 export default function UrbanHeatControls(props: UrbanHeatControlsProps) {
   const { window: win, visible, weights, busy } = props;
+  const { tr, pick } = useI18n();
   return (
     <Box>
-      <Section title="Imagery window">
+      <Section title={tr('Imagery window', 'فترة الصور')}>
         <Box sx={{ display: 'flex', gap: 1, mb: 1.5 }}>
           <TextField
-            label="From"
+            label={tr('From', 'من')}
             type="date"
             size="small"
             value={win.start}
@@ -70,7 +72,7 @@ export default function UrbanHeatControls(props: UrbanHeatControlsProps) {
             fullWidth
           />
           <TextField
-            label="To"
+            label={tr('To', 'إلى')}
             type="date"
             size="small"
             value={win.end}
@@ -81,7 +83,7 @@ export default function UrbanHeatControls(props: UrbanHeatControlsProps) {
           />
         </Box>
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-          Least-cloudy Landsat 8/9 (LST) and Sentinel-2 (NDVI) scenes in the window. Summer shows the strongest heat.
+          {tr('Least-cloudy Landsat 8/9 (LST) and Sentinel-2 (NDVI) scenes in the window. Summer shows the strongest heat.', 'أقل مشاهد Landsat 8/9 (حرارة السطح) وSentinel-2 (NDVI) غيومًا خلال الفترة. يُظهر الصيف أشد الحرارة.')}
         </Typography>
         <Button
           fullWidth
@@ -91,29 +93,29 @@ export default function UrbanHeatControls(props: UrbanHeatControlsProps) {
           disabled={busy || !win.start || !win.end || win.start > win.end}
           sx={{ textTransform: 'none' }}
         >
-          Load LST &amp; NDVI
+          {tr('Load LST & NDVI', 'تحميل حرارة السطح وNDVI')}
         </Button>
       </Section>
 
       <Divider sx={{ mb: 1 }} />
-      <Section title="Layers">
+      <Section title={tr('Layers', 'الطبقات')}>
         {LAYERS.map(([key, label]) => (
           <FormControlLabel
             key={key}
             sx={{ display: 'flex', ml: 0, mr: 0, justifyContent: 'space-between' }}
             labelPlacement="start"
             control={<Switch size="small" checked={visible[key]} onChange={(e) => props.onVisibleChange({ ...visible, [key]: e.target.checked })} />}
-            label={<Typography variant="body2">{label}</Typography>}
+            label={<Typography variant="body2">{pick(label)}</Typography>}
           />
         ))}
       </Section>
 
       <Divider sx={{ mb: 1 }} />
-      <Section title="Heat risk model weights">
+      <Section title={tr('Heat risk model weights', 'أوزان نموذج مخاطر الحرارة')}>
         {WEIGHTS.map(([key, w, label]) => (
           <Box key={key} sx={{ px: 0.5 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-              <Typography variant="caption">{w} · {label}</Typography>
+              <Typography variant="caption">{w} · {pick(label)}</Typography>
               <Typography variant="caption" sx={{ fontWeight: 700 }}>{weights[key]}</Typography>
             </Box>
             <Slider
@@ -138,7 +140,7 @@ export default function UrbanHeatControls(props: UrbanHeatControlsProps) {
         disabled={busy}
         sx={{ textTransform: 'none', fontWeight: 700 }}
       >
-        Recompute Equity
+        {tr('Recompute Equity', 'إعادة حساب العدالة')}
       </Button>
     </Box>
   );

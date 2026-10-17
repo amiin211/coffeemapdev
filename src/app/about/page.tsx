@@ -4,8 +4,10 @@ import { Box, Container, Typography, Button, Stack, Grid } from '@mui/material';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import CoffeeIcon from '@mui/icons-material/Coffee';
 import AppLayout from '@/components/AppLayout';
+import { useI18n } from '@/i18n';
 
 export default function About() {
+  const { isAr, tr, href } = useI18n();
   return (
     <AppLayout>
       <Box sx={{ py: { xs: 6, md: 10 }, backgroundColor: 'background.default' }}>
@@ -34,7 +36,7 @@ export default function About() {
                     gap: 1.5,
                   }}
                 >
-                  About
+                  {tr('About', 'نبذة عن')}
                   <Box
                     component="img"
                     src="/logo.svg"
@@ -50,10 +52,10 @@ export default function About() {
                     lineHeight: 1.8,
                   }}
                 >
-                  CoffeeMap.dev is a simple space for experimenting with geospatial engineering. It brings 
-                  together web technologies and GIS to create clear, interactive tools from complex spatial 
-                  data. It also collects ideas, notes, and small demos showing how geospatial systems can 
-                  run directly in the browser.
+                  {tr(
+                    'CoffeeMap.dev is a simple space for experimenting with geospatial engineering. It brings together web technologies and GIS to create clear, interactive tools from complex spatial data. It also collects ideas, notes, and small demos showing how geospatial systems can run directly in the browser.',
+                    'CoffeeMap.dev مساحة بسيطة للتجريب في الهندسة الجيومكانية. تجمع بين تقنيات الويب ونظم المعلومات الجغرافية لصنع أدوات واضحة وتفاعلية من البيانات المكانية المعقدة. وتضم أيضًا أفكارًا وملاحظات وعروضًا صغيرة تُظهر كيف يمكن للأنظمة الجيومكانية أن تعمل مباشرة في المتصفح.',
+                  )}
                 </Typography>
               </Box>
             </Grid>
@@ -81,7 +83,7 @@ export default function About() {
                     gap: 1,
                   }}
                 >
-                  Why coffee?
+                  {tr('Why coffee?', 'لماذا القهوة؟')}
                   <CoffeeIcon sx={{ color: 'primary.main', fontSize: 32 }} />
                 </Typography>
                 <Typography
@@ -93,7 +95,7 @@ export default function About() {
                     mb: 2,
                   }}
                 >
-                  Because great ideas often begin with a cup.
+                  {tr('Because great ideas often begin with a cup.', 'لأن الأفكار العظيمة كثيرًا ما تبدأ بفنجان.')}
                 </Typography>
                 <Typography
                   variant="body1"
@@ -103,8 +105,10 @@ export default function About() {
                     lineHeight: 1.8,
                   }}
                 >
-                  CoffeeMap.dev is a small corner where maps, data, and experiments come together—sometimes 
-                  smooth, sometimes messy, but always fun.
+                  {tr(
+                    'CoffeeMap.dev is a small corner where maps, data, and experiments come together—sometimes smooth, sometimes messy, but always fun.',
+                    'CoffeeMap.dev ركن صغير تلتقي فيه الخرائط والبيانات والتجارب؛ أحيانًا بسلاسة، وأحيانًا بفوضى، لكنها ممتعة دائمًا.',
+                  )}
                 </Typography>
               </Box>
             </Grid>
@@ -124,7 +128,7 @@ export default function About() {
                 <Box
                   component="img"
                   src="/images/amin.png"
-                  alt="Amin Adnan Gasim"
+                  alt={tr('Amin Adnan Gasim', 'أمين عدنان قاسم')}
                   sx={{
                     width: '100%',
                     maxWidth: 280,
@@ -144,7 +148,7 @@ export default function About() {
                     mb: 3,
                   }}
                 >
-                  Creator
+                  {tr('Creator', 'المؤسس')}
                 </Typography>
                 <Typography
                   variant="body1"
@@ -155,10 +159,21 @@ export default function About() {
                     mb: 2,
                   }}
                 >
-                  CoffeeMap.dev is built by <strong>Amin Adnan Gasim</strong>, a Sudanese geospatial engineer based in 
-                  Saudi Arabia. He has over 10 years of experience in GIS, remote sensing, and spatial 
-                  data systems, working with organizations such as UNEP, UN‑Habitat, and UNOPS on 
-                  projects related to infrastructure, environmental monitoring, and emergency response.
+                  {isAr ? (
+                    <>
+                      بنى CoffeeMap.dev <strong>أمين عدنان قاسم</strong>، مهندس جيومكاني سوداني مقيم في المملكة العربية السعودية، يملك أكثر من
+                      10 سنوات من الخبرة في نظم المعلومات الجغرافية والاستشعار عن بعد وأنظمة البيانات المكانية، وعمل مع منظمات مثل برنامج الأمم
+                      المتحدة للبيئة (UNEP) وموئل الأمم المتحدة (UN‑Habitat) ومكتب الأمم المتحدة لخدمات المشاريع (UNOPS) في مشاريع البنية التحتية
+                      والرصد البيئي والاستجابة للطوارئ.
+                    </>
+                  ) : (
+                    <>
+                      CoffeeMap.dev is built by <strong>Amin Adnan Gasim</strong>, a Sudanese geospatial engineer based in
+                      Saudi Arabia. He has over 10 years of experience in GIS, remote sensing, and spatial
+                      data systems, working with organizations such as UNEP, UN‑Habitat, and UNOPS on
+                      projects related to infrastructure, environmental monitoring, and emergency response.
+                    </>
+                  )}
                 </Typography>
                 <Typography
                   variant="body1"
@@ -168,7 +183,7 @@ export default function About() {
                     fontSize: '1rem',
                   }}
                 >
-                  His work focuses on practical, data‑driven geospatial solutions.
+                  {tr('His work focuses on practical, data‑driven geospatial solutions.', 'يركّز عمله على حلول جيومكانية عملية قائمة على البيانات.')}
                 </Typography>
               </Grid>
             </Grid>
@@ -185,32 +200,32 @@ export default function About() {
                 mb: 4,
               }}
             >
-              Let&apos;s Work Together
+              {tr('Let’s Work Together', 'لنعمل معًا')}
             </Typography>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="center">
               <Button
                 variant="contained"
                 size="large"
-                endIcon={<ArrowForwardIcon />}
-                href="/"
+                endIcon={<ArrowForwardIcon sx={{ transform: isAr ? 'scaleX(-1)' : undefined }} />}
+                href={href('/')}
                 sx={{
                   backgroundColor: 'primary.main',
                   fontFamily: 'Roboto, sans-serif',
                 }}
               >
-                View Projects
+                {tr('View Projects', 'عرض المشاريع')}
               </Button>
               <Button
                 variant="outlined"
                 size="large"
-                href="/#contact"
+                href={href('/#contact')}
                 sx={{
                   borderColor: 'primary.main',
                   color: 'primary.main',
                   fontFamily: 'Roboto, sans-serif',
                 }}
               >
-                Get in Touch
+                {tr('Get in Touch', 'تواصل معنا')}
               </Button>
             </Stack>
           </Box>

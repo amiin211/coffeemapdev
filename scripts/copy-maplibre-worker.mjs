@@ -1,4 +1,5 @@
-// Copies MapLibre GL's web worker into public/maplibre/ (run before dev and build).
+// Copies MapLibre GL's web worker (and the RTL text plugin) into public/maplibre/
+// (run before dev and build).
 //
 // MapLibre 6 loads its worker as a separate module file next to its own
 // bundle, which Next's bundler doesn't emit, so the maps fail with "Worker
@@ -28,5 +29,11 @@ while (pending.length) {
     pending.push(dep);
   }
 }
+
+// MapLibre's right-to-left text plugin (Arabic shaping and bidi for map
+// labels), loaded on Arabic pages through setRTLTextPlugin.
+const rtlPlugin = 'mapbox-gl-rtl-text.js';
+copyFileSync(path.join(repoRoot, 'node_modules/@mapbox/mapbox-gl-rtl-text/dist', rtlPlugin), path.join(outDir, rtlPlugin));
+copied.add(rtlPlugin);
 
 console.log(`maplibre worker: copied ${[...copied].join(', ')} to public/maplibre/`);

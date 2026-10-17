@@ -4,17 +4,19 @@ import Link from 'next/link';
 import { Card, CardContent, Box, Typography, Button, Chip } from '@mui/material';
 import { Insight } from '@/data/insights';
 import { getCategoryLabel } from '@/utils/filters';
+import { formatDate, useI18n } from '@/i18n';
 
 interface InsightCardProps {
   insight: Insight;
 }
 
 const InsightCard = ({ insight }: InsightCardProps) => {
+  const { locale, isAr, tr, href } = useI18n();
   // The whole card links to the article.
   return (
     <Card
       component={Link}
-      href={insight.href}
+      href={href(insight.href)}
       sx={{
         height: '100%',
         display: 'flex',
@@ -30,7 +32,7 @@ const InsightCard = ({ insight }: InsightCardProps) => {
       <CardContent sx={{ flexGrow: 1, p: 3, display: 'flex', flexDirection: 'column' }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
           <Chip
-            label={getCategoryLabel(insight.category)}
+            label={getCategoryLabel(insight.category, locale)}
             size="small"
             sx={{
               backgroundColor: 'accent.light',
@@ -48,7 +50,7 @@ const InsightCard = ({ insight }: InsightCardProps) => {
               fontFamily: 'Roboto, sans-serif',
             }}
           >
-            {insight.date}
+            {formatDate(insight.date, locale, { day: 'numeric', month: 'short', year: 'numeric' })}
           </Typography>
         </Box>
 
@@ -62,7 +64,7 @@ const InsightCard = ({ insight }: InsightCardProps) => {
             lineHeight: 1.4,
           }}
         >
-          {insight.title}
+          {isAr ? insight.titleAr : insight.title}
         </Typography>
 
         <Typography
@@ -74,7 +76,7 @@ const InsightCard = ({ insight }: InsightCardProps) => {
             flexGrow: 1,
           }}
         >
-          {insight.summary}
+          {isAr ? insight.summaryAr : insight.summary}
         </Typography>
 
         <Button
@@ -91,7 +93,7 @@ const InsightCard = ({ insight }: InsightCardProps) => {
             '&:hover': { backgroundColor: 'transparent' },
           }}
         >
-          Read More →
+          {tr('Read More →', 'اقرأ المزيد ←')}
         </Button>
       </CardContent>
     </Card>

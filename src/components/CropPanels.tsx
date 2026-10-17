@@ -29,14 +29,41 @@ import {
   CropIndex,
   FieldProperties,
   INDEX_LABEL,
+  cropLabel,
   cropOn,
+  fieldLabel,
   formatDate,
 } from '@/utils/crop';
+import { useI18n } from '@/i18n';
 import { agriGreen } from '@/theme/agriColors';
 
 const fieldSx = {
   '& .MuiOutlinedInput-root': { fontFamily: 'Roboto, sans-serif', fontSize: '0.8rem' },
   '& .MuiInputLabel-root': { fontSize: '0.8rem' },
+};
+
+const INDEX_HELP_AR: Record<CropIndex, React.ReactNode> = {
+  ndvi: (
+    <Box sx={{ p: 0.5, fontSize: '0.75rem', lineHeight: 1.7 }}>
+      <strong>NDVI — مؤشر الفرق المعياري للغطاء النباتي</strong>
+      <br />
+      (NIR − Red) / (NIR + Red). تعكس النباتات الخضراء السليمة الأشعة تحت الحمراء القريبة وتمتص الضوء الأحمر، لذا يرتفع NDVI مع الغطاء
+      النباتي الأخضر النشط.
+      <br />
+      <strong>0–0.2</strong> تربة جرداء · <strong>0.2–0.4</strong> نبات متناثر أو مجهد · <strong>&gt; 0.5</strong> محصول كثيف وسليم.
+      يميل إلى التشبع فوق المظلات الكثيفة جدًا.
+    </Box>
+  ),
+  evi: (
+    <Box sx={{ p: 0.5, fontSize: '0.75rem', lineHeight: 1.7 }}>
+      <strong>EVI — مؤشر الغطاء النباتي المحسّن</strong>
+      <br />
+      2.5 × (NIR − Red) / (NIR + 6·Red − 7.5·Blue + 1). يشبه NDVI، لكنه يستخدم النطاق الأزرق لتصحيح أثر الغبار والضباب ويخفف خلفية
+      التربة الصحراوية الساطعة.
+      <br />
+      يبقى حساسًا فوق المحاصيل الكثيفة العالية الكتلة الحيوية حيث يستقر NDVI، فيميّز الحقول القوية بشكل أفضل. وعادة ما يكون أقل قليلًا من NDVI.
+    </Box>
+  ),
 };
 
 const INDEX_HELP: Record<CropIndex, React.ReactNode> = {
@@ -102,15 +129,17 @@ export function CropFilters({
   const options = fields.filter((f) => !cropFilter || f.crop === cropFilter);
   const selected = fields.find((f) => f.id === selectedField) ?? null;
   const presentCrops = CROP_TYPES.filter((c) => fields.some((f) => f.crop === c));
+  const { isAr, tr } = useI18n();
+  const date = (iso: string) => formatDate(iso, isAr);
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       <Box>
         <Typography variant="caption" sx={{ fontWeight: 600, display: 'block' }}>
-          Scene Date
+          {tr('Scene Date', 'تاريخ المشهد')}
         </Typography>
         <Typography variant="caption" color="text.secondary">
-          {formatDate(dates[dateIndex])} · scene {dateIndex + 1} of {dates.length}
+          {date(dates[dateIndex])} · {tr(`scene ${dateIndex + 1} of ${dates.length}`, `المشهد ${dateIndex + 1} من ${dates.length}`)}
         </Typography>
         <Box sx={{ px: 1 }}>
           <Slider
@@ -121,23 +150,23 @@ export function CropFilters({
             onChange={(_, v) => onDateChange(v as number)}
             onChangeCommitted={(_, v) => onDateCommit(v as number)}
             valueLabelDisplay="auto"
-            valueLabelFormat={(i) => formatDate(dates[i])}
+            valueLabelFormat={(i) => date(dates[i])}
             sx={{ color: agriGreen.DEFAULT }}
           />
         </Box>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: -0.5 }}>
           <Typography variant="caption" sx={{ fontSize: '0.65rem' }} color="text.secondary">
-            {formatDate(dates[0])}
+            {date(dates[0])}
           </Typography>
           <Typography variant="caption" sx={{ fontSize: '0.65rem' }} color="text.secondary">
-            {formatDate(dates[dates.length - 1])}
+            {date(dates[dates.length - 1])}
           </Typography>
         </Box>
         <TextField
           select
           size="small"
           fullWidth
-          label="Jump to date"
+          label={tr('Jump to date', 'الانتقال إلى تاريخ')}
           value={dateIndex}
           onChange={(e) => onDateCommit(Number(e.target.value))}
           SelectProps={{ MenuProps: { PaperProps: { sx: { maxHeight: 320 } } } }}
@@ -145,7 +174,7 @@ export function CropFilters({
         >
           {dates.map((d, i) => (
             <MenuItem key={d} value={i} sx={{ fontSize: '0.8rem' }}>
-              {formatDate(d)}
+              {date(d)}
             </MenuItem>
           ))}
         </TextField>
@@ -153,7 +182,7 @@ export function CropFilters({
 
       <Box>
         <Typography variant="caption" sx={{ fontWeight: 600, display: 'block', mb: 0.5 }}>
-          Index
+          {tr('Index', 'المؤشر')}
         </Typography>
         <ToggleButtonGroup size="small" exclusive fullWidth value={index} onChange={(_, v) => v && onIndexChange(v)}>
           {(['ndvi', 'evi'] as CropIndex[]).map((i) => (
@@ -167,7 +196,7 @@ export function CropFilters({
               }}
             >
               {/* Tooltip wraps the label, not the button, so ToggleButtonGroup still controls selection. */}
-              <Tooltip title={INDEX_HELP[i]} arrow placement="right" enterDelay={200}>
+              <Tooltip title={(isAr ? INDEX_HELP_AR : INDEX_HELP)[i]} arrow placement="right" enterDelay={200}>
                 <Box component="span" sx={{ width: '100%' }}>
                   {INDEX_LABEL[i]}
                 </Box>
@@ -177,19 +206,19 @@ export function CropFilters({
         </ToggleButtonGroup>
         <FormControlLabel
           control={<Switch size="small" checked={showIndexLayer} onChange={(e) => onShowIndexLayerChange(e.target.checked)} />}
-          label={<Typography variant="caption">Show {INDEX_LABEL[index]} imagery (off: per-field means)</Typography>}
+          label={<Typography variant="caption">{tr(`Show ${INDEX_LABEL[index]} imagery (off: per-field means)`, `عرض صور ${INDEX_LABEL[index]} (عند الإيقاف: متوسط كل حقل)`)}</Typography>}
           sx={{ mt: 0.5, ml: 0 }}
         />
       </Box>
 
       <FormControl size="small" fullWidth sx={fieldSx}>
-        <InputLabel>Crop Type</InputLabel>
-        <Select label="Crop Type" value={cropFilter ?? ''} onChange={(e) => onCropFilterChange(e.target.value || null)}>
-          <MenuItem value="">All Crops</MenuItem>
+        <InputLabel>{tr('Crop Type', 'نوع المحصول')}</InputLabel>
+        <Select label={tr('Crop Type', 'نوع المحصول')} value={cropFilter ?? ''} onChange={(e) => onCropFilterChange(e.target.value || null)}>
+          <MenuItem value="">{tr('All Crops', 'كل المحاصيل')}</MenuItem>
           {presentCrops.map((c) => (
             <MenuItem key={c} value={c}>
               <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: CROP_COLORS[c], mr: 1 }} />
-              {c}
+              {cropLabel(c, isAr)}
             </MenuItem>
           ))}
         </Select>
@@ -200,13 +229,13 @@ export function CropFilters({
         options={options}
         value={selected}
         onChange={(_, v) => onFieldSelect(v?.id ?? null)}
-        getOptionLabel={(f) => `${f.name} · ${f.crop}`}
+        getOptionLabel={(f) => `${fieldLabel(f.name, isAr)} · ${cropLabel(f.crop, isAr)}`}
         isOptionEqualToValue={(a, b) => a.id === b.id}
-        renderInput={(params) => <TextField {...params} label={`Field (${options.length})`} sx={fieldSx} />}
+        renderInput={(params) => <TextField {...params} label={tr(`Field (${options.length})`, `الحقل (${options.length})`)} sx={fieldSx} />}
       />
 
       <Button size="small" variant="outlined" onClick={onReset} sx={{ color: agriGreen.dark, borderColor: agriGreen.DEFAULT }}>
-        Reset Filters
+        {tr('Reset Filters', 'إعادة ضبط التصفية')}
       </Button>
     </Box>
   );
@@ -224,14 +253,15 @@ interface FieldInfoPanelProps {
 }
 
 export function FieldInfoPanel({ field, index, reading, anomalyNow, anomalyCount, onClear }: FieldInfoPanelProps) {
+  const { isAr, tr } = useI18n();
   if (!field) {
     return (
       <Box>
         <Typography variant="subtitle2" sx={{ fontFamily: 'Roboto, sans-serif', mb: 0.5 }}>
-          Field Details
+          {tr('Field Details', 'تفاصيل الحقل')}
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Click a field on the map, an alert, or pick one in the filters to see its crop classification and {INDEX_LABEL[index]} history.
+          {tr(`Click a field on the map, an alert, or pick one in the filters to see its crop classification and ${INDEX_LABEL[index]} history.`, `انقر حقلًا على الخريطة أو تنبيهًا، أو اختر حقلًا من عوامل التصفية لعرض تصنيف محصوله وسجل ${INDEX_LABEL[index]}.`)}
         </Typography>
       </Box>
     );
@@ -240,34 +270,34 @@ export function FieldInfoPanel({ field, index, reading, anomalyNow, anomalyCount
     <Box>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Typography variant="subtitle2" sx={{ fontFamily: 'Roboto, sans-serif', fontWeight: 700 }}>
-          {field.name}
+          {fieldLabel(field.name, isAr)}
         </Typography>
         <Button size="small" startIcon={<CloseIcon fontSize="small" />} onClick={onClear} sx={{ color: 'text.secondary', fontSize: '0.7rem' }}>
-          Clear
+          {tr('Clear', 'مسح')}
         </Button>
       </Box>
       <Typography variant="caption" color="text.secondary">
-        {field.type === 'pivot' ? 'Centre pivot' : 'Block field'} · {field.area_ha.toLocaleString()} ha
+        {field.type === 'pivot' ? tr('Centre pivot', 'ري محوري') : tr('Block field', 'حقل مستطيل')} · {field.area_ha.toLocaleString()} {tr('ha', 'هكتار')}
       </Typography>
 
       <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
         <Chip
           size="small"
-          label={reading ? `${INDEX_LABEL[index]} ${reading.value.toFixed(2)}` : 'No clear view'}
+          label={reading ? `${INDEX_LABEL[index]} ${reading.value.toFixed(2)}` : tr('No clear view', 'لا توجد رؤية صافية')}
           sx={{ fontWeight: 600, bgcolor: '#E8F5E9' }}
         />
         <Chip
           size="small"
           icon={anomalyNow ? <WarningAmberIcon /> : <CheckCircleOutlineIcon />}
-          label={anomalyNow ? 'Anomaly' : 'Normal'}
+          label={anomalyNow ? tr('Anomaly', 'شذوذ') : tr('Normal', 'طبيعي')}
           color={anomalyNow ? 'error' : 'success'}
           variant={anomalyNow ? 'filled' : 'outlined'}
         />
-        <Chip size="small" label={`${anomalyCount} anomalous dates`} variant="outlined" />
+        <Chip size="small" label={tr(`${anomalyCount} anomalous dates`, `${anomalyCount} تاريخًا شاذًا`)} variant="outlined" />
       </Box>
 
       <Typography variant="caption" sx={{ fontWeight: 600, display: 'block', mt: 1.5, mb: 0.5 }}>
-        Crop classification by season
+        {tr('Crop classification by season', 'تصنيف المحصول حسب الموسم')}
       </Typography>
       {field.seasons.length ? (
         field.seasons.map((s) => (
@@ -277,9 +307,9 @@ export function FieldInfoPanel({ field, index, reading, anomalyNow, anomalyCount
             </Typography>
             <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: CROP_COLORS[s.crop] ?? '#BDBDBD' }} />
             <Typography variant="caption" sx={{ flex: 1 }}>
-              {s.crop}
+              {cropLabel(s.crop, isAr)}
             </Typography>
-            <Box sx={{ width: 60, height: 6, bgcolor: 'grey.200', borderRadius: 1, overflow: 'hidden' }} title={`Confidence ${Math.round(s.confidence * 100)}%`}>
+            <Box sx={{ width: 60, height: 6, bgcolor: 'grey.200', borderRadius: 1, overflow: 'hidden' }} title={tr(`Confidence ${Math.round(s.confidence * 100)}%`, `الثقة ${Math.round(s.confidence * 100)}%`)}>
               <Box sx={{ width: `${s.confidence * 100}%`, height: '100%', bgcolor: agriGreen.DEFAULT }} />
             </Box>
             <Typography variant="caption" sx={{ width: 30, textAlign: 'right' }}>
@@ -289,7 +319,7 @@ export function FieldInfoPanel({ field, index, reading, anomalyNow, anomalyCount
         ))
       ) : (
         <Typography variant="caption" color="text.secondary">
-          Not enough clear observations to classify.
+          {tr('Not enough clear observations to classify.', 'لا توجد أرصاد صافية كافية للتصنيف.')}
         </Typography>
       )}
     </Box>
@@ -306,6 +336,7 @@ interface AnomalyAlertsProps {
 }
 
 export function AnomalyAlerts({ alerts, title, selectedField, onSelect }: AnomalyAlertsProps) {
+  const { isAr, tr } = useI18n();
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.5 }}>
@@ -325,10 +356,10 @@ export function AnomalyAlerts({ alerts, title, selectedField, onSelect }: Anomal
             >
               <Box sx={{ flex: 1, minWidth: 0 }}>
                 <Typography variant="caption" sx={{ fontWeight: 600, display: 'block' }}>
-                  {field.name} · {cropOn(field, date)?.crop ?? field.crop}
+                  {fieldLabel(field.name, isAr)} · {cropLabel(cropOn(field, date)?.crop ?? field.crop, isAr)}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  NDVI {value?.toFixed(2) ?? '—'} on {formatDate(date)} — below seasonal mean − 2σ
+                  {tr(`NDVI ${value?.toFixed(2) ?? '—'} on ${formatDate(date)} — below seasonal mean − 2σ`, `NDVI ${value?.toFixed(2) ?? '—'} في ${formatDate(date, true)} — أقل من المتوسط الموسمي − 2σ`)}
                 </Typography>
               </Box>
             </ListItemButton>
@@ -336,7 +367,7 @@ export function AnomalyAlerts({ alerts, title, selectedField, onSelect }: Anomal
         </List>
       ) : (
         <Typography variant="caption" color="text.secondary">
-          No fields below their seasonal NDVI range.
+          {tr('No fields below their seasonal NDVI range.', 'لا توجد حقول أقل من نطاق NDVI الموسمي لها.')}
         </Typography>
       )}
     </Box>

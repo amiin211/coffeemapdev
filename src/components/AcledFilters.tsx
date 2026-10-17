@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { Box, Button, FormControl, InputLabel, MenuItem, Select, Slider, Typography } from '@mui/material';
 import { AcledFilters as Filters, formatMonth } from '@/utils/acled';
 import { unBlue } from '@/theme/unColors';
+import { useI18n } from '@/i18n';
+import { useSudanNames } from '@/utils/sudanNamesAr';
 
 interface AcledFiltersProps {
   filters: Filters;
@@ -26,6 +28,9 @@ export default function AcledFilters({ filters, months, stateOptions, localityOp
   // Follow outside changes (reset, chart clicks) by adjusting state during
   // render, not in an effect: https://react.dev/learn/you-might-not-need-an-effect
   const [committed, setCommitted] = useState(filters.monthRange);
+  const { isAr, tr } = useI18n();
+  const names = useSudanNames(isAr);
+  const month = (i: number) => formatMonth(months[i], isAr);
   if (committed !== filters.monthRange) {
     setCommitted(filters.monthRange);
     setRange(filters.monthRange);
@@ -35,10 +40,10 @@ export default function AcledFilters({ filters, months, stateOptions, localityOp
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       <Box>
         <Typography variant="caption" sx={{ fontWeight: 600, display: 'block' }}>
-          Time Range
+          {tr('Time Range', 'الفترة الزمنية')}
         </Typography>
         <Typography variant="caption" color="text.secondary">
-          {range[0] === range[1] ? formatMonth(months[range[0]]) : `${formatMonth(months[range[0]])} – ${formatMonth(months[range[1]])}`}
+          {range[0] === range[1] ? month(range[0]) : `${month(range[0])} – ${month(range[1])}`}
         </Typography>
         <Box sx={{ px: 1 }}>
           <Slider
@@ -49,60 +54,60 @@ export default function AcledFilters({ filters, months, stateOptions, localityOp
             onChange={(_, v) => setRange(v as [number, number])}
             onChangeCommitted={(_, v) => onChange({ monthRange: v as [number, number] })}
             valueLabelDisplay="auto"
-            valueLabelFormat={(i) => formatMonth(months[i])}
+            valueLabelFormat={(i) => month(i)}
             sx={{ color: unBlue.DEFAULT }}
           />
         </Box>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: -0.5 }}>
           <Typography variant="caption" sx={{ fontSize: '0.65rem' }} color="text.secondary">
-            {formatMonth(months[0])}
+            {month(0)}
           </Typography>
           <Typography variant="caption" sx={{ fontSize: '0.65rem' }} color="text.secondary">
-            {formatMonth(months[months.length - 1])}
+            {month(months.length - 1)}
           </Typography>
         </Box>
       </Box>
 
       <FormControl size="small" fullWidth sx={fieldSx}>
-        <InputLabel>State (Admin 1)</InputLabel>
+        <InputLabel>{tr('State (Admin 1)', 'الولاية (المستوى الإداري 1)')}</InputLabel>
         <Select
-          label="State (Admin 1)"
+          label={tr('State (Admin 1)', 'الولاية (المستوى الإداري 1)')}
           value={filters.state ?? ''}
           onChange={(e) => onChange({ state: e.target.value || null, locality: null })}
         >
-          <MenuItem value="">All States</MenuItem>
+          <MenuItem value="">{tr('All States', 'كل الولايات')}</MenuItem>
           {stateOptions.map((name) => (
             <MenuItem key={name} value={name}>
-              {name}
+              {names.state(name)}
             </MenuItem>
           ))}
         </Select>
       </FormControl>
 
       <FormControl size="small" fullWidth sx={fieldSx} disabled={!filters.state}>
-        <InputLabel>Locality (Admin 2)</InputLabel>
+        <InputLabel>{tr('Locality (Admin 2)', 'المحلية (المستوى الإداري 2)')}</InputLabel>
         <Select
-          label="Locality (Admin 2)"
+          label={tr('Locality (Admin 2)', 'المحلية (المستوى الإداري 2)')}
           value={filters.locality ?? ''}
           onChange={(e) => onChange({ locality: e.target.value || null })}
           MenuProps={{ PaperProps: { sx: { maxHeight: 360 } } }}
         >
-          <MenuItem value="">All Localities</MenuItem>
+          <MenuItem value="">{tr('All Localities', 'كل المحليات')}</MenuItem>
           {localityOptions.map((name) => (
             <MenuItem key={name} value={name}>
-              {name}
+              {names.locality(name)}
             </MenuItem>
           ))}
         </Select>
       </FormControl>
       {!filters.state && (
         <Typography variant="caption" color="text.secondary" sx={{ mt: -1.5 }}>
-          Select a state to filter by locality.
+          {tr('Select a state to filter by locality.', 'اختر ولاية للتصفية حسب المحلية.')}
         </Typography>
       )}
 
       <Button size="small" variant="outlined" onClick={onReset} sx={{ color: unBlue.dark, borderColor: unBlue.DEFAULT }}>
-        Reset Filters
+        {tr('Reset Filters', 'إعادة ضبط التصفية')}
       </Button>
     </Box>
   );

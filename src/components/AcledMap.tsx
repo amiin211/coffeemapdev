@@ -9,6 +9,8 @@ import { LocalityTotals, NamedTotals } from '@/utils/acled';
 import { Admin1Collection, Admin2Collection, featuresBounds } from '@/utils/geo';
 import { MAPLIBRE_WORKER_URL } from '@/lib/maplibre';
 import { unBlue, unChoroplethRamp } from '@/theme/unColors';
+import { useI18n } from '@/i18n';
+import { useSudanNames } from '@/utils/sudanNamesAr';
 
 export type AcledMetric = 'events' | 'fatalities';
 
@@ -35,7 +37,7 @@ const CIRCLE_COLOR = '#D32F2F';
 const MAX_RADIUS = 26;
 const [RAMP_NONE, RAMP_LOW, RAMP_MEDIUM, RAMP_HIGH] = unChoroplethRamp;
 
-const metricLabel = (metric: AcledMetric) => (metric === 'events' ? 'Events' : 'Fatalities');
+const metricLabel = (metric: AcledMetric, ar = false) => (metric === 'events' ? (ar ? 'الأحداث' : 'Events') : ar ? 'الوفيات' : 'Fatalities');
 
 const fillColor: ExpressionSpecification = [
   'case',
@@ -90,6 +92,10 @@ export default function AcledMap({
   // A popup belongs to the view it was opened in; changing the selection,
   // period or metric hides it.
   const view = [selectedState, selectedLocality, periodLabel, metric].join('|');
+  const { isAr, tr } = useI18n();
+  const names = useSudanNames(isAr);
+  // Arabic mirrors the map chrome: controls on the left, legend on the right.
+  const side = isAr ? 'left' : 'right';
   const visiblePopup = popup?.view === view ? popup : null;
 
   const stateMax = useMemo(() => Math.max(0, ...Array.from(stateTotals.values()).map((s) => s[metric])), [stateTotals, metric]);
@@ -202,8 +208,8 @@ export default function AcledMap({
         onLoad={() => setMapLoaded(true)}
         style={{ width: '100%', height: '100%' }}
       >
-        <NavigationControl position="top-right" showCompass={false} />
-        <FullscreenControl position="top-right" />
+        <NavigationControl position={`top-${side}`} showCompass={false} />
+        <FullscreenControl position={`top-${side}`} />
 
         {/* Fills first, then admin 2 lines, then admin 1 lines on top, so every
             border is drawn once, from the COD boundary files only. */}
@@ -271,13 +277,13 @@ export default function AcledMap({
           <Popup longitude={visiblePopup.lng} latitude={visiblePopup.lat} onClose={() => setPopup(null)} offset={10} maxWidth="260px">
             <Box sx={{ fontFamily: 'Roboto, sans-serif', fontSize: '0.75rem', lineHeight: 1.5 }}>
               <Typography variant="subtitle2" sx={{ fontWeight: 700, lineHeight: 1.3 }}>
-                {visiblePopup.name}
+                {names.locality(visiblePopup.name)}
               </Typography>
               <Box sx={{ color: 'text.secondary', mb: 0.5 }}>
-                {visiblePopup.state} · {periodLabel}
+                {names.state(visiblePopup.state)} · {periodLabel}
               </Box>
-              <div><strong>Events:</strong> {visiblePopup.events.toLocaleString()}</div>
-              <div><strong>Fatalities:</strong> {visiblePopup.fatalities.toLocaleString()}</div>
+              <div><strong>{metricLabel('events', isAr)}:</strong> {visiblePopup.events.toLocaleString()}</div>
+              <div><strong>{metricLabel('fatalities', isAr)}:</strong> {visiblePopup.fatalities.toLocaleString()}</div>
             </Box>
           </Popup>
         )}
@@ -285,7 +291,7 @@ export default function AcledMap({
 
       <Box sx={{ position: 'absolute', bottom: 20, left: 20, zIndex: 500, p: 1.5, ...floatingPanelSx }}>
         <Typography variant="caption" sx={{ fontWeight: 600, display: 'block', mb: 0.75 }}>
-          {metricLabel(metric)} by {selectedState ? 'Locality' : 'State'}
+          {tr(`${metricLabel(metric)} by ${selectedState ? 'Locality' : 'State'}`, `${metricLabel(metric, true)} حسب ${selectedState ? 'المحلية' : 'الولاية'}`)}
         </Typography>
         <Box sx={{ display: 'flex' }}>
           {legendBuckets.map((bucket, i) => (
@@ -309,7 +315,7 @@ export default function AcledMap({
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mt: 1 }}>
           <Box sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: `${CIRCLE_COLOR}8c`, border: '1px solid white' }} />
           <Typography variant="caption" sx={{ fontSize: '0.65rem' }}>
-            Circle size = {metricLabel(metric).toLowerCase()} per locality
+            {tr(`Circle size = ${metricLabel(metric).toLowerCase()} per locality`, `حجم الدائرة = ${metricLabel(metric, true)} في كل محلية`)}
           </Typography>
         </Box>
       </Box>

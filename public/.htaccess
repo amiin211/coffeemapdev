@@ -1,0 +1,56 @@
+# coffeemap.dev: static Next.js export on Apache shared hosting.
+# Copied into out/ by `next build`; upload it with the rest of out/.
+
+DirectoryIndex index.html
+Options -Indexes
+ErrorDocument 404 /404.html
+# Arabic text in the pages, articles and data files.
+AddDefaultCharset UTF-8
+
+# ---- HTTPS only, and www -> apex (one 301) ------------------------------
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  # Let cPanel AutoSSL renew the certificate over plain HTTP.
+  RewriteCond %{REQUEST_URI} !^/\.well-known/
+  RewriteCond %{HTTPS} off [OR]
+  RewriteCond %{HTTP_HOST} ^www\. [NC]
+  RewriteRule ^ https://coffeemap.dev%{REQUEST_URI} [L,R=301]
+</IfModule>
+
+# ---- MIME types -----------------------------------------------------------
+<IfModule mod_mime.c>
+  AddType model/gltf-binary .glb
+  AddType application/geo+json .geojson
+  AddType application/wasm .wasm
+  # The map worker is an ES module (/maplibre/*.mjs); browsers refuse module
+  # scripts served with a non-JavaScript type, which would break every map.
+  AddType text/javascript .mjs
+  AddType font/woff2 .woff2
+  AddType application/x-protobuf .pbf
+  AddCharset UTF-8 .html .txt .js .mjs .css .json .geojson .svg
+</IfModule>
+
+# ---- Compression ----------------------------------------------------------
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/plain text/css
+  AddOutputFilterByType DEFLATE application/javascript text/javascript
+  AddOutputFilterByType DEFLATE application/json application/geo+json
+  AddOutputFilterByType DEFLATE image/svg+xml application/x-protobuf
+</IfModule>
+
+# ---- Caching --------------------------------------------------------------
+<IfModule mod_headers.c>
+  # Browsers use HTTPS for this site from now on (1 year).
+  Header always set Strict-Transport-Security "max-age=31536000" "expr=%{HTTPS} == 'on'"
+
+  # Hashed build assets never change: cache for a year.
+  <If "%{REQUEST_URI} =~ m#^/_next/static/#">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </If>
+
+  # HTML and the .txt page payloads Next.js fetches when navigating:
+  # always revalidate, so a new deploy shows up straight away.
+  <FilesMatch "\.(html|txt)$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+</IfModule>

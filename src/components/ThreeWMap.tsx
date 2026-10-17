@@ -6,10 +6,12 @@ import MapGL, { Source, Layer, Marker, Popup, MapLayerMouseEvent, MapRef } from 
 import type { StyleSpecification, ExpressionSpecification } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { StateAggregate, LocalityAggregate } from '@/utils/threew';
-import { ThreeWMetric, metricLabels } from '@/utils/threewMetric';
+import { ThreeWMetric, metricLabels, metricLabelsAr } from '@/utils/threewMetric';
 import { unBlue, unChoroplethRamp } from '@/theme/unColors';
 import { Admin1Collection, Admin2Collection, collectionBounds } from '@/utils/geo';
 import { MAPLIBRE_WORKER_URL } from '@/lib/maplibre';
+import { useI18n } from '@/i18n';
+import { useSudanNames } from '@/utils/sudanNamesAr';
 
 interface ThreeWMapProps {
   stateAggregates: StateAggregate[];
@@ -83,6 +85,8 @@ export default function ThreeWMap({
   const [hovered, setHovered] = useState<{ lng: number; lat: number; properties: HoveredState } | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   const mapRef = useRef<MapRef>(null);
+  const { isAr, tr } = useI18n();
+  const names = useSudanNames(isAr);
 
   useEffect(() => {
     fetch('/data/sdn_admin1.geojson')
@@ -236,7 +240,7 @@ export default function ThreeWMap({
         {visibleLocalities.map((l, idx) => (
           <Marker key={`loc-${idx}`} longitude={l.locality.lon as number} latitude={l.locality.lat as number}>
             <div
-              title={`${l.locality.name}: ${l.activities} activities`}
+              title={tr(`${l.locality.name}: ${l.activities} activities`, `${names.locality(l.locality.name)}: ${l.activities} نشاطًا`)}
               style={{
                 width: getRadius(l.activities, maxLocalityCount) * 2,
                 height: getRadius(l.activities, maxLocalityCount) * 2,
@@ -256,16 +260,19 @@ export default function ThreeWMap({
             closeOnClick={false}
             offset={12}
           >
-            <strong>{hovered.properties.adm1_name}</strong>
+            <strong>{names.state(hovered.properties.adm1_name)}</strong>
             <br />
-            {hovered.properties.activities} activities · {hovered.properties.orgs} orgs · {hovered.properties.clusters} clusters
+            {tr(
+              `${hovered.properties.activities} activities · ${hovered.properties.orgs} orgs · ${hovered.properties.clusters} clusters`,
+              `${hovered.properties.activities} نشاطًا · ${hovered.properties.orgs} منظمة · ${hovered.properties.clusters} قطاعًا`,
+            )}
           </Popup>
         )}
       </MapGL>
 
       <Box sx={{ position: 'absolute', bottom: 20, left: 20, zIndex: 500, p: 1.5, ...floatingPanelSx }}>
         <Typography variant="caption" sx={{ fontWeight: 600, display: 'block', mb: 0.75 }}>
-          {metricLabels[metric]} by State
+          {tr(`${metricLabels[metric]} by State`, `${metricLabelsAr[metric]} حسب الولاية`)}
         </Typography>
         <Box sx={{ display: 'flex' }}>
           {legendBuckets.map((bucket, i) => (

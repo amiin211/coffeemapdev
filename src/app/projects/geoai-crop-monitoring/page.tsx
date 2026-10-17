@@ -19,23 +19,26 @@ import {
   FieldsCollection,
   INDEX_LABEL,
   anomalyAt,
+  cropLabel,
   cropOn,
+  fieldLabel,
   formatDate,
   formatMonthYear,
   valueAt,
 } from '@/utils/crop';
+import { useI18n } from '@/i18n';
 
 const CropMap = nextDynamic(() => import('@/components/CropMap'), {
   ssr: false,
-  loading: () => <Paper sx={{ p: 2, height: '100%' }}>Loading map...</Paper>,
+  loading: () => <Paper sx={{ p: 2, height: '100%' }}>…</Paper>,
 });
 const TimeSeriesChart = nextDynamic(() => import('@/components/CropCharts').then((m) => ({ default: m.TimeSeriesChart })), {
   ssr: false,
-  loading: () => <Box sx={{ height: 200 }}>Loading...</Box>,
+  loading: () => <Box sx={{ height: 200 }}>…</Box>,
 });
 const CropSummaryChart = nextDynamic(() => import('@/components/CropCharts').then((m) => ({ default: m.CropSummaryChart })), {
   ssr: false,
-  loading: () => <Box sx={{ height: 200 }}>Loading...</Box>,
+  loading: () => <Box sx={{ height: 200 }}>…</Box>,
 });
 
 const floatingPanelSx = {
@@ -72,6 +75,8 @@ function DashboardContent() {
 
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
+  const { isAr, tr } = useI18n();
+  const date = (iso: string) => formatDate(iso, isAr);
 
   useEffect(() => {
     Promise.all([
@@ -181,31 +186,39 @@ function DashboardContent() {
 
   const statsNode = selected ? (
     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.25 }}>
-      <StatTile label={`Selected field · ${selected.type === 'pivot' ? 'centre pivot' : 'block'}`} value={selected.name} color={agriGreen.dark} />
-      <StatTile label="Field Area (ha)" value={selected.area_ha} color={agriAccents[1]} />
       <StatTile
-        label={`${INDEX_LABEL[index]} · ${formatDate(selectedReading?.date ?? dates[dateIndex])}`}
-        value={selectedReading ? selectedReading.value.toFixed(2) : 'No clear view'}
+        label={tr(`Selected field · ${selected.type === 'pivot' ? 'centre pivot' : 'block'}`, `الحقل المحدد · ${selected.type === 'pivot' ? 'ري محوري' : 'حقل مستطيل'}`)}
+        value={fieldLabel(selected.name, isAr)}
+        color={agriGreen.dark}
+      />
+      <StatTile label={tr('Field Area (ha)', 'مساحة الحقل (هكتار)')} value={selected.area_ha} color={agriAccents[1]} />
+      <StatTile
+        label={`${INDEX_LABEL[index]} · ${date(selectedReading?.date ?? dates[dateIndex])}`}
+        value={selectedReading ? selectedReading.value.toFixed(2) : tr('No clear view', 'لا توجد رؤية صافية')}
         color="#2E7D32"
       />
       <StatTile
-        label={`Status · ${selectedSeries!.anomalies.length} anomalous dates in total`}
-        value={selectedAnomaly ? 'Anomaly' : 'Normal'}
+        label={tr(`Status · ${selectedSeries!.anomalies.length} anomalous dates in total`, `الحالة · ${selectedSeries!.anomalies.length} تاريخًا شاذًا إجمالًا`)}
+        value={selectedAnomaly ? tr('Anomaly', 'شذوذ') : tr('Normal', 'طبيعي')}
         color={selectedAnomaly ? '#D50000' : agriAccents[2]}
       />
       <StatTile
-        label={`Crop · ${selectedCrop?.season ?? 'season'} (${clearViews} clear scenes)`}
-        value={selectedCrop ? `${selectedCrop.crop} · ${Math.round(selectedCrop.confidence * 100)}%` : 'Unclassified'}
+        label={tr(`Crop · ${selectedCrop?.season ?? 'season'} (${clearViews} clear scenes)`, `المحصول · ${selectedCrop?.season ?? 'الموسم'} (${clearViews} مشهدًا صافيًا)`)}
+        value={selectedCrop ? `${cropLabel(selectedCrop.crop, isAr)} · ${Math.round(selectedCrop.confidence * 100)}%` : cropLabel('Unclassified', isAr)}
         color={agriAccents[3]}
       />
     </Box>
   ) : (
     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.25 }}>
-      <StatTile label={cropFilter ? `${cropFilter} fields` : 'Fields Detected'} value={visibleFields.length} color={agriGreen.dark} />
-      <StatTile label="Cropped Area (ha)" value={Math.round(visibleFields.reduce((s, f) => s + f.area_ha, 0))} color={agriAccents[1]} />
-      <StatTile label={`Mean ${INDEX_LABEL[index]} · ${formatDate(dates[dateIndex])}`} value={meanOnDate !== null ? meanOnDate.toFixed(2) : '—'} color="#2E7D32" />
-      <StatTile label="Fields in Anomaly" value={alerts.length} color={alerts.length ? '#D50000' : agriAccents[2]} />
-      <StatTile label="Sentinel-2 Scenes" value={dates.length} color={agriAccents[3]} />
+      <StatTile
+        label={cropFilter ? tr(`${cropFilter} fields`, `حقول ${cropLabel(cropFilter, true)}`) : tr('Fields Detected', 'الحقول المرصودة')}
+        value={visibleFields.length}
+        color={agriGreen.dark}
+      />
+      <StatTile label={tr('Cropped Area (ha)', 'المساحة المزروعة (هكتار)')} value={Math.round(visibleFields.reduce((s, f) => s + f.area_ha, 0))} color={agriAccents[1]} />
+      <StatTile label={tr(`Mean ${INDEX_LABEL[index]} · ${date(dates[dateIndex])}`, `متوسط ${INDEX_LABEL[index]} · ${date(dates[dateIndex])}`)} value={meanOnDate !== null ? meanOnDate.toFixed(2) : '—'} color="#2E7D32" />
+      <StatTile label={tr('Fields in Anomaly', 'حقول في حالة شذوذ')} value={alerts.length} color={alerts.length ? '#D50000' : agriAccents[2]} />
+      <StatTile label={tr('Sentinel-2 Scenes', 'مشاهد Sentinel-2')} value={dates.length} color={agriAccents[3]} />
     </Box>
   );
 
@@ -224,7 +237,7 @@ function DashboardContent() {
       {sliderIndex !== dateIndex && (
         <Box sx={{ position: 'absolute', top: 16, left: 16, zIndex: 500, px: 1.5, py: 0.75, ...floatingPanelSx }}>
           <Typography variant="caption" sx={{ fontWeight: 600 }}>
-            {formatDate(dates[sliderIndex])}
+            {date(dates[sliderIndex])}
           </Typography>
         </Box>
       )}
@@ -244,23 +257,28 @@ function DashboardContent() {
       <Divider />
       <CropSummaryChart entries={cropSummary} selected={cropFilter} onSelect={setCropFilter} height={200} />
       <Divider />
-      <AnomalyAlerts alerts={alerts} title={`Alerts · ${formatDate(dates[dateIndex])}`} selectedField={selectedField} onSelect={setSelectedField} />
+      <AnomalyAlerts alerts={alerts} title={tr(`Alerts · ${date(dates[dateIndex])}`, `التنبيهات · ${date(dates[dateIndex])}`)} selectedField={selectedField} onSelect={setSelectedField} />
     </>
   );
 
   const trendNode = (
     <>
       <Typography variant="subtitle2" sx={{ fontFamily: 'Roboto, sans-serif' }}>
-        {INDEX_LABEL[index]} Time Series — {selected ? selected.name : cropFilter ? `${cropFilter} (all fields mean)` : 'All fields (mean)'}
+        {tr(`${INDEX_LABEL[index]} Time Series`, `السلسلة الزمنية لـ${INDEX_LABEL[index]}`)} —{' '}
+        {selected
+          ? fieldLabel(selected.name, isAr)
+          : cropFilter
+            ? tr(`${cropFilter} (all fields mean)`, `${cropLabel(cropFilter, true)} (متوسط كل الحقول)`)
+            : tr('All fields (mean)', 'كل الحقول (المتوسط)')}
       </Typography>
       <Typography variant="caption" color="text.secondary">
-        Red points: NDVI below the field&apos;s seasonal mean − 2σ. Click the chart to jump to that scene.
+        {tr('Red points: NDVI below the field’s seasonal mean − 2σ. Click the chart to jump to that scene.', 'النقاط الحمراء: NDVI أقل من المتوسط الموسمي للحقل − 2σ. انقر على المخطط للانتقال إلى ذلك المشهد.')}
       </Typography>
       <TimeSeriesChart
         dates={dates}
         values={selectedSeries ? selectedSeries[index] : series.overall[index]}
         reference={selectedSeries ? series.overall[index] : undefined}
-        label={selected ? selected.name : 'All fields (mean)'}
+        label={selected ? fieldLabel(selected.name, isAr) : tr('All fields (mean)', 'كل الحقول (المتوسط)')}
         index={index}
         anomalies={selectedSeries?.anomalies ?? []}
         dateIndex={dateIndex}
@@ -272,6 +290,21 @@ function DashboardContent() {
 
   const aboutContent = (
     <>
+      {isAr ? (
+        <>
+          <Typography variant="body2" sx={{ mb: 1.5, lineHeight: 1.9 }}>
+            لوحة لمراقبة المحاصيل بالذكاء الجيومكاني للأراضي الزراعية المروية قرب طبرجل في الجوف بالمملكة العربية السعودية. تُرصد حدود الحقول آليًا من
+            Sentinel-2: {fieldProps.filter((f) => f.type === 'pivot').length} محور ري محوري رُصدت بتحويل هوف (Hough) على مركّب أقصى NDVI لعدة سنوات،
+            إضافة إلى {fieldProps.filter((f) => f.type === 'block').length} حقلًا مستطيلًا من المساحة المزروعة المتبقية.
+          </Typography>
+          <Typography variant="body2" sx={{ lineHeight: 1.9 }}>
+            يُتتبَّع مؤشرا NDVI وEVI لكل حقل عبر {dates.length} مشهدًا من Sentinel-2 L2A مع حجب الغيوم منذ أبريل 2023 (Microsoft Planetary Computer).
+            تُحدَّد أنواع المحاصيل لكل موسم بمصنّف فينولوجي قائم على القواعد، ويُعلَّم الحقل عندما ينخفض NDVI عن متوسطه الموسمي − 2σ لذلك الوقت من
+            السنة. الحدود وأنواع المحاصيل والتنبيهات مخرجات نموذج، وليست حقائق ميدانية.
+          </Typography>
+        </>
+      ) : (
+        <>
       <Typography variant="body2" sx={{ mb: 1.5, lineHeight: 1.7 }}>
         A GeoAI crop monitoring dashboard for irrigated farmland near Tabarjal, Al Jouf, Saudi Arabia. Field boundaries
         are detected automatically from Sentinel-2: {fieldProps.filter((f) => f.type === 'pivot').length} centre pivots found with a
@@ -284,15 +317,17 @@ function DashboardContent() {
         is flagged when its NDVI falls below its seasonal mean − 2σ for that time of year. Boundaries, crop types and alerts
         are model output, not ground truth.
       </Typography>
+        </>
+      )}
     </>
   );
 
   const aboutHeader = (
     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
       <Typography variant="h6" sx={{ fontFamily: 'Roboto, sans-serif', fontWeight: 700, color: agriGreen.dark }}>
-        About this dashboard
+        {tr('About this dashboard', 'حول لوحة المعلومات')}
       </Typography>
-      <IconButton onClick={() => setAboutOpen(false)} size="small" aria-label="Close">
+      <IconButton onClick={() => setAboutOpen(false)} size="small" aria-label={tr('Close', 'إغلاق')}>
         <CloseIcon fontSize="small" />
       </IconButton>
     </Box>
@@ -304,12 +339,12 @@ function DashboardContent() {
         <Box sx={{ px: 2, pt: 1.5, flexShrink: 0 }}>
           <Box sx={{ position: 'relative' }}>
             <DashboardHeader
-              title="GeoAI Crop Monitoring"
-              subtitle="Sentinel-2 NDVI / EVI — Al Jouf, Saudi Arabia"
+              title={tr('GeoAI Crop Monitoring', 'مراقبة المحاصيل بالذكاء الجيومكاني')}
+              subtitle={tr('Sentinel-2 NDVI / EVI — Al Jouf, Saudi Arabia', 'NDVI / EVI من Sentinel-2 — الجوف، المملكة العربية السعودية')}
               icon={<GrassIcon sx={{ fontSize: 28 }} />}
-              source="Sentinel-2 L2A (ESA Copernicus) via Microsoft Planetary Computer"
+              source={tr('Sentinel-2 L2A (ESA Copernicus) via Microsoft Planetary Computer', 'Sentinel-2 L2A (كوبرنيكوس/ESA) عبر Microsoft Planetary Computer')}
               author="Amin Adnan Gasim"
-              date={`${formatMonthYear(dates[0])} – ${formatMonthYear(dates[dates.length - 1])}`}
+              date={`${formatMonthYear(dates[0], isAr)} – ${formatMonthYear(dates[dates.length - 1], isAr)}`}
               gradientFrom={agriGreen.DEFAULT}
               gradientTo={agriGreen.dark}
               mb={isDesktop ? 1.5 : 3}
@@ -318,7 +353,7 @@ function DashboardContent() {
             <IconButton
               onClick={() => setAboutOpen((v) => !v)}
               sx={{ position: 'absolute', top: 12, right: 12, color: 'white' }}
-              aria-label="About this dashboard"
+              aria-label={tr('About this dashboard', 'حول لوحة المعلومات')}
             >
               <InfoOutlinedIcon />
             </IconButton>
@@ -345,11 +380,11 @@ function DashboardContent() {
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: sidebarOpen ? 'space-between' : 'center', p: 0.5, pl: sidebarOpen ? 2 : 0.5 }}>
                   {sidebarOpen && (
                     <Typography variant="subtitle2" sx={{ fontFamily: 'Roboto, sans-serif' }}>
-                      Filters
+                      {tr('Filters', 'عوامل التصفية')}
                     </Typography>
                   )}
-                  <IconButton size="small" onClick={() => setSidebarOpen((v) => !v)} aria-label={sidebarOpen ? 'Collapse filters' : 'Expand filters'}>
-                    {sidebarOpen ? <ChevronLeftIcon /> : <TuneIcon />}
+                  <IconButton size="small" onClick={() => setSidebarOpen((v) => !v)} aria-label={sidebarOpen ? tr('Collapse filters', 'طي عوامل التصفية') : tr('Expand filters', 'توسيع عوامل التصفية')}>
+                    {sidebarOpen ? <ChevronLeftIcon sx={{ transform: isAr ? 'scaleX(-1)' : undefined }} /> : <TuneIcon />}
                   </IconButton>
                 </Box>
                 {sidebarOpen && <Box sx={{ px: 2, pb: 2, overflowY: 'auto', minWidth: 248 }}>{filtersNode}</Box>}
@@ -397,10 +432,10 @@ function DashboardContent() {
               <Box onClick={() => setSidebarOpen((v) => !v)} sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, py: 1, cursor: 'pointer' }}>
                 <TuneIcon fontSize="small" />
                 <Typography variant="subtitle2" sx={{ fontFamily: 'Roboto, sans-serif', flex: 1 }}>
-                  Filters
+                  {tr('Filters', 'عوامل التصفية')}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  {sidebarOpen ? 'Hide' : 'Show'}
+                  {sidebarOpen ? tr('Hide', 'إخفاء') : tr('Show', 'إظهار')}
                 </Typography>
               </Box>
               {sidebarOpen && <Box sx={{ px: 2, pb: 2, pt: 1 }}>{filtersNode}</Box>}

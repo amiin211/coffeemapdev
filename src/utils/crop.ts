@@ -64,6 +64,22 @@ export const CROP_COLORS: Record<string, string> = {
 
 export const INDEX_LABEL: Record<CropIndex, string> = { ndvi: 'NDVI', evi: 'EVI' };
 
+// Arabic names for the crop classes and field types in the data files.
+const CROP_AR: Record<string, string> = {
+  'Winter cereal': 'حبوب شتوية',
+  'Summer crop': 'محصول صيفي',
+  'Double crop': 'محصولان في الموسم',
+  'Alfalfa / perennial forage': 'برسيم / أعلاف معمّرة',
+  Orchard: 'بستان',
+  Fallow: 'أرض بور',
+  Unclassified: 'غير مصنّف',
+};
+
+export const cropLabel = (crop: string, ar: boolean) => (ar ? CROP_AR[crop] ?? crop : crop);
+
+// "Pivot 076" / "Block 012" -> "محور 076" / "حقل 012".
+export const fieldLabel = (name: string, ar: boolean) => (ar ? name.replace(/^Pivot\b/, 'محور').replace(/^Block\b/, 'حقل') : name);
+
 // Planetary Computer data API tiles for one Sentinel-2 L2A item. DNs carry
 // the +1000 offset of processing baseline 04.00+, folded into the formulas:
 //   NDVI = (NIR - Red) / (NIR + Red)
@@ -92,8 +108,10 @@ export function trueColorTileUrl(item: string): string {
   return `${PC_TILES}?${params}`;
 }
 
-export function formatDate(iso: string): string {
-  return new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+const dateLocale = (ar: boolean) => (ar ? 'ar-EG-u-nu-latn' : 'en-GB');
+
+export function formatDate(iso: string, ar = false): string {
+  return new Date(`${iso}T00:00:00Z`).toLocaleDateString(dateLocale(ar), { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
 }
 
 // Latest non-null value at or before `index`, and how many days old it is,
@@ -115,8 +133,8 @@ export function anomalyAt(s: FieldSeries, dates: string[], index: number): boole
   return !!reading && s.anomalies.includes(reading.index);
 }
 
-export function formatMonthYear(iso: string): string {
-  return new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' });
+export function formatMonthYear(iso: string, ar = false): string {
+  return new Date(`${iso}T00:00:00Z`).toLocaleDateString(dateLocale(ar), { month: ar ? 'long' : 'short', year: 'numeric', timeZone: 'UTC' });
 }
 
 // Crop class of the agricultural season (Sep–Aug) containing `iso`, or the

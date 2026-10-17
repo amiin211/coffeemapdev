@@ -25,7 +25,9 @@ import CloseIcon from '@mui/icons-material/Close';
 import AppLayout from '@/components/AppLayout';
 import DashboardHeader from '@/components/DashboardHeader';
 import ThreeWStatCards from '@/components/ThreeWStatCards';
-import { metricLabels, ThreeWMetric } from '@/utils/threewMetric';
+import { clusterLabel, metricLabels, metricLabelsAr, orgTypeLabel, ThreeWMetric } from '@/utils/threewMetric';
+import { formatDate, useI18n } from '@/i18n';
+import { useSudanNames } from '@/utils/sudanNamesAr';
 import { unBlue } from '@/theme/unColors';
 import {
   ThreeWData,
@@ -40,27 +42,27 @@ import {
 
 const ThreeWMap = nextDynamic(() => import('@/components/ThreeWMap'), {
   ssr: false,
-  loading: () => <Paper sx={{ p: 2, height: '100%' }}>Loading map...</Paper>,
+  loading: () => <Paper sx={{ p: 2, height: '100%' }}>…</Paper>,
 });
 const ThreeWDetailPanel = nextDynamic(() => import('@/components/ThreeWDetailPanel'), {
   ssr: false,
-  loading: () => <Paper sx={{ p: 2, height: 300 }}>Loading...</Paper>,
+  loading: () => <Paper sx={{ p: 2, height: 300 }}>…</Paper>,
 });
 const TopOrgsBarChart = nextDynamic(() => import('@/components/ThreeWCharts').then((m) => ({ default: m.TopOrgsBarChart })), {
   ssr: false,
-  loading: () => <Paper sx={{ p: 2, height: 240 }}>Loading...</Paper>,
+  loading: () => <Paper sx={{ p: 2, height: 240 }}>…</Paper>,
 });
 const ClusterBreakdownPieChart = nextDynamic(() => import('@/components/ThreeWCharts').then((m) => ({ default: m.ClusterBreakdownPieChart })), {
   ssr: false,
-  loading: () => <Paper sx={{ p: 2, height: 220 }}>Loading...</Paper>,
+  loading: () => <Paper sx={{ p: 2, height: 220 }}>…</Paper>,
 });
 const OrgTypeDoughnutChart = nextDynamic(() => import('@/components/ThreeWCharts').then((m) => ({ default: m.OrgTypeDoughnutChart })), {
   ssr: false,
-  loading: () => <Paper sx={{ p: 2, height: 200 }}>Loading...</Paper>,
+  loading: () => <Paper sx={{ p: 2, height: 200 }}>…</Paper>,
 });
 const MonthlyTrendChart = nextDynamic(() => import('@/components/ThreeWCharts').then((m) => ({ default: m.MonthlyTrendChart })), {
   ssr: false,
-  loading: () => <Paper sx={{ p: 2, height: 200 }}>Loading...</Paper>,
+  loading: () => <Paper sx={{ p: 2, height: 200 }}>…</Paper>,
 });
 
 function monthLabel(month: string) {
@@ -88,6 +90,8 @@ function DashboardContent() {
 
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
+  const { locale, isAr, tr } = useI18n();
+  const names = useSudanNames(isAr);
 
   useEffect(() => {
     fetch('/data/threew_data.json')
@@ -145,37 +149,37 @@ function DashboardContent() {
   const filtersNode = (
     <>
       <FormControl size="small" sx={{ minWidth: 130, ...compactSelectSx }}>
-        <InputLabel>Month</InputLabel>
-        <Select label="Month" value={selectedMonth ?? ''} onChange={(e) => setSelectedMonth(e.target.value || null)}>
-          <MenuItem value="">All Months</MenuItem>
+        <InputLabel>{tr('Month', 'الشهر')}</InputLabel>
+        <Select label={tr('Month', 'الشهر')} value={selectedMonth ?? ''} onChange={(e) => setSelectedMonth(e.target.value || null)}>
+          <MenuItem value="">{tr('All Months', 'كل الأشهر')}</MenuItem>
           {data.months.map((m) => (
             <MenuItem key={m} value={m}>
-              {monthLabel(m)} 2026
+              {isAr ? formatDate(`${m}-01`, locale, { month: 'long', year: 'numeric' }) : `${monthLabel(m)} 2026`}
             </MenuItem>
           ))}
         </Select>
       </FormControl>
 
       <FormControl size="small" sx={{ minWidth: 170, ...compactSelectSx }}>
-        <InputLabel>Cluster</InputLabel>
-        <Select label="Cluster" value={selectedCluster ?? ''} onChange={(e) => setSelectedCluster(e.target.value || null)}>
-          <MenuItem value="">All Clusters</MenuItem>
+        <InputLabel>{tr('Cluster', 'القطاع')}</InputLabel>
+        <Select label={tr('Cluster', 'القطاع')} value={selectedCluster ?? ''} onChange={(e) => setSelectedCluster(e.target.value || null)}>
+          <MenuItem value="">{tr('All Clusters', 'كل القطاعات')}</MenuItem>
           {data.clusters.map((c) => (
             <MenuItem key={c} value={c}>
-              {c}
+              {clusterLabel(c, isAr)}
             </MenuItem>
           ))}
         </Select>
       </FormControl>
 
       {selectedState && (
-        <Chip label={`State: ${selectedState}`} size="small" onDelete={() => setSelectedState(null)} sx={{ bgcolor: `${unBlue.DEFAULT}20` }} />
+        <Chip label={`${tr('State', 'الولاية')}: ${names.state(selectedState)}`} size="small" onDelete={() => setSelectedState(null)} sx={{ bgcolor: `${unBlue.DEFAULT}20` }} />
       )}
       {selectedOrg && (
-        <Chip label={`Org: ${selectedOrg}`} size="small" onDelete={() => setSelectedOrg(null)} sx={{ bgcolor: `${unBlue.DEFAULT}20` }} />
+        <Chip label={`${tr('Org', 'المنظمة')}: ${selectedOrg}`} size="small" onDelete={() => setSelectedOrg(null)} sx={{ bgcolor: `${unBlue.DEFAULT}20` }} />
       )}
       {selectedOrgType && (
-        <Chip label={`Type: ${selectedOrgType}`} size="small" onDelete={() => setSelectedOrgType(null)} sx={{ bgcolor: `${unBlue.DEFAULT}20` }} />
+        <Chip label={`${tr('Type', 'النوع')}: ${orgTypeLabel(selectedOrgType, isAr)}`} size="small" onDelete={() => setSelectedOrgType(null)} sx={{ bgcolor: `${unBlue.DEFAULT}20` }} />
       )}
     </>
   );
@@ -199,7 +203,7 @@ function DashboardContent() {
             '&.Mui-selected': { bgcolor: unBlue.DEFAULT, color: 'white', '&:hover': { bgcolor: unBlue.dark } },
           }}
         >
-          {metricLabels[m]}
+          {isAr ? metricLabelsAr[m] : metricLabels[m]}
         </ToggleButton>
       ))}
     </ToggleButtonGroup>
@@ -275,6 +279,22 @@ function DashboardContent() {
 
   const aboutContent = (
     <>
+      {isAr ? (
+        <>
+          <Typography variant="body2" sx={{ mb: 1.5, lineHeight: 1.9 }}>
+            خرائط 3W (من يفعل ماذا وأين) هي الطريقة التي تتابع بها هيئات التنسيق الإنساني أي المنظمات تنفّذ أي الأنشطة وفي أي المواقع، وهي عماد
+            رصد الاستجابة وتحليل الفجوات في أزمة بحجم أزمة السودان. تحوّل هذه اللوحة ستة أشهر من تقارير 3W الموحّدة في 19 ولاية و188 محلية إلى
+            خريطة قابلة للاستكشاف: صفِّ حسب الشهر أو القطاع أو المنظمة أو نوع المنظمة، وانقر ولاية أو عنصرًا في مخطط أو شريحة في أي مكان من
+            الصفحة لتتبعك بقية اللوحة.
+          </Typography>
+          <Typography variant="body2" sx={{ lineHeight: 1.9 }}>
+            بنيتُ هذه اللوحة على <strong>CoffeeMap.dev</strong> لأوضح كيف يمكن لبيانات الأنشطة التي يبلّغ عنها الشركاء، وهي عادة مدفونة في جداول
+            تُتبادل في اجتماعات التنسيق، أن تصبح أداة مكانية تفاعلية قابلة للتصفية. تجمع اللوحة 7,517 نشاطًا مُبلَّغًا عنه من 165 منظمة في 13 قطاعًا،
+            مطابقة مع الحدود الإدارية الرسمية للسودان.
+          </Typography>
+        </>
+      ) : (
+        <>
       <Typography variant="body2" sx={{ mb: 1.5, lineHeight: 1.7 }}>
         3W (Who, What, Where) mapping is how humanitarian coordination bodies track which
         organizations are running which activities, in which locations — the backbone of
@@ -291,6 +311,8 @@ function DashboardContent() {
         reported activities from 165 organizations across 13 clusters, matched against
         official Sudan administrative boundaries.
       </Typography>
+        </>
+      )}
     </>
   );
 
@@ -307,12 +329,12 @@ function DashboardContent() {
         <Box sx={{ px: 2, pt: 1.5, flexShrink: 0 }}>
           <Box sx={{ position: 'relative' }}>
             <DashboardHeader
-              title="3W Humanitarian Mapping"
-              subtitle="Who, What, Where — Sudan Response Monitoring"
+              title={tr('3W Humanitarian Mapping', 'خرائط العمل الإنساني (3W)')}
+              subtitle={tr('Who, What, Where — Sudan Response Monitoring', 'من يفعل ماذا وأين — رصد الاستجابة في السودان')}
               icon={<GroupsIcon sx={{ fontSize: 28 }} />}
-              source="OCHA Sudan – 2026 HRP Response Monitoring, Consolidated 3W Data (Jan–Jun 2026)"
+              source={tr('OCHA Sudan – 2026 HRP Response Monitoring, Consolidated 3W Data (Jan–Jun 2026)', 'أوتشا السودان – رصد الاستجابة لخطة الاستجابة الإنسانية 2026، بيانات 3W الموحّدة (يناير–يونيو 2026)')}
               author="Amin Adnan Gasim"
-              date="Jan–Jun 2026"
+              date={tr('Jan–Jun 2026', 'يناير–يونيو 2026')}
               gradientFrom={unBlue.DEFAULT}
               gradientTo={unBlue.dark}
               mb={isDesktop ? 1.5 : 3}
@@ -320,7 +342,7 @@ function DashboardContent() {
             <IconButton
               onClick={() => setAboutOpen((v) => !v)}
               sx={{ position: 'absolute', top: 12, right: 12, color: 'white' }}
-              aria-label="About this dashboard"
+              aria-label={tr('About this dashboard', 'حول لوحة المعلومات')}
             >
               <InfoOutlinedIcon />
             </IconButton>
@@ -390,9 +412,9 @@ function DashboardContent() {
                   >
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
                       <Typography variant="h6" sx={{ fontFamily: 'Roboto, sans-serif', fontWeight: 700, color: unBlue.dark }}>
-                        About this dashboard
+                        {tr('About this dashboard', 'حول لوحة المعلومات')}
                       </Typography>
-                      <IconButton onClick={() => setAboutOpen(false)} size="small" aria-label="Close">
+                      <IconButton onClick={() => setAboutOpen(false)} size="small" aria-label={tr('Close', 'إغلاق')}>
                         <CloseIcon fontSize="small" />
                       </IconButton>
                     </Box>
@@ -408,7 +430,7 @@ function DashboardContent() {
 
             <Paper elevation={2} sx={{ mx: 2, mb: 1.5, p: 1.25, flexShrink: 0 }}>
               <Typography variant="subtitle2" sx={{ fontFamily: 'Roboto, sans-serif', mb: 0.5 }}>
-                Monthly Trend (Jan–Jun 2026)
+                {tr('Monthly Trend (Jan–Jun 2026)', 'الاتجاه الشهري (يناير–يونيو 2026)')}
               </Typography>
               {trendNode}
             </Paper>
@@ -425,9 +447,9 @@ function DashboardContent() {
               <Paper elevation={2} sx={{ p: 2.5, mb: 2 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
                   <Typography variant="h6" sx={{ fontFamily: 'Roboto, sans-serif', fontWeight: 700, color: unBlue.dark }}>
-                    About this dashboard
+                    {tr('About this dashboard', 'حول لوحة المعلومات')}
                   </Typography>
-                  <IconButton onClick={() => setAboutOpen(false)} size="small" aria-label="Close">
+                  <IconButton onClick={() => setAboutOpen(false)} size="small" aria-label={tr('Close', 'إغلاق')}>
                     <CloseIcon fontSize="small" />
                   </IconButton>
                 </Box>
@@ -437,7 +459,7 @@ function DashboardContent() {
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>{sidebarNode}</Box>
             <Paper elevation={2} sx={{ p: 2, mt: 2 }}>
               <Typography variant="subtitle2" sx={{ fontFamily: 'Roboto, sans-serif', mb: 1 }}>
-                Monthly Trend (Jan–Jun 2026)
+                {tr('Monthly Trend (Jan–Jun 2026)', 'الاتجاه الشهري (يناير–يونيو 2026)')}
               </Typography>
               {trendNode}
             </Paper>

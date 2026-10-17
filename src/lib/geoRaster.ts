@@ -113,10 +113,34 @@ export async function pool<T>(items: T[], limit: number, fn: (item: T) => Promis
   );
 }
 
+const TILE_ATTEMPTS = 3;
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// One tile's pixels, or null where the server has no data: Planetary Computer
+// answers 204 (empty body) where no scene in the mosaic covers the tile, and
+// decoding that body fails with "The source image could not be decoded".
+// Busy tile servers sometimes answer 429/5xx, or 200 with an error page or a
+// truncated image; those are retried.
+async function fetchTile(url: string): Promise<ImageData | null> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      const res = await fetch(url);
+      if (res.status === 204 || (!res.ok && res.status !== 429 && res.status < 500)) return null;
+      if (res.ok && res.headers.get('content-type')?.startsWith('image/')) return await decodeImage(await res.blob());
+      if (attempt === TILE_ATTEMPTS) throw new Error(`tile server answered ${res.status}`);
+    } catch (err) {
+      // Network error or undecodable body.
+      if (attempt === TILE_ATTEMPTS) throw err;
+    }
+    await wait(400 * 2 ** (attempt - 1));
+  }
+}
+
 // Fetches every tile covering the frame and copies their pixels into one RGBA
 // buffer the size of the frame. Tiles are fetched at the zoom where one tile
-// pixel = one frame pixel (one level up for 512 px tiles). Missing tiles stay
-// transparent (alpha 0).
+// pixel = one frame pixel (one level up for 512 px tiles). Tiles with no data
+// stay transparent (alpha 0); tiles that still fail after retries are counted
+// and reported once every other tile has loaded.
 export async function fetchTileMosaic(
   g: Frame,
   urlFor: (z: number, x: number, y: number) => string,
@@ -130,10 +154,13 @@ export async function fetchTileMosaic(
     for (let tx = Math.floor(g.x0 / tileSize); tx <= Math.floor((g.x0 + g.width - 1) / tileSize); tx++) tiles.push([tx, ty]);
   }
   let done = 0;
+  let failed = 0;
   await pool(tiles, 12, async ([tx, ty]) => {
-    const res = await fetch(urlFor(z, tx, ty));
-    if (res.ok) {
-      const img = await decodeImage(await res.blob());
+    const img = await fetchTile(urlFor(z, tx, ty)).catch(() => {
+      failed++;
+      return null;
+    });
+    if (img) {
       for (let py = 0; py < tileSize; py++) {
         const j = ty * tileSize + py - g.y0;
         if (j < 0 || j >= g.height) continue;
@@ -147,6 +174,7 @@ export async function fetchTileMosaic(
     }
     onTile?.(++done, tiles.length);
   });
+  if (failed) throw new Error(`${failed} of ${tiles.length} tiles could not be loaded from the imagery server; try again.`);
   return out;
 }
 

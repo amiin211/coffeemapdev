@@ -7,6 +7,7 @@ import AnalyticsIcon from '@mui/icons-material/Analytics';
 import ArchitectureIcon from '@mui/icons-material/Architecture';
 import { Capability } from '@/data/capabilities';
 import Link from 'next/link';
+import { useI18n } from '@/i18n';
 
 interface CapabilityCardProps {
   capability: Capability;
@@ -21,10 +22,11 @@ const iconMap: Record<string, React.ReactNode> = {
 };
 
 const CapabilityCard = ({ capability, isActive }: CapabilityCardProps) => {
+  const { isAr, href } = useI18n();
   return (
     <Card
       component={Link}
-      href={`/expertise/${capability.category}`}
+      href={href(`/expertise/${capability.category}`)}
       sx={{
         cursor: 'pointer',
         height: '100%',
@@ -55,7 +57,7 @@ const CapabilityCard = ({ capability, isActive }: CapabilityCardProps) => {
             fontWeight: 600,
           }}
         >
-          {capability.title}
+          {isAr ? capability.titleAr : capability.title}
         </Typography>
         <Typography
           variant="body2"
@@ -64,7 +66,7 @@ const CapabilityCard = ({ capability, isActive }: CapabilityCardProps) => {
             lineHeight: 1.6,
           }}
         >
-          {capability.description}
+          {isAr ? capability.descriptionAr : capability.description}
         </Typography>
       </CardContent>
     </Card>

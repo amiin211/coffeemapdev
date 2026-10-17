@@ -34,18 +34,20 @@ import {
   monthlySeries,
   totals as computeTotals,
 } from '@/utils/acled';
+import { useI18n } from '@/i18n';
+import { useSudanNames } from '@/utils/sudanNamesAr';
 
 const AcledMap = nextDynamic(() => import('@/components/AcledMap'), {
   ssr: false,
-  loading: () => <Paper sx={{ p: 2, height: '100%' }}>Loading map...</Paper>,
+  loading: () => <Paper sx={{ p: 2, height: '100%' }}>…</Paper>,
 });
 const MonthlyChart = nextDynamic(() => import('@/components/AcledCharts').then((m) => ({ default: m.MonthlyChart })), {
   ssr: false,
-  loading: () => <Box sx={{ height: 190 }}>Loading...</Box>,
+  loading: () => <Box sx={{ height: 190 }}>…</Box>,
 });
 const TopBarChart = nextDynamic(() => import('@/components/AcledCharts').then((m) => ({ default: m.TopBarChart })), {
   ssr: false,
-  loading: () => <Box sx={{ height: 280 }}>Loading...</Box>,
+  loading: () => <Box sx={{ height: 280 }}>…</Box>,
 });
 
 const floatingPanelSx = {
@@ -79,6 +81,9 @@ function DashboardContent() {
 
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
+  const { isAr, tr } = useI18n();
+  const names = useSudanNames(isAr);
+  const month = (m: string) => formatMonth(m, isAr);
 
   useEffect(() => {
     fetch('/data/acled_data.json')
@@ -129,8 +134,9 @@ function DashboardContent() {
   const { months } = data;
   const lastMonth = months[months.length - 1];
   const [from, to] = filters.monthRange;
-  const periodLabel = from === to ? formatMonth(months[from]) : `${formatMonth(months[from])} – ${formatMonth(months[to])}`;
-  const partialNote = data.asOf ? `Partial month — data as of ${data.asOf}` : null;
+  const periodLabel = from === to ? month(months[from]) : `${month(months[from])} – ${month(months[to])}`;
+  const partialNote = data.asOf ? tr(`Partial month — data as of ${data.asOf}`, `شهر جزئي — البيانات حتى ${data.asOf}`) : null;
+  const metricName = (m: 'events' | 'fatalities') => (m === 'events' ? tr('Events', 'الأحداث') : tr('Fatalities', 'الوفيات'));
 
   const updateFilters = (patch: Partial<Filters>) => setFilters((prev) => ({ ...prev, ...patch }));
   const resetFilters = () => setFilters({ monthRange: [0, months.length - 1], state: null, locality: null });
@@ -155,13 +161,17 @@ function DashboardContent() {
 
   const statsNode = (
     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.25 }}>
-      <StatTile label={`${filters.locality ?? filters.state ?? 'Sudan'} · Events`} value={totals.events} color={unBlue.dark} />
-      <StatTile label="Reported Fatalities" value={totals.fatalities} color="#C62828" />
-      {!filters.state && <StatTile label="States Affected" value={statesAffected} color={unCategorical[3]} />}
-      <StatTile label="Localities Affected" value={localitiesAffected} color={unCategorical[4]} />
       <StatTile
-        label={`Peak Month (${metric})`}
-        value={peak && peak[metric] > 0 ? `${formatMonth(peak.month)} · ${peak[metric].toLocaleString()}` : '—'}
+        label={`${filters.locality ? names.locality(filters.locality) : filters.state ? names.state(filters.state) : tr('Sudan', 'السودان')} · ${tr('Events', 'الأحداث')}`}
+        value={totals.events}
+        color={unBlue.dark}
+      />
+      <StatTile label={tr('Reported Fatalities', 'الوفيات المُبلَّغ عنها')} value={totals.fatalities} color="#C62828" />
+      {!filters.state && <StatTile label={tr('States Affected', 'الولايات المتأثرة')} value={statesAffected} color={unCategorical[3]} />}
+      <StatTile label={tr('Localities Affected', 'المحليات المتأثرة')} value={localitiesAffected} color={unCategorical[4]} />
+      <StatTile
+        label={tr(`Peak Month (${metric})`, `شهر الذروة (${metricName(metric)})`)}
+        value={peak && peak[metric] > 0 ? `${month(peak.month)} · ${peak[metric].toLocaleString()}` : '—'}
         color={unCategorical[5]}
       />
     </Box>
@@ -180,7 +190,7 @@ function DashboardContent() {
             '&.Mui-selected': { bgcolor: unBlue.DEFAULT, color: 'white', '&:hover': { bgcolor: unBlue.dark } },
           }}
         >
-          {m === 'events' ? 'Events' : 'Fatalities'}
+          {metricName(m)}
         </ToggleButton>
       ))}
     </ToggleButtonGroup>
@@ -207,8 +217,9 @@ function DashboardContent() {
   const barChartsNode = (
     <>
       <TopBarChart
-        title={`Top States by ${metric === 'events' ? 'Events' : 'Fatalities'}`}
+        title={tr(`Top States by ${metric === 'events' ? 'Events' : 'Fatalities'}`, `أعلى الولايات حسب ${metricName(metric)}`)}
         entries={topStates}
+        labelFor={names.state}
         measure={metric}
         selected={filters.state}
         onSelect={(state) => updateFilters({ state, locality: null })}
@@ -216,8 +227,9 @@ function DashboardContent() {
       />
       <Divider />
       <TopBarChart
-        title={`Top Localities${filters.state ? ` in ${filters.state}` : ''}`}
+        title={tr(`Top Localities${filters.state ? ` in ${filters.state}` : ''}`, `أعلى المحليات${filters.state ? ` في ${names.state(filters.state)}` : ''}`)}
         entries={topLocalities}
+        labelFor={names.locality}
         measure={metric}
         selected={filters.locality}
         onSelect={(locality) => {
@@ -246,13 +258,30 @@ function DashboardContent() {
         ))}
       </Box>
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-        Click a month to focus on it. {formatMonth(lastMonth)} is a partial month{data.asOf ? ` (data as of ${data.asOf})` : ''}.
+        {tr(
+          `Click a month to focus on it. ${formatMonth(lastMonth)} is a partial month${data.asOf ? ` (data as of ${data.asOf})` : ''}.`,
+          `انقر شهرًا للتركيز عليه. ${month(lastMonth)} شهر جزئي${data.asOf ? ` (البيانات حتى ${data.asOf})` : ''}.`,
+        )}
       </Typography>
     </>
   );
 
   const aboutContent = (
     <>
+      {isAr ? (
+        <>
+          <Typography variant="body2" sx={{ mb: 1.5, lineHeight: 1.9 }}>
+            منذ اندلاع القتال بين القوات المسلحة السودانية وقوات الدعم السريع في أبريل 2023، سجّلت ACLED {data.rows.reduce((s, r) => s + r[2], 0).toLocaleString()} حدثًا
+            من أحداث العنف السياسي و{data.rows.reduce((s, r) => s + r[3], 0).toLocaleString()} حالة وفاة مُبلَّغًا عنها في أنحاء السودان. ترسم هذه اللوحة تلك المجاميع الشهرية
+            حسب الولاية والمحلية؛ صفِّ حسب الفترة الزمنية أو الولاية أو المحلية، أو انقر ولاية أو محلية أو شريطًا في مخطط لتتبعك بقية اللوحة.
+          </Typography>
+          <Typography variant="body2" sx={{ lineHeight: 1.9 }}>
+            بنيتُ هذه اللوحة على <strong>CoffeeMap.dev</strong> باستخدام MapLibre GL JS من مجموعة بيانات ACLED لخطة الاستجابة الإنسانية عن أحداث العنف السياسي
+            والوفيات شهريًا، مربوطة بحدود أوتشا الرسمية للمستويين الإداريين 1 و2 عبر الرموز المكانية (P-codes).
+          </Typography>
+        </>
+      ) : (
+        <>
       <Typography variant="body2" sx={{ mb: 1.5, lineHeight: 1.7 }}>
         Since fighting broke out between the Sudanese Armed Forces and the Rapid Support Forces
         in April 2023, ACLED has recorded {data.rows.reduce((s, r) => s + r[2], 0).toLocaleString()} political
@@ -266,15 +295,17 @@ function DashboardContent() {
         HRP dataset of political violence events and fatalities by month, joined to the official
         OCHA admin 1 and admin 2 boundaries by pcode.
       </Typography>
+        </>
+      )}
     </>
   );
 
   const aboutHeader = (
     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
       <Typography variant="h6" sx={{ fontFamily: 'Roboto, sans-serif', fontWeight: 700, color: unBlue.dark }}>
-        About this dashboard
+        {tr('About this dashboard', 'حول لوحة المعلومات')}
       </Typography>
-      <IconButton onClick={() => setAboutOpen(false)} size="small" aria-label="Close">
+      <IconButton onClick={() => setAboutOpen(false)} size="small" aria-label={tr('Close', 'إغلاق')}>
         <CloseIcon fontSize="small" />
       </IconButton>
     </Box>
@@ -293,12 +324,15 @@ function DashboardContent() {
         <Box sx={{ px: 2, pt: 1.5, flexShrink: 0 }}>
           <Box sx={{ position: 'relative' }}>
             <DashboardHeader
-              title="Sudan Conflicts"
-              subtitle="Political Violence Events & Fatalities — Sudan"
+              title={tr('Sudan Conflicts', 'النزاعات في السودان')}
+              subtitle={tr('Political Violence Events & Fatalities — Sudan', 'أحداث العنف السياسي والوفيات — السودان')}
               icon={<CrisisAlertIcon sx={{ fontSize: 28 }} />}
-              source={`ACLED – Sudan HRP Political Violence Events and Fatalities by Month${data.asOf ? ` (as of ${data.asOf})` : ''}`}
+              source={tr(
+                `ACLED – Sudan HRP Political Violence Events and Fatalities by Month${data.asOf ? ` (as of ${data.asOf})` : ''}`,
+                `ACLED – أحداث العنف السياسي والوفيات شهريًا في السودان (خطة الاستجابة الإنسانية)${data.asOf ? ` (حتى ${data.asOf})` : ''}`,
+              )}
               author="Amin Adnan Gasim"
-              date={`${formatMonth(months[0])} – ${formatMonth(lastMonth)}`}
+              date={`${month(months[0])} – ${month(lastMonth)}`}
               gradientFrom={unBlue.DEFAULT}
               gradientTo={unBlue.dark}
               mb={isDesktop ? 1.5 : 3}
@@ -306,7 +340,7 @@ function DashboardContent() {
             <IconButton
               onClick={() => setAboutOpen((v) => !v)}
               sx={{ position: 'absolute', top: 12, right: 12, color: 'white' }}
-              aria-label="About this dashboard"
+              aria-label={tr('About this dashboard', 'حول لوحة المعلومات')}
             >
               <InfoOutlinedIcon />
             </IconButton>
@@ -333,11 +367,11 @@ function DashboardContent() {
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: sidebarOpen ? 'space-between' : 'center', p: 0.5, pl: sidebarOpen ? 2 : 0.5 }}>
                   {sidebarOpen && (
                     <Typography variant="subtitle2" sx={{ fontFamily: 'Roboto, sans-serif' }}>
-                      Filters
+                      {tr('Filters', 'عوامل التصفية')}
                     </Typography>
                   )}
-                  <IconButton size="small" onClick={() => setSidebarOpen((v) => !v)} aria-label={sidebarOpen ? 'Collapse filters' : 'Expand filters'}>
-                    {sidebarOpen ? <ChevronLeftIcon /> : <TuneIcon />}
+                  <IconButton size="small" onClick={() => setSidebarOpen((v) => !v)} aria-label={sidebarOpen ? tr('Collapse filters', 'طي عوامل التصفية') : tr('Expand filters', 'توسيع عوامل التصفية')}>
+                    {sidebarOpen ? <ChevronLeftIcon sx={{ transform: isAr ? 'scaleX(-1)' : undefined }} /> : <TuneIcon />}
                   </IconButton>
                 </Box>
                 {sidebarOpen && <Box sx={{ px: 2, pb: 2, overflowY: 'auto', minWidth: 248 }}>{filtersNode}</Box>}
@@ -389,10 +423,10 @@ function DashboardContent() {
               >
                 <TuneIcon fontSize="small" />
                 <Typography variant="subtitle2" sx={{ fontFamily: 'Roboto, sans-serif', flex: 1 }}>
-                  Filters
+                  {tr('Filters', 'عوامل التصفية')}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  {sidebarOpen ? 'Hide' : 'Show'}
+                  {sidebarOpen ? tr('Hide', 'إخفاء') : tr('Show', 'إظهار')}
                 </Typography>
               </Box>
               {sidebarOpen && <Box sx={{ px: 2, pb: 2, pt: 1 }}>{filtersNode}</Box>}

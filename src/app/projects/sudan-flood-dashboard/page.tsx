@@ -21,11 +21,12 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AppLayout from '@/components/AppLayout';
 import DashboardHeader from '@/components/DashboardHeader';
 import type { MapMode } from '@/components/SudanFloodMap';
-import { FloodData, FLOOD_CLASSES, CHOLERA_COLOR, floodBrown, fmt, loadFloodData } from '@/utils/sudanFlood';
+import { FloodData, FLOOD_CLASSES, CHOLERA_COLOR, NOTES_AR, TEXT_AR, arabicNames, floodBrown, fmt, loadFloodData } from '@/utils/sudanFlood';
+import { formatDate, useI18n } from '@/i18n';
 
 const SudanFloodMap = nextDynamic(() => import('@/components/SudanFloodMap'), {
   ssr: false,
-  loading: () => <Box sx={{ p: 2 }}>Loading map...</Box>,
+  loading: () => <Box sx={{ p: 2 }}>…</Box>,
 });
 const RankedBars = nextDynamic(() => import('@/components/SudanFloodCharts').then((m) => ({ default: m.RankedBars })), { ssr: false });
 const HousingChart = nextDynamic(() => import('@/components/SudanFloodCharts').then((m) => ({ default: m.HousingChart })), { ssr: false });
@@ -67,6 +68,7 @@ export default function SudanFloodDashboard() {
 
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
+  const { locale, isAr, tr } = useI18n();
 
   useEffect(() => {
     loadFloodData().then(setData).catch((e) => setError(String(e.message ?? e)));
@@ -75,12 +77,16 @@ export default function SudanFloodDashboard() {
   const cholera = useMemo(() => new Map((data?.cholera.states ?? []).map((c) => [c.pcode, c])), [data]);
   const state = data?.states.find((s) => s.pcode === selected) ?? null;
   const stateLocalities = data?.localities.filter((l) => l.state_pcode === selected) ?? [];
+  const arName = useMemo(() => (data ? arabicNames(data) : null), [data]);
+  // Place names and data text in the page language.
+  const place = (pcode: string, name: string) => (isAr && arName ? arName(pcode, name) : name);
+  const text = (v: string) => (isAr ? TEXT_AR[v] ?? v : v);
 
   if (!data) {
     return (
       <AppLayout>
         <Box sx={{ minHeight: 'calc(100vh - 96px)', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: floodBrown.light }}>
-          {error ? <Alert severity="error">Could not load the flood data: {error}</Alert> : <CircularProgress sx={{ color: floodBrown.DEFAULT }} />}
+          {error ? <Alert severity="error">{tr('Could not load the flood data:', 'تعذّر تحميل بيانات الفيضانات:')} {error}</Alert> : <CircularProgress sx={{ color: floodBrown.DEFAULT }} />}
         </Box>
       </AppLayout>
     );
@@ -88,30 +94,30 @@ export default function SudanFloodDashboard() {
 
   const { summary } = data;
   const stateCholera = state ? cholera.get(state.pcode) : undefined;
-  const scope = state ? state.name : 'Sudan';
-  const notReported = state ? 'not reported for this state' : undefined;
+  const scope = state ? place(state.pcode, state.name) : tr('Sudan', 'السودان');
+  const notReported = state ? tr('not reported for this state', 'غير مُبلَّغ عنها لهذه الولاية') : undefined;
 
   const statsNode = (
     <Box sx={{ display: 'flex', gap: 1.25, flexWrap: 'wrap' }}>
       <StatTile
-        label={`People affected · ${scope}`}
+        label={`${tr('People affected', 'المتأثرون')} · ${scope}`}
         value={fmt(state ? state.affected : summary.total_affected)}
-        note={state ? (state.affected == null ? notReported : undefined) : `${summary.families_affected.toLocaleString()} families · ${summary.localities_affected} localities`}
+        note={state ? (state.affected == null ? notReported : undefined) : tr(`${summary.families_affected.toLocaleString()} families · ${summary.localities_affected} localities`, `${summary.families_affected.toLocaleString()} أسرة · ${summary.localities_affected} محلية`)}
         color="#1565c0"
       />
-      <StatTile label={`Displaced · ${scope}`} value={fmt(state ? state.displaced : summary.displaced)} note={state && state.displaced == null ? notReported : undefined} color="#0277bd" />
+      <StatTile label={`${tr('Displaced', 'النازحون')} · ${scope}`} value={fmt(state ? state.displaced : summary.displaced)} note={state && state.displaced == null ? notReported : undefined} color="#0277bd" />
       <StatTile
-        label={`Deaths · ${scope}`}
+        label={`${tr('Deaths', 'الوفيات')} · ${scope}`}
         value={fmt(state ? state.deaths : summary.deaths)}
-        note={state ? (state.deaths == null ? notReported : state.injured != null ? `${state.injured} injured` : undefined) : `${summary.injured} injured`}
+        note={state ? (state.deaths == null ? notReported : state.injured != null ? tr(`${state.injured} injured`, `${state.injured} مصابًا`) : undefined) : tr(`${summary.injured} injured`, `${summary.injured} مصابًا`)}
         color="#c62828"
       />
-      <StatTile label={`Homes destroyed · ${scope}`} value={fmt(state ? state.homes_destroyed : summary.homes_destroyed)} note={state && state.homes_destroyed == null ? notReported : undefined} color="#b71c1c" />
-      <StatTile label={`Homes damaged · ${scope}`} value={fmt(state ? state.homes_damaged : summary.homes_damaged)} note={state && state.homes_damaged == null ? notReported : undefined} color="#e65100" />
+      <StatTile label={`${tr('Homes destroyed', 'المنازل المدمَّرة')} · ${scope}`} value={fmt(state ? state.homes_destroyed : summary.homes_destroyed)} note={state && state.homes_destroyed == null ? notReported : undefined} color="#b71c1c" />
+      <StatTile label={`${tr('Homes damaged', 'المنازل المتضررة')} · ${scope}`} value={fmt(state ? state.homes_damaged : summary.homes_damaged)} note={state && state.homes_damaged == null ? notReported : undefined} color="#e65100" />
       <StatTile
-        label={`Cholera cases · ${scope}`}
+        label={`${tr('Cholera cases', 'حالات الكوليرا')} · ${scope}`}
         value={fmt(state ? stateCholera?.cases ?? null : data.cholera.total_cases)}
-        note={state ? (stateCholera ? undefined : 'no cases reported') : `${data.cholera.total_deaths} deaths · CFR ${data.cholera.case_fatality_rate}%`}
+        note={state ? (stateCholera ? undefined : tr('no cases reported', 'لا حالات مُبلَّغ عنها')) : tr(`${data.cholera.total_deaths} deaths · CFR ${data.cholera.case_fatality_rate}%`, `${data.cholera.total_deaths} وفاة · معدل الوفيات ${data.cholera.case_fatality_rate}%`)}
         color={CHOLERA_COLOR}
       />
     </Box>
@@ -122,7 +128,7 @@ export default function SudanFloodDashboard() {
 
   const stateList = (
     <Box>
-      <SectionTitle>States by people affected</SectionTitle>
+      <SectionTitle>{tr('States by people affected', 'الولايات حسب عدد المتأثرين')}</SectionTitle>
       {ranked.map((s) => {
         const c = cholera.get(s.pcode);
         return (
@@ -133,11 +139,11 @@ export default function SudanFloodDashboard() {
           >
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 1 }}>
               <Typography variant="body2" sx={{ fontWeight: s.has_data ? 600 : 400, color: s.has_data ? 'text.primary' : 'text.secondary' }} noWrap>
-                {s.name}
-                {c && <Box component="span" sx={{ ml: 0.75, px: 0.5, borderRadius: 0.5, fontSize: '0.65rem', bgcolor: '#ede7f6', color: CHOLERA_COLOR }}>cholera</Box>}
+                {place(s.pcode, s.name)}
+                {c && <Box component="span" sx={{ ml: 0.75, px: 0.5, borderRadius: 0.5, fontSize: '0.65rem', bgcolor: '#ede7f6', color: CHOLERA_COLOR }}>{tr('cholera', 'كوليرا')}</Box>}
               </Typography>
               <Typography variant="caption" sx={{ fontWeight: 600, color: s.has_data ? 'text.primary' : 'text.disabled' }}>
-                {s.affected != null ? fmt(s.affected) : 'no data'}
+                {s.affected != null ? fmt(s.affected) : tr('no data', 'لا بيانات')}
               </Typography>
             </Box>
             {s.affected != null && (
@@ -154,53 +160,56 @@ export default function SudanFloodDashboard() {
   const stateDetails = state && (
     <Box>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
-        <IconButton size="small" onClick={() => setSelected(null)} aria-label="Back to all states">
-          <ArrowBackIcon fontSize="small" />
+        <IconButton size="small" onClick={() => setSelected(null)} aria-label={tr('Back to all states', 'العودة إلى كل الولايات')}>
+          <ArrowBackIcon fontSize="small" sx={{ transform: isAr ? 'scaleX(-1)' : undefined }} />
         </IconButton>
         <Box sx={{ minWidth: 0 }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 700, lineHeight: 1.2 }}>{state.name}</Typography>
-          <Typography variant="caption" color="text.secondary" dir="rtl">{state.arabic_name}</Typography>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700, lineHeight: 1.2 }}>{isAr ? state.arabic_name : state.name}</Typography>
+          <Typography variant="caption" color="text.secondary" dir={isAr ? 'ltr' : 'rtl'}>{isAr ? state.name : state.arabic_name}</Typography>
         </Box>
       </Box>
       {!state.has_data && (
         <Alert severity="info" sx={{ mb: 1.5, py: 0 }}>
-          <Typography variant="caption">The flash update reports no flood figures for this state.</Typography>
+          <Typography variant="caption">{tr('The flash update reports no flood figures for this state.', 'لا يورد التحديث العاجل أرقامًا للفيضانات في هذه الولاية.')}</Typography>
         </Alert>
       )}
       <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse', mb: 1.5, '& td': { py: 0.4, fontSize: '0.8rem', borderBottom: '1px solid #f0f0f0' } }}>
         <tbody>
           {([
-            ['People affected', state.affected],
-            ['Displaced', state.displaced],
-            ['Deaths', state.deaths],
-            ['Injured', state.injured],
-            ['Homes destroyed', state.homes_destroyed],
-            ['Homes damaged', state.homes_damaged],
-            ['Cholera cases', stateCholera?.cases ?? null],
+            [tr('People affected', 'المتأثرون'), state.affected],
+            [tr('Displaced', 'النازحون'), state.displaced],
+            [tr('Deaths', 'الوفيات'), state.deaths],
+            [tr('Injured', 'المصابون'), state.injured],
+            [tr('Homes destroyed', 'المنازل المدمَّرة'), state.homes_destroyed],
+            [tr('Homes damaged', 'المنازل المتضررة'), state.homes_damaged],
+            [tr('Cholera cases', 'حالات الكوليرا'), stateCholera?.cases ?? null],
           ] as [string, number | null][]).map(([k, v]) => (
             <tr key={k}>
               <td style={{ color: '#666' }}>{k}</td>
-              <td style={{ textAlign: 'right', fontWeight: 600, color: v == null ? '#aaa' : undefined }}>{fmt(v)}</td>
+              <td style={{ textAlign: 'end', fontWeight: 600, color: v == null ? '#aaa' : undefined }}>{fmt(v)}</td>
             </tr>
           ))}
         </tbody>
       </Box>
-      <SectionTitle>Flood-affected localities ({stateLocalities.length})</SectionTitle>
+      <SectionTitle>{tr('Flood-affected localities', 'المحليات المتأثرة بالفيضانات')} ({stateLocalities.length})</SectionTitle>
       {stateLocalities.length ? (
         stateLocalities.map((l) => (
           <Box key={l.adm2_pcode} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.35 }}>
-            <Typography variant="body2">{l.adm2_name}</Typography>
+            <Typography variant="body2">{place(l.adm2_pcode, l.adm2_name)}</Typography>
             <Typography variant="caption" sx={{ fontWeight: 600, color: l.affected == null ? 'text.disabled' : 'text.primary' }}>
-              {l.affected != null ? fmt(l.affected) : 'affected'}
+              {l.affected != null ? fmt(l.affected) : tr('affected', 'متأثرة')}
             </Typography>
           </Box>
         ))
       ) : (
-        <Typography variant="body2" color="text.secondary">No localities named in the flash update.</Typography>
+        <Typography variant="body2" color="text.secondary">{tr('No localities named in the flash update.', 'لم يسمِّ التحديث العاجل أي محليات.')}</Typography>
       )}
       {stateLocalities.find((l) => l.notes)?.notes && (
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1, fontStyle: 'italic' }}>
-          {stateLocalities.find((l) => l.notes)?.notes}
+          {(() => {
+            const note = stateLocalities.find((l) => l.notes)!.notes!;
+            return isAr ? NOTES_AR[note] ?? note : note;
+          })()}
         </Typography>
       )}
     </Box>
@@ -208,7 +217,7 @@ export default function SudanFloodDashboard() {
 
   const sidebar = (
     <Box>
-      <SectionTitle>Map layer</SectionTitle>
+      <SectionTitle>{tr('Map layer', 'طبقة الخريطة')}</SectionTitle>
       <ToggleButtonGroup
         exclusive
         fullWidth
@@ -217,9 +226,9 @@ export default function SudanFloodDashboard() {
         onChange={(_e, v) => v && setMode(v)}
         sx={{ mb: 2, '& .MuiToggleButton-root': { textTransform: 'none', fontWeight: 600 } }}
       >
-        <ToggleButton value="floods">Floods</ToggleButton>
-        <ToggleButton value="cholera">Cholera</ToggleButton>
-        <ToggleButton value="both">Both</ToggleButton>
+        <ToggleButton value="floods">{tr('Floods', 'الفيضانات')}</ToggleButton>
+        <ToggleButton value="cholera">{tr('Cholera', 'الكوليرا')}</ToggleButton>
+        <ToggleButton value="both">{tr('Both', 'كلاهما')}</ToggleButton>
       </ToggleButtonGroup>
       <Divider sx={{ mb: 1 }} />
       {state ? stateDetails : stateList}
@@ -228,17 +237,17 @@ export default function SudanFloodDashboard() {
 
   const mapNode = <SudanFloodMap data={data} mode={mode} selected={selected} onSelect={setSelected} />;
 
-  const affectedBars = data.states.filter((s) => s.affected != null).map((s) => ({ pcode: s.pcode, name: s.name, value: s.affected! }));
-  const choleraBars = data.cholera.states.map((c) => ({ pcode: c.pcode, name: c.name, value: c.cases }));
+  const affectedBars = data.states.filter((s) => s.affected != null).map((s) => ({ pcode: s.pcode, name: place(s.pcode, s.name), value: s.affected! }));
+  const choleraBars = data.cholera.states.map((c) => ({ pcode: c.pcode, name: place(c.pcode, c.name), value: c.cases }));
   const chartsNode = (
     <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1.2fr 1fr 1fr' }, gap: 1.5 }}>
       <Paper elevation={2} sx={{ p: 2 }}>
         <RankedBars
-          title="People affected by state"
-          subtitle="States with reported figures · click a bar to select"
+          title={tr('People affected by state', 'المتأثرون حسب الولاية')}
+          subtitle={tr('States with reported figures · click a bar to select', 'الولايات ذات الأرقام المُبلَّغة · انقر شريطًا للتحديد')}
           bars={affectedBars}
           color={FLOOD_BAR}
-          label="People affected"
+          label={tr('People affected', 'المتأثرون')}
           selected={selected}
           onSelect={setSelected}
           height={230}
@@ -248,17 +257,17 @@ export default function SudanFloodDashboard() {
         <HousingChart
           destroyed={state ? state.homes_destroyed : summary.homes_destroyed}
           damaged={state ? state.homes_damaged : summary.homes_damaged}
-          place={state ? state.name : 'All of Sudan'}
+          place={state ? place(state.pcode, state.name) : tr('All of Sudan', 'السودان كله')}
           height={230}
         />
       </Paper>
       <Paper elevation={2} sx={{ p: 2 }}>
         <RankedBars
-          title="Cholera cases by state"
-          subtitle={data.cholera.period}
+          title={tr('Cholera cases by state', 'حالات الكوليرا حسب الولاية')}
+          subtitle={text(data.cholera.period)}
           bars={choleraBars}
           color={CHOLERA_COLOR}
-          label="Cholera cases"
+          label={tr('Cholera cases', 'حالات الكوليرا')}
           selected={selected}
           onSelect={setSelected}
           height={230}
@@ -270,25 +279,48 @@ export default function SudanFloodDashboard() {
   const aboutData = (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-        <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Data sources</Typography>
-        <IconButton size="small" onClick={() => setAboutOpen(false)} aria-label="Close"><CloseIcon fontSize="small" /></IconButton>
+        <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>{tr('Data sources', 'مصادر البيانات')}</Typography>
+        <IconButton size="small" onClick={() => setAboutOpen(false)} aria-label={tr('Close', 'إغلاق')}><CloseIcon fontSize="small" /></IconButton>
       </Box>
-      <Typography variant="body2" sx={{ mb: 1 }}>
-        <b>Floods:</b> {summary.source}; {summary.notes.toLowerCase()}. State and locality figures are as reported; many states have no figures yet.
-      </Typography>
-      <Typography variant="body2" sx={{ mb: 1 }}>
-        <b>Cholera:</b> {data.cholera.source}, {data.cholera.period}.
-      </Typography>
-      <Typography variant="body2">
-        <b>Boundaries:</b> OCHA Sudan administrative boundaries (COD-AB, admin 1 and 2). <b>Basemap:</b> OpenStreetMap.
-      </Typography>
+      {isAr ? (
+        <>
+          <Typography variant="body2" sx={{ mb: 1 }}>
+            <b>الفيضانات:</b> {text(summary.source)}؛ {text(summary.notes)}. أرقام الولايات والمحليات كما أُبلغ عنها؛ ولا توجد أرقام بعد لكثير من الولايات.
+          </Typography>
+          <Typography variant="body2" sx={{ mb: 1 }}>
+            <b>الكوليرا:</b> {text(data.cholera.source)}، {text(data.cholera.period)}.
+          </Typography>
+          <Typography variant="body2">
+            <b>الحدود:</b> الحدود الإدارية للسودان من أوتشا (COD-AB، المستويان الإداريان 1 و2). <b>الخريطة الأساسية:</b> OpenStreetMap.
+          </Typography>
+        </>
+      ) : (
+        <>
+          <Typography variant="body2" sx={{ mb: 1 }}>
+            <b>Floods:</b> {summary.source}; {summary.notes.toLowerCase()}. State and locality figures are as reported; many states have no figures yet.
+          </Typography>
+          <Typography variant="body2" sx={{ mb: 1 }}>
+            <b>Cholera:</b> {data.cholera.source}, {data.cholera.period}.
+          </Typography>
+          <Typography variant="body2">
+            <b>Boundaries:</b> OCHA Sudan administrative boundaries (COD-AB, admin 1 and 2). <b>Basemap:</b> OpenStreetMap.
+          </Typography>
+        </>
+      )}
     </Box>
   );
 
   const header = (
     <Box sx={{ position: 'relative' }}>
-      <DashboardHeader source={summary.source} author={summary.author} date={summary.date} mb={isDesktop ? 1.5 : 3} />
-      <IconButton onClick={() => setAboutOpen((v) => !v)} sx={{ position: 'absolute', top: 12, right: 12, color: 'white' }} aria-label="About the data">
+      <DashboardHeader
+        title={tr('Sudan Flood Dashboard', 'لوحة فيضانات السودان')}
+        subtitle={tr('Humanitarian Impact of Heavy Rains and Flooding', 'الأثر الإنساني للأمطار الغزيرة والفيضانات')}
+        source={text(summary.source)}
+        author={summary.author}
+        date={isAr ? formatDate(summary.date, locale) : summary.date}
+        mb={isDesktop ? 1.5 : 3}
+      />
+      <IconButton onClick={() => setAboutOpen((v) => !v)} sx={{ position: 'absolute', top: 12, right: 12, color: 'white' }} aria-label={tr('About the data', 'حول البيانات')}>
         <InfoOutlinedIcon />
       </IconButton>
     </Box>
@@ -297,8 +329,33 @@ export default function SudanFloodDashboard() {
   const aboutProject = (
     <Paper elevation={2} sx={{ p: { xs: 2.5, md: 3.5 } }}>
       <Typography variant="h6" sx={{ fontWeight: 700, fontFamily: 'Roboto, sans-serif', mb: 1.5, color: floodBrown.DEFAULT }}>
-        About the project
+        {tr('About the project', 'عن المشروع')}
       </Typography>
+      {isAr ? (
+        <>
+          <Typography variant="body1" sx={{ mb: 2, lineHeight: 2 }}>
+            ترسم هذه اللوحة الأثر الإنساني لفيضانات موسم الأمطار 2024 في السودان، كما ورد في التحديث العاجل لأوتشا بتاريخ 5 سبتمبر 2024، إلى جانب تفشي
+            الكوليرا الذي تلاها. تُظهر عدد المتأثرين في كل ولاية، وأين دُمِّرت المنازل أو تضررت، والوفيات والنزوح، والمحليات التي ضُربت، إلى جانب حالات
+            الكوليرا التي أبلغت عنها وزارة الصحة الاتحادية، لتمنح المستجيبين والباحثين صورة مكانية واضحة عن أماكن اشتداد الأزمة وتداخل الفيضانات مع المرض.
+          </Typography>
+          <Typography variant="body1" sx={{ lineHeight: 2 }}>
+            حوّلتُ التحديث العاجل لأوتشا عن الأثر الإنساني للأمطار الغزيرة والفيضانات في السودان إلى لوحة تفاعلية على <strong>CoffeeMap.dev</strong>، فصار
+            تقرير الحالة الكثيف قصة مكانية أوضح وأسهل وصولًا. تُبرز اللوحة حجم الأزمة وجغرافيتها بعرض الولايات والمحليات المتأثرة، والمؤشرات الإنسانية
+            الرئيسية مثل أعداد المتأثرين والنازحين والوفيات والإصابات والمنازل المدمَّرة والمتضررة، والمخاطر الصحية الأوسع المرتبطة بالفيضانات ومنها تفشي
+            الكوليرا. وبإعادة تنظيم التقرير في تجربة بيانات أكثر سلاسة، أوضحتُ كيف يمكن للتصميم الجيومكاني والتفكير بمنطق اللوحات أن يدعما فهمًا أسرع
+            وتواصلًا أفضل وقرارات إنسانية أكثر استنارة انطلاقًا من بيانات طوارئ معقدة.{' '}
+            <a
+              href="https://www.unocha.org/publications/report/sudan/sudan-humanitarian-impact-heavy-rains-and-flooding-flash-update-no-04-5-september-2024"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: floodBrown.DEFAULT, fontWeight: 600 }}
+            >
+              اقرأ التحديث العاجل (بالإنجليزية)
+            </a>
+          </Typography>
+        </>
+      ) : (
+        <>
       <Typography variant="body1" sx={{ mb: 2, lineHeight: 1.75 }}>
         This dashboard maps the humanitarian impact of the 2024 rainy-season floods in Sudan, as reported in OCHA&apos;s Flash Update of 5 September 2024,
         together with the cholera outbreak that followed. It shows how many people were affected in each state, where homes were destroyed or damaged,
@@ -321,6 +378,8 @@ export default function SudanFloodDashboard() {
           Read the flash update
         </a>
       </Typography>
+        </>
+      )}
     </Paper>
   );
 

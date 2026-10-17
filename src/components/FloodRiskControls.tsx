@@ -16,6 +16,7 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
 import { SENTINEL_HUB_ENDPOINTS, Weights } from '@/lib/floodRisk';
 import type { LayerVisibility } from '@/components/FloodRiskMap';
+import { Bi, useI18n } from '@/i18n';
 
 export type SarProvider = 'planetary' | keyof typeof SENTINEL_HUB_ENDPOINTS;
 
@@ -45,20 +46,20 @@ interface FloodRiskControlsProps {
   maxDate: string;
 }
 
-const LAYERS: [keyof LayerVisibility, string][] = [
-  ['hillshade', 'DEM hillshade'],
-  ['flood', 'Flood extent (SAR)'],
-  ['risk', 'Flood risk'],
-  ['rivers', 'Rivers'],
-  ['rainfall', 'Rainfall'],
+const LAYERS: [keyof LayerVisibility, Bi][] = [
+  ['hillshade', { en: 'DEM hillshade', ar: 'تظليل التضاريس' }],
+  ['flood', { en: 'Flood extent (SAR)', ar: 'امتداد الفيضان (رادار)' }],
+  ['risk', { en: 'Flood risk', ar: 'مخاطر الفيضان' }],
+  ['rivers', { en: 'Rivers', ar: 'الأنهار' }],
+  ['rainfall', { en: 'Rainfall', ar: 'الأمطار' }],
 ];
 
-const WEIGHTS: [keyof Weights, string, string][] = [
-  ['elevation', 'w1', 'Low elevation (height above river)'],
-  ['slope', 'w2', 'Flat slope'],
-  ['distance', 'w3', 'Near a river'],
-  ['rainfall', 'w4', 'Recent rainfall'],
-  ['sar', 'w5', 'SAR flood mask'],
+const WEIGHTS: [keyof Weights, string, Bi][] = [
+  ['elevation', 'w1', { en: 'Low elevation (height above river)', ar: 'انخفاض الارتفاع (فوق النهر)' }],
+  ['slope', 'w2', { en: 'Flat slope', ar: 'استواء الانحدار' }],
+  ['distance', 'w3', { en: 'Near a river', ar: 'القرب من نهر' }],
+  ['rainfall', 'w4', { en: 'Recent rainfall', ar: 'الأمطار الأخيرة' }],
+  ['sar', 'w5', { en: 'SAR flood mask', ar: 'قناع الفيضان من الرادار' }],
 ];
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -101,13 +102,15 @@ export default function FloodRiskControls(props: FloodRiskControlsProps) {
   const { event, onEventChange, visible, thresholds, weights, busy } = props;
   const set = (patch: Partial<EventSettings>) => onEventChange({ ...event, ...patch });
   const needsCredentials = event.provider !== 'planetary';
+  const { tr, pick } = useI18n();
+  const days = (d: number) => tr(`${d} days`, `${d} يومًا`);
 
   return (
     <Box>
-      <Section title="Flood event">
+      <Section title={tr('Flood event', 'حدث الفيضان')}>
         <Box sx={{ display: 'flex', gap: 1, mb: 1.5 }}>
           <TextField
-            label="Pre-flood"
+            label={tr('Pre-flood', 'قبل الفيضان')}
             type="date"
             size="small"
             value={event.preDate}
@@ -117,7 +120,7 @@ export default function FloodRiskControls(props: FloodRiskControlsProps) {
             fullWidth
           />
           <TextField
-            label="Flood date"
+            label={tr('Flood date', 'تاريخ الفيضان')}
             type="date"
             size="small"
             value={event.floodDate}
@@ -128,35 +131,35 @@ export default function FloodRiskControls(props: FloodRiskControlsProps) {
           />
         </Box>
         <Box sx={{ display: 'flex', gap: 1, mb: 1.5 }}>
-          <TextField select label="SAR window" size="small" value={event.sarWindow} onChange={(e) => set({ sarWindow: Number(e.target.value) })} fullWidth>
-            {[6, 12, 18, 24].map((d) => <MenuItem key={d} value={d}>{d} days</MenuItem>)}
+          <TextField select label={tr('SAR window', 'فترة الرادار')} size="small" value={event.sarWindow} onChange={(e) => set({ sarWindow: Number(e.target.value) })} fullWidth>
+            {[6, 12, 18, 24].map((d) => <MenuItem key={d} value={d}>{days(d)}</MenuItem>)}
           </TextField>
-          <TextField select label="Rainfall" size="small" value={event.rainDays} onChange={(e) => set({ rainDays: Number(e.target.value) })} fullWidth>
-            {[7, 14, 30, 60].map((d) => <MenuItem key={d} value={d}>{d} days</MenuItem>)}
+          <TextField select label={tr('Rainfall', 'الأمطار')} size="small" value={event.rainDays} onChange={(e) => set({ rainDays: Number(e.target.value) })} fullWidth>
+            {[7, 14, 30, 60].map((d) => <MenuItem key={d} value={d}>{days(d)}</MenuItem>)}
           </TextField>
         </Box>
         <TextField
           select
-          label="Sentinel-1 source"
+          label={tr('Sentinel-1 source', 'مصدر Sentinel-1')}
           size="small"
           value={event.provider}
           onChange={(e) => set({ provider: e.target.value as SarProvider })}
           fullWidth
           sx={{ mb: 1 }}
         >
-          <MenuItem value="planetary">Planetary Computer (no key)</MenuItem>
+          <MenuItem value="planetary">{tr('Planetary Computer (no key)', 'Planetary Computer (بلا مفتاح)')}</MenuItem>
           {Object.entries(SENTINEL_HUB_ENDPOINTS).map(([key, ep]) => (
-            <MenuItem key={key} value={key}>{ep.label} (token)</MenuItem>
+            <MenuItem key={key} value={key}>{ep.label} {tr('(token)', '(رمز وصول)')}</MenuItem>
           ))}
         </TextField>
         <Collapse in={needsCredentials}>
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-            Paste an access token, or an OAuth client ID and secret. Used in this browser only, never stored.
+            {tr('Paste an access token, or an OAuth client ID and secret. Used in this browser only, never stored.', 'الصق رمز وصول، أو معرّف عميل OAuth وسرّه. يُستخدم في هذا المتصفح فقط ولا يُخزَّن أبدًا.')}
           </Typography>
-          <TextField label="Access token" size="small" type="password" value={event.token} onChange={(e) => set({ token: e.target.value })} fullWidth sx={{ mb: 1 }} />
+          <TextField label={tr('Access token', 'رمز الوصول')} size="small" type="password" value={event.token} onChange={(e) => set({ token: e.target.value })} fullWidth sx={{ mb: 1 }} />
           <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
-            <TextField label="Client ID" size="small" value={event.clientId} onChange={(e) => set({ clientId: e.target.value })} fullWidth />
-            <TextField label="Secret" size="small" type="password" value={event.clientSecret} onChange={(e) => set({ clientSecret: e.target.value })} fullWidth />
+            <TextField label={tr('Client ID', 'معرّف العميل')} size="small" value={event.clientId} onChange={(e) => set({ clientId: e.target.value })} fullWidth />
+            <TextField label={tr('Secret', 'السر')} size="small" type="password" value={event.clientSecret} onChange={(e) => set({ clientSecret: e.target.value })} fullWidth />
           </Box>
         </Collapse>
         <Button
@@ -167,35 +170,35 @@ export default function FloodRiskControls(props: FloodRiskControlsProps) {
           disabled={busy || (needsCredentials && !event.token && !(event.clientId && event.clientSecret))}
           sx={{ textTransform: 'none' }}
         >
-          Load SAR &amp; rainfall
+          {tr('Load SAR & rainfall', 'تحميل الرادار والأمطار')}
         </Button>
       </Section>
 
       <Divider sx={{ mb: 1 }} />
-      <Section title="Layers">
+      <Section title={tr('Layers', 'الطبقات')}>
         {LAYERS.map(([key, label]) => (
           <FormControlLabel
             key={key}
             sx={{ display: 'flex', ml: 0, mr: 0, justifyContent: 'space-between' }}
             labelPlacement="start"
             control={<Switch size="small" checked={visible[key]} onChange={(e) => props.onVisibleChange({ ...visible, [key]: e.target.checked })} />}
-            label={<Typography variant="body2">{label}</Typography>}
+            label={<Typography variant="body2">{pick(label)}</Typography>}
           />
         ))}
       </Section>
 
       <Divider sx={{ mb: 1 }} />
-      <Section title="SAR water thresholds">
-        <LabeledSlider label="VV below" unit=" dB" value={thresholds.vv} min={-30} max={-10} step={0.5} onChange={(vv) => props.onThresholdsChange({ ...thresholds, vv })} />
-        <LabeledSlider label="VH below" unit=" dB" value={thresholds.vh} min={-35} max={-15} step={0.5} onChange={(vh) => props.onThresholdsChange({ ...thresholds, vh })} />
+      <Section title={tr('SAR water thresholds', 'عتبات المياه في الرادار')}>
+        <LabeledSlider label={tr('VV below', 'VV أقل من')} unit=" dB" value={thresholds.vv} min={-30} max={-10} step={0.5} onChange={(vv) => props.onThresholdsChange({ ...thresholds, vv })} />
+        <LabeledSlider label={tr('VH below', 'VH أقل من')} unit=" dB" value={thresholds.vh} min={-35} max={-15} step={0.5} onChange={(vh) => props.onThresholdsChange({ ...thresholds, vh })} />
       </Section>
 
       <Divider sx={{ mb: 1 }} />
-      <Section title="Risk model weights">
+      <Section title={tr('Risk model weights', 'أوزان نموذج المخاطر')}>
         {WEIGHTS.map(([key, w, label]) => (
           <LabeledSlider
             key={key}
-            label={`${w} · ${label}`}
+            label={`${w} · ${pick(label)}`}
             value={weights[key]}
             min={0}
             max={1}
@@ -213,7 +216,7 @@ export default function FloodRiskControls(props: FloodRiskControlsProps) {
         disabled={busy}
         sx={{ textTransform: 'none', fontWeight: 700 }}
       >
-        Recompute Risk
+        {tr('Recompute Risk', 'إعادة حساب المخاطر')}
       </Button>
     </Box>
   );

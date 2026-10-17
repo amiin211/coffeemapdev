@@ -39,6 +39,7 @@ The site is built by **Amin Adnan Gasim**, a Sudanese geospatial engineer based 
 | `/projects/riyadh-urban-heat` | Riyadh Urban Heat & Tree Canopy Equity |
 | `/projects/3d-mosque-viewer` | 3D Mosque Viewer |
 | `/projects/serverless-geoai-architecture` | Serverless GeoAI Architecture |
+| `/projects/geospatial-qaqc-workbench` | Geospatial QA/QC Workbench |
 | `/insights/[slug]` | Insight articles |
 
 The navigation bar links to Home, About, Expertise (`/#capabilities`) and Contact (`/#contact`).
@@ -131,6 +132,13 @@ Every one of the 674 Revit-derived elements is clickable: it highlights and open
 `/projects/serverless-geoai-architecture`
 
 An interactive diagram of how the GeoAI dashboards run with no VPS, database or Python at runtime: compute in the browser, or precompute once and stream imagery.
+
+#### Geospatial QA/QC Workbench — *Enterprise GIS*
+`/projects/geospatial-qaqc-workbench`
+
+A hands-on guide to checking delivered geospatial data against its specification, for four products: orthoimage mosaics, elevation models (DTM / DSM), topographic vector data and land cover maps. Each workflow step (receive, automated checks, sample review, accuracy test, decide and report) shows what to check, how to do it in ArcGIS Pro, QGIS and code (GDAL, Python, PostGIS SQL), the ISO 19157-1 quality element and an example tolerance, with an illustrated gallery of typical errors. Calculators cover ISO 2859-1 sample sizes, RMSE / CE90 / LE90 from check points, and land cover confusion matrices. It is a self-contained page in `public/projects-static/`, embedded in an iframe.
+
+*ISO 19157-1 · ISO 2859-1 · ArcGIS Pro · QGIS · PostGIS · GDAL · Python*
 
 ### Insights
 

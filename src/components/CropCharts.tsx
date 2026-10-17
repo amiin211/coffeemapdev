@@ -18,10 +18,12 @@ import {
   type Plugin,
 } from 'chart.js';
 import { Bar, Line } from 'react-chartjs-2';
-import { CROP_COLORS, CropIndex, INDEX_LABEL, formatDate, formatMonthYear } from '@/utils/crop';
+import { CROP_COLORS, CropIndex, INDEX_LABEL, cropLabel, formatDate, formatMonthYear } from '@/utils/crop';
+import { setChartFontForDocument, chartDir, useI18n } from '@/i18n';
 
 if (typeof window !== 'undefined') {
   ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Filler, Tooltip, Legend);
+  setChartFontForDocument(ChartJS);
 }
 
 const FIELD_COLOR = '#2E7D32';
@@ -79,6 +81,7 @@ interface TimeSeriesChartProps {
 
 export function TimeSeriesChart({ dates, values, reference, label, index, anomalies, dateIndex, onDateClick, height }: TimeSeriesChartProps) {
   const anomalySet = new Set(anomalies);
+  const { isAr, tr } = useI18n();
   const datasets: ChartDataset<'line', (number | null)[]>[] = [
     {
       label,
@@ -99,7 +102,7 @@ export function TimeSeriesChart({ dates, values, reference, label, index, anomal
   ];
   if (reference) {
     datasets.push({
-      label: 'All fields (mean)',
+      label: tr('All fields (mean)', 'كل الحقول (المتوسط)'),
       data: reference,
       borderColor: REFERENCE_COLOR,
       borderWidth: 1.5,
@@ -117,12 +120,13 @@ export function TimeSeriesChart({ dates, values, reference, label, index, anomal
     animation: { duration: 300 },
     interaction: { mode: 'index', intersect: false },
     plugins: {
-      legend: { display: !!reference, position: 'top', align: 'end', labels: { boxWidth: 14, boxHeight: 2, font: { size: 10 } } },
+      legend: { display: !!reference, position: 'top', align: 'end', ...chartDir(isAr), labels: { boxWidth: 14, boxHeight: 2, font: { size: 10 } } },
       tooltip: {
+        ...chartDir(isAr),
         callbacks: {
-          title: (items) => formatDate(dates[items[0].dataIndex]),
-          label: (item) => (item.raw == null ? `${item.dataset.label}: no clear view` : `${item.dataset.label}: ${(item.raw as number).toFixed(2)}`),
-          afterBody: (items) => (anomalySet.has(items[0].dataIndex) ? 'Anomaly: below seasonal mean − 2σ' : ''),
+          title: (items) => formatDate(dates[items[0].dataIndex], isAr),
+          label: (item) => (item.raw == null ? `${item.dataset.label}: ${tr('no clear view', 'لا توجد رؤية صافية')}` : `${item.dataset.label}: ${(item.raw as number).toFixed(2)}`),
+          afterBody: (items) => (anomalySet.has(items[0].dataIndex) ? tr('Anomaly: below seasonal mean − 2σ', 'شذوذ: أقل من المتوسط الموسمي − 2σ') : ''),
         },
       },
       dateMarker: { index: dateIndex },
@@ -140,7 +144,7 @@ export function TimeSeriesChart({ dates, values, reference, label, index, anomal
             const d = dates[i];
             const prev = dates[i - 1];
             return d && (!prev || d.slice(0, 7) !== prev.slice(0, 7)) && ['01', '04', '07', '10'].includes(d.slice(5, 7))
-              ? formatMonthYear(d)
+              ? formatMonthYear(d, isAr)
               : null;
           },
         },
@@ -167,11 +171,12 @@ interface CropSummaryChartProps {
 }
 
 export function CropSummaryChart({ entries, selected, onSelect, height }: CropSummaryChartProps) {
+  const { isAr, tr } = useI18n();
   const data = {
-    labels: entries.map((e) => e.crop),
+    labels: entries.map((e) => cropLabel(e.crop, isAr)),
     datasets: [
       {
-        label: 'Area (ha)',
+        label: tr('Area (ha)', 'المساحة (هكتار)'),
         data: entries.map((e) => e.area),
         backgroundColor: entries.map((e) => `${CROP_COLORS[e.crop]}${!selected || e.crop === selected ? 'dd' : '44'}`),
         borderRadius: 4,
@@ -187,13 +192,18 @@ export function CropSummaryChart({ entries, selected, onSelect, height }: CropSu
     plugins: {
       legend: { display: false },
       tooltip: {
+        ...chartDir(isAr),
         callbacks: {
-          label: (item) => `${Math.round(item.raw as number).toLocaleString()} ha`,
-          afterLabel: (item) => `${entries[item.dataIndex].fields} fields`,
+          label: (item) => `${Math.round(item.raw as number).toLocaleString()} ${tr('ha', 'هكتار')}`,
+          afterLabel: (item) => tr(`${entries[item.dataIndex].fields} fields`, `${entries[item.dataIndex].fields} حقلًا`),
         },
       },
     },
-    scales: { x: { ...axisStyle, beginAtZero: true, title: { display: true, text: 'hectares', font: { size: 10 } } }, y: { ...axisStyle, grid: { display: false } } },
+    // Arabic mirrors the bars: labels on the right, growing leftwards.
+    scales: {
+      x: { ...axisStyle, reverse: isAr, beginAtZero: true, title: { display: true, text: tr('hectares', 'هكتار'), font: { size: 10 } } },
+      y: { ...axisStyle, position: isAr ? 'right' : 'left', grid: { display: false } },
+    },
     onClick: (_: unknown, elements: { index: number }[]) => {
       if (!elements.length) return;
       const crop = entries[elements[0].index].crop;
@@ -207,7 +217,7 @@ export function CropSummaryChart({ entries, selected, onSelect, height }: CropSu
   return (
     <Box sx={{ height }}>
       <Typography variant="subtitle2" sx={{ fontFamily: 'Roboto, sans-serif', mb: 0.5 }}>
-        Crop Classification (latest season)
+        {tr('Crop Classification (latest season)', 'تصنيف المحاصيل (أحدث موسم)')}
       </Typography>
       <Box sx={{ height: height - 28 }}>
         <Bar data={data} options={options} />

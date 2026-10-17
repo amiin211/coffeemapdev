@@ -5,6 +5,7 @@ import { Box, Divider, Typography } from '@mui/material';
 import MapGL, { Source, Layer, Popup, NavigationControl, ScaleControl, MapLayerMouseEvent } from 'react-map-gl/maplibre';
 import type { StyleSpecification } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import { useI18n } from '@/i18n';
 import {
   AOI,
   DEM_SOURCE,
@@ -76,6 +77,9 @@ function Swatch({ color, label }: { color: string; label: string }) {
 export default function FloodRiskMap({ grid, images, rivers, visible, describeCell }: FloodRiskMapProps) {
   const [popup, setPopup] = useState<CellInfo | null>(null);
   const corners = grid ? gridCorners(grid) : null;
+  const { isAr, tr } = useI18n();
+  // Arabic mirrors the map chrome: controls on the left, legend on the right.
+  const side = isAr ? 'left' : 'right';
 
   const onClick = (e: MapLayerMouseEvent) => {
     setPopup(describeCell(e.lngLat.lng, e.lngLat.lat));
@@ -91,8 +95,8 @@ export default function FloodRiskMap({ grid, images, rivers, visible, describeCe
         onClick={onClick}
         cursor="crosshair"
       >
-        <NavigationControl position="top-right" />
-        <ScaleControl position="bottom-right" />
+        <NavigationControl position={`top-${side}`} />
+        <ScaleControl position={`bottom-${side}`} />
 
         {/* DEM hillshade, rendered by MapLibre (WebGL) from the same terrain tiles the model uses. */}
         <Source
@@ -155,14 +159,14 @@ export default function FloodRiskMap({ grid, images, rivers, visible, describeCe
 
         {popup && (
           <Popup longitude={popup.lng} latitude={popup.lat} onClose={() => setPopup(null)} closeOnClick={false} maxWidth="260px">
-            <Typography variant="caption" color="text.secondary">
-              {popup.lat.toFixed(4)}° N, {popup.lng.toFixed(4)}° E
+            <Typography variant="caption" color="text.secondary" component="div">
+              <bdi>{popup.lat.toFixed(4)}° N, {popup.lng.toFixed(4)}° E</bdi>
             </Typography>
             <Box component="table" sx={{ mt: 0.5, borderCollapse: 'collapse', '& td': { py: 0.25, fontSize: '0.75rem' } }}>
               <tbody>
                 {popup.rows.map(([label, value]) => (
                   <tr key={label}>
-                    <td style={{ paddingRight: 12, color: '#666' }}>{label}</td>
+                    <td style={{ paddingInlineEnd: 12, color: '#666' }}>{label}</td>
                     <td style={{ fontWeight: 600 }}>{value}</td>
                   </tr>
                 ))}
@@ -173,16 +177,16 @@ export default function FloodRiskMap({ grid, images, rivers, visible, describeCe
       </MapGL>
 
       <Box sx={{ position: 'absolute', left: 12, bottom: 12, p: 1.5, minWidth: 150, ...floatingPanelSx }}>
-        <Typography variant="caption" sx={{ fontWeight: 700, display: 'block', mb: 0.5 }}>Flood risk</Typography>
+        <Typography variant="caption" sx={{ fontWeight: 700, display: 'block', mb: 0.5 }}>{tr('Flood risk', 'مخاطر الفيضان')}</Typography>
         {RISK_CLASSES.map((c) => (
-          <Swatch key={c.label} color={rgb(c.color)} label={c.label} />
+          <Swatch key={c.label} color={rgb(c.color)} label={isAr ? c.labelAr : c.label} />
         ))}
         <Divider sx={{ my: 0.75 }} />
-        <Swatch color={rgb(FLOOD_COLOR)} label="SAR flood extent" />
-        <Swatch color={rgb(PERMANENT_WATER_COLOR)} label="Permanent water" />
+        <Swatch color={rgb(FLOOD_COLOR)} label={tr('SAR flood extent', 'امتداد الفيضان بالرادار')} />
+        <Swatch color={rgb(PERMANENT_WATER_COLOR)} label={tr('Permanent water', 'مياه دائمة')} />
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Box sx={{ width: 14, height: 3, bgcolor: '#0d47a1', flexShrink: 0 }} />
-          <Typography variant="caption">Rivers (OSM)</Typography>
+          <Typography variant="caption">{tr('Rivers (OSM)', 'الأنهار (OSM)')}</Typography>
         </Box>
       </Box>
     </Box>

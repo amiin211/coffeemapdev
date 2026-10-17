@@ -5,8 +5,10 @@ import { Box, Button, Chip, Container, Paper, Stack, Typography } from '@mui/mat
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AppLayout from '@/components/AppLayout';
 import type { Block, FrontMatter, Inline } from '@/lib/markdown';
+import { formatDate, useI18n } from '@/i18n';
 
 function Inlines({ nodes }: { nodes: Inline[] }) {
+  const { href } = useI18n();
   return (
     <>
       {nodes.map((n, i) => {
@@ -18,14 +20,14 @@ function Inlines({ nodes }: { nodes: Inline[] }) {
           case 'i':
             return <em key={i}><Inlines nodes={n.c} /></em>;
           case 'code':
-            return <code key={i}>{n.v}</code>;
+            return <code key={i} dir="ltr">{n.v}</code>;
           case 'a': {
             if (n.href.startsWith('mailto:')) return <a key={i} href={n.href}><Inlines nodes={n.c} /></a>;
             const external = /^https?:/.test(n.href);
             return external ? (
               <a key={i} href={n.href} target="_blank" rel="noopener noreferrer"><Inlines nodes={n.c} /></a>
             ) : (
-              <Link key={i} href={n.href}><Inlines nodes={n.c} /></Link>
+              <Link key={i} href={href(n.href)}><Inlines nodes={n.c} /></Link>
             );
           }
         }
@@ -53,7 +55,7 @@ function BlockView({ block }: { block: Block }) {
     case 'ol':
       return <ol>{block.items.map((it, i) => <li key={i}><Inlines nodes={it} /></li>)}</ol>;
     case 'code':
-      return <pre><code>{block.v}</code></pre>;
+      return <pre dir="ltr"><code>{block.v}</code></pre>;
     case 'quote':
       return <blockquote><Inlines nodes={block.c} /></blockquote>;
     case 'hr':
@@ -84,20 +86,21 @@ interface ArticleBodyProps {
 }
 
 export default function ArticleBody({ meta, title, blocks, readingTime }: ArticleBodyProps) {
-  const date = new Date(`${meta.date}T00:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+  const { locale, isAr, tr, href } = useI18n();
+  const date = formatDate(meta.date, locale);
   return (
     <AppLayout>
       <Box sx={{ bgcolor: '#faf7f4', py: { xs: 3, md: 5 } }}>
         <Container maxWidth="md">
-          <Button component={Link} href="/#insights" startIcon={<ArrowBackIcon />} size="small" sx={{ mb: 2, textTransform: 'none', color: 'text.secondary' }}>
-            All insights
+          <Button component={Link} href={href('/#insights')} startIcon={<ArrowBackIcon sx={{ transform: isAr ? 'scaleX(-1)' : undefined }} />} size="small" sx={{ mb: 2, textTransform: 'none', color: 'text.secondary', gap: 1 }}>
+            {tr('All insights', 'كل المقالات')}
           </Button>
 
           <Paper elevation={1} sx={{ p: { xs: 3, md: 6 }, borderRadius: 2 }}>
             <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2, flexWrap: 'wrap' }}>
               <Chip label={meta.category} size="small" sx={{ fontWeight: 600, bgcolor: 'accent.light', color: 'primary.main' }} />
               <Typography variant="caption" color="text.secondary">
-                {date} · {readingTime} read{meta.author ? ` · ${meta.author}` : ''}
+                {date} · {tr(`${readingTime} read`, `قراءة ${readingTime}`)}{meta.author && <> · <b>{meta.author}</b></>}
               </Typography>
             </Stack>
             <Typography component="h1" sx={{ fontSize: { xs: '1.8rem', md: '2.5rem' }, fontWeight: 800, lineHeight: 1.2, mb: 1.5, fontFamily: 'Roboto, sans-serif' }}>

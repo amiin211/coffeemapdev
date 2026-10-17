@@ -11,6 +11,8 @@ import {
   CropTimeSeries,
   FieldsCollection,
   INDEX_LABEL,
+  cropLabel,
+  fieldLabel,
   formatDate,
   indexTileUrl,
   trueColorTileUrl,
@@ -19,6 +21,7 @@ import {
   cropOn,
 } from '@/utils/crop';
 import { MAPLIBRE_WORKER_URL } from '@/lib/maplibre';
+import { useI18n } from '@/i18n';
 
 interface CropMapProps {
   fields: FieldsCollection;
@@ -131,6 +134,10 @@ export default function CropMap({
     ['interpolate', ['linear'], ['get', 'value'], ...RAMP.flatMap((c, i) => [(i / (RAMP.length - 1)) * 0.8, c])],
   ] as unknown as ExpressionSpecification;
 
+  const { isAr, tr } = useI18n();
+  // Arabic mirrors the map chrome: controls on the left, legend on the right.
+  const side = isAr ? 'left' : 'right';
+
   const handleClick = (event: MapLayerMouseEvent) => {
     const feature = event.features?.[0];
     if (!feature) {
@@ -166,8 +173,8 @@ export default function CropMap({
         onLoad={() => setMapLoaded(true)}
         style={{ width: '100%', height: '100%' }}
       >
-        <NavigationControl position="top-right" showCompass={false} />
-        <FullscreenControl position="top-right" />
+        <NavigationControl position={`top-${side}`} showCompass={false} />
+        <FullscreenControl position={`top-${side}`} />
 
         <Source id="true-color" type="raster" tiles={[trueColorTileUrl(item)]} tileSize={256} attribution="Sentinel-2 L2A © ESA / Copernicus, via Microsoft Planetary Computer">
           <Layer id="true-color" type="raster" paint={{ 'raster-fade-duration': 300 }} />
@@ -213,27 +220,27 @@ export default function CropMap({
           <Popup longitude={popup.lng} latitude={popup.lat} onClose={() => setPopup(null)} offset={8} maxWidth="260px">
             <Box sx={{ fontFamily: 'Roboto, sans-serif', fontSize: '0.75rem', lineHeight: 1.55 }}>
               <Typography variant="subtitle2" sx={{ fontWeight: 700, lineHeight: 1.3 }}>
-                {popupField.name}
+                {fieldLabel(popupField.name, isAr)}
               </Typography>
               <Box sx={{ color: 'text.secondary', mb: 0.5 }}>
-                {popupField.type === 'pivot' ? 'Centre pivot' : 'Block'} · {popupField.area_ha} ha
+                {popupField.type === 'pivot' ? tr('Centre pivot', 'ري محوري') : tr('Block', 'حقل مستطيل')} · {popupField.area_ha} {tr('ha', 'هكتار')}
               </Box>
-              <div><strong>Date:</strong> {formatDate(date)}</div>
+              <div><strong>{tr('Date:', 'التاريخ:')}</strong> {formatDate(date, isAr)}</div>
               <div>
                 <strong>{INDEX_LABEL[index]}:</strong>{' '}
-                {popupReading ? popupReading.value.toFixed(2) : 'no clear view'}
+                {popupReading ? popupReading.value.toFixed(2) : tr('no clear view', 'لا توجد رؤية صافية')}
                 {popupReading && popupReading.date !== date && (
-                  <Box component="span" sx={{ color: 'text.secondary' }}> (as of {formatDate(popupReading.date)})</Box>
+                  <Box component="span" sx={{ color: 'text.secondary' }}> ({tr('as of', 'حتى')} {formatDate(popupReading.date, isAr)})</Box>
                 )}
               </div>
               <div>
-                <strong>Crop:</strong> {popupCrop ? `${popupCrop.crop} (${Math.round(popupCrop.confidence * 100)}%)` : 'Unclassified'}
+                <strong>{tr('Crop:', 'المحصول:')}</strong> {popupCrop ? `${cropLabel(popupCrop.crop, isAr)} (${Math.round(popupCrop.confidence * 100)}%)` : cropLabel('Unclassified', isAr)}
                 {popupCrop && <Box component="span" sx={{ color: 'text.secondary' }}> · {popupCrop.season}</Box>}
               </div>
               <div>
-                <strong>Anomaly:</strong>{' '}
+                <strong>{tr('Anomaly:', 'الشذوذ:')}</strong>{' '}
                 <Box component="span" sx={{ color: popupAnomaly ? ANOMALY_COLOR : 'success.main', fontWeight: 600 }}>
-                  {popupAnomaly ? 'Below seasonal range' : 'Normal'}
+                  {popupAnomaly ? tr('Below seasonal range', 'أقل من النطاق الموسمي') : tr('Normal', 'طبيعي')}
                 </Box>
               </div>
             </Box>
@@ -243,9 +250,9 @@ export default function CropMap({
 
       <Box sx={{ position: 'absolute', bottom: 20, left: 20, zIndex: 500, p: 1.5, ...floatingPanelSx }}>
         <Typography variant="caption" sx={{ fontWeight: 600, display: 'block', mb: 0.5 }}>
-          {INDEX_LABEL[index]} · {formatDate(date)}
+          {INDEX_LABEL[index]} · {formatDate(date, isAr)}
         </Typography>
-        <Box sx={{ width: 200, height: 10, borderRadius: 1, background: `linear-gradient(90deg, ${RAMP.join(',')})` }} />
+        <Box sx={{ width: 200, height: 10, borderRadius: 1, background: `linear-gradient(to right, ${RAMP.join(',')})` }} />
         <Box sx={{ display: 'flex', justifyContent: 'space-between', width: 200 }}>
           {['0', '0.4', '0.8+'].map((t) => (
             <Typography key={t} variant="caption" sx={{ fontSize: '0.62rem' }}>
@@ -256,7 +263,7 @@ export default function CropMap({
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mt: 0.75 }}>
           <Box sx={{ width: 14, height: 10, border: `2.5px solid ${ANOMALY_COLOR}`, borderRadius: 0.5 }} />
           <Typography variant="caption" sx={{ fontSize: '0.65rem' }}>
-            Anomaly (NDVI &lt; seasonal mean − 2σ)
+            {tr('Anomaly (NDVI < seasonal mean − 2σ)', 'شذوذ (NDVI أقل من المتوسط الموسمي − 2σ)')}
           </Typography>
         </Box>
       </Box>

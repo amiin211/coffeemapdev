@@ -15,7 +15,8 @@ import {
   fmt,
 } from '@/utils/sudanFlood';
 import { collectionBounds, geometryBounds } from '@/utils/geo';
-import { MAPLIBRE_WORKER_URL } from '@/lib/maplibre';
+import { MAPLIBRE_WORKER_URL, enableRtlText } from '@/lib/maplibre';
+import { useI18n } from '@/i18n';
 
 export type MapMode = 'floods' | 'cholera' | 'both';
 
@@ -29,9 +30,15 @@ interface SudanFloodMapProps {
 // OpenStreetMap standard tiles, desaturated so the choropleth stands out.
 // Glyphs for the locality labels are served with the site (Open Sans
 // Semibold, Latin range; the map only renders client-side, so the origin is known).
+// Arabic labels are drawn from Cairo (font-faces), shaped by the RTL text plugin.
+const ORIGIN = typeof window !== 'undefined' ? window.location.origin : '';
+const ARABIC_FONT = 'Cairo Arabic';
 const BASEMAP: StyleSpecification = {
   version: 8,
-  glyphs: `${typeof window !== 'undefined' ? window.location.origin : ''}/fonts/{fontstack}/{range}.pbf`,
+  glyphs: `${ORIGIN}/fonts/{fontstack}/{range}.pbf`,
+  'font-faces': {
+    [ARABIC_FONT]: [{ url: `${ORIGIN}/fonts/Cairo-Arabic.woff2`, 'unicode-range': ['U+0600-06FF', 'U+0750-077F', 'U+FB50-FDFF', 'U+FE70-FEFF'] }],
+  },
   sources: {
     basemap: {
       type: 'raster',
@@ -128,7 +135,7 @@ export default function SudanFloodMap({ data, mode, selected, onSelect }: SudanF
     type: 'FeatureCollection',
     features: localities.features.map((f) => ({
       type: 'Feature',
-      properties: { name: f.properties?.name, flood_affected: f.properties?.flood_affected },
+      properties: { name: f.properties?.name, name_ar: f.properties?.name_ar, flood_affected: f.properties?.flood_affected },
       geometry: { type: 'Point', coordinates: [f.properties?.center_lon, f.properties?.center_lat] },
     })),
   }), [localities]);
@@ -152,6 +159,15 @@ export default function SudanFloodMap({ data, mode, selected, onSelect }: SudanF
     map.fitBounds(feature ? geometryBounds(feature.geometry) : sudanBounds, { padding: feature ? 60 : 24, duration: feature ? 900 : 600 });
   }, [selected, loaded, data, sudanBounds]);
 
+  const { isAr, tr } = useI18n();
+  // Arabic mirrors the map chrome: controls on the left, legend on the right.
+  const side = isAr ? 'left' : 'right';
+  useEffect(() => {
+    if (isAr) enableRtlText().catch(() => {});
+  }, [isAr]);
+  // "< 15,000" -> "أقل من 15,000".
+  const classLabel = (label: string) => (isAr ? label.replace(/^< /, 'أقل من ').replace(/^> /, 'أكثر من ') : label);
+
   const fillColor = mode === 'cholera' ? classColor('cholera', CHOLERA_CLASSES) : classColor('affected', FLOOD_CLASSES);
   const hasValue: ExpressionSpecification = mode === 'cholera' ? ['>', ['get', 'cholera'], 0] : ['get', 'has_data'];
   // Unselected states fade when a state is selected.
@@ -166,20 +182,22 @@ export default function SudanFloodMap({ data, mode, selected, onSelect }: SudanF
     if (f.layer.id === LOCALITY_FILL) {
       const l = localityInfo.get(p.pcode);
       setHover({
-        lng: e.lngLat.lng, lat: e.lngLat.lat, pcode: p.pcode, title: p.name, subtitle: p.name_ar,
-        rows: l ? [['Flood-affected', 'Yes'], ['People affected', fmt(l.affected)]] : [['Flood-affected', 'Not reported']],
+        lng: e.lngLat.lng, lat: e.lngLat.lat, pcode: p.pcode, title: isAr ? p.name_ar : p.name, subtitle: isAr ? p.name : p.name_ar,
+        rows: l
+          ? [[tr('Flood-affected', 'متأثرة بالفيضانات'), tr('Yes', 'نعم')], [tr('People affected', 'المتأثرون'), fmt(l.affected)]]
+          : [[tr('Flood-affected', 'متأثرة بالفيضانات'), tr('Not reported', 'غير مُبلَّغ عنها')]],
       });
       return;
     }
     const s = stateInfo.get(p.pcode);
     const c = cholera.get(p.pcode);
     setHover({
-      lng: e.lngLat.lng, lat: e.lngLat.lat, pcode: p.pcode, title: p.name, subtitle: p.name_ar,
+      lng: e.lngLat.lng, lat: e.lngLat.lat, pcode: p.pcode, title: isAr ? p.name_ar : p.name, subtitle: isAr ? p.name : p.name_ar,
       rows: [
-        ['People affected', s?.has_data ? fmt(s.affected) : 'No data'],
-        ['Deaths', fmt(s?.deaths)],
-        ['Homes destroyed', fmt(s?.homes_destroyed)],
-        ['Cholera cases', c ? fmt(c.cases) : '–'],
+        [tr('People affected', 'المتأثرون'), s?.has_data ? fmt(s.affected) : tr('No data', 'لا بيانات')],
+        [tr('Deaths', 'الوفيات'), fmt(s?.deaths)],
+        [tr('Homes destroyed', 'المنازل المدمَّرة'), fmt(s?.homes_destroyed)],
+        [tr('Cholera cases', 'حالات الكوليرا'), c ? fmt(c.cases) : '–'],
       ],
     });
   };
@@ -206,8 +224,8 @@ export default function SudanFloodMap({ data, mode, selected, onSelect }: SudanF
         minZoom={3.5}
         maxZoom={10}
       >
-        <NavigationControl position="top-right" showCompass={false} />
-        <ScaleControl position="bottom-right" />
+        <NavigationControl position={`top-${side}`} showCompass={false} />
+        <ScaleControl position={`bottom-${side}`} />
 
         <Source id="states" type="geojson" data={states}>
           <Layer id={STATE_FILL} type="fill" paint={{ 'fill-color': fillColor, 'fill-opacity': fillOpacity }} />
@@ -235,7 +253,7 @@ export default function SudanFloodMap({ data, mode, selected, onSelect }: SudanF
           <Layer
             id="locality-labels"
             type="symbol"
-            layout={{ 'text-field': ['get', 'name'], 'text-font': ['Open Sans Semibold'], 'text-size': 11, 'text-allow-overlap': false }}
+            layout={{ 'text-field': ['get', isAr ? 'name_ar' : 'name'], 'text-font': [isAr ? ARABIC_FONT : 'Open Sans Semibold'], 'text-size': isAr ? 12 : 11, 'text-allow-overlap': false }}
             paint={{ 'text-color': ['case', ['get', 'flood_affected'], '#0b2545', '#555'], 'text-halo-color': '#fff', 'text-halo-width': 1.4 }}
           />
         </Source>
@@ -260,12 +278,12 @@ export default function SudanFloodMap({ data, mode, selected, onSelect }: SudanF
         {hover && (
           <Popup longitude={hover.lng} latitude={hover.lat} closeButton={false} closeOnClick={false} offset={12} maxWidth="240px">
             <Typography variant="body2" sx={{ fontWeight: 700, lineHeight: 1.2 }}>{hover.title}</Typography>
-            {hover.subtitle && <Typography variant="caption" dir="rtl" color="text.secondary" sx={{ display: 'block' }}>{hover.subtitle}</Typography>}
+            {hover.subtitle && <Typography variant="caption" dir={isAr ? 'ltr' : 'rtl'} color="text.secondary" sx={{ display: 'block', textAlign: 'start' }}>{hover.subtitle}</Typography>}
             <Box component="table" sx={{ mt: 0.5, borderCollapse: 'collapse', '& td': { py: 0.15, fontSize: '0.74rem' } }}>
               <tbody>
                 {hover.rows.map(([k, v]) => (
                   <tr key={k}>
-                    <td style={{ paddingRight: 10, color: '#666' }}>{k}</td>
+                    <td style={{ paddingInlineEnd: 10, color: '#666' }}>{k}</td>
                     <td style={{ fontWeight: 600 }}>{v}</td>
                   </tr>
                 ))}
@@ -279,42 +297,42 @@ export default function SudanFloodMap({ data, mode, selected, onSelect }: SudanF
         <Button
           size="small"
           variant="contained"
-          startIcon={<ArrowBackIcon />}
+          startIcon={<ArrowBackIcon sx={{ transform: isAr ? 'scaleX(-1)' : undefined }} />}
           onClick={() => onSelect(null)}
           sx={{ position: 'absolute', top: 12, left: 12, textTransform: 'none', bgcolor: 'white', color: 'text.primary', '&:hover': { bgcolor: '#f5f5f5' } }}
         >
-          All of Sudan
+          {tr('All of Sudan', 'السودان كله')}
         </Button>
       )}
       {!selected && (
         <Box sx={{ position: 'absolute', top: 12, left: 12, px: 1.25, py: 0.5, borderRadius: 1, bgcolor: 'rgba(255,255,255,0.92)', boxShadow: 1 }}>
-          <Typography variant="caption" sx={{ fontWeight: 500 }}>Hover a state for figures · click to see its localities</Typography>
+          <Typography variant="caption" sx={{ fontWeight: 500 }}>{tr('Hover a state for figures · click to see its localities', 'مرّر فوق ولاية لعرض الأرقام · انقر لعرض محلياتها')}</Typography>
         </Box>
       )}
 
       <Box sx={{ position: 'absolute', left: 12, bottom: 12, p: 1.5, width: 190, bgcolor: 'rgba(255,255,255,0.93)', backdropFilter: 'blur(8px)', borderRadius: 1.5, boxShadow: 2 }}>
         {mode !== 'cholera' ? (
           <>
-            <Typography variant="caption" sx={{ fontWeight: 700, display: 'block', mb: 0.5 }}>People affected by floods</Typography>
-            {[...FLOOD_CLASSES].reverse().map((c) => <Swatch key={c.label} color={c.color} label={c.label} />)}
+            <Typography variant="caption" sx={{ fontWeight: 700, display: 'block', mb: 0.5 }}>{tr('People affected by floods', 'المتأثرون بالفيضانات')}</Typography>
+            {[...FLOOD_CLASSES].reverse().map((c) => <Swatch key={c.label} color={c.color} label={classLabel(c.label)} />)}
           </>
         ) : (
           <>
-            <Typography variant="caption" sx={{ fontWeight: 700, display: 'block', mb: 0.5 }}>Cholera cases</Typography>
-            {[...CHOLERA_CLASSES].reverse().map((c) => <Swatch key={c.label} color={c.color} label={c.label} />)}
+            <Typography variant="caption" sx={{ fontWeight: 700, display: 'block', mb: 0.5 }}>{tr('Cholera cases', 'حالات الكوليرا')}</Typography>
+            {[...CHOLERA_CLASSES].reverse().map((c) => <Swatch key={c.label} color={c.color} label={classLabel(c.label)} />)}
           </>
         )}
-        <Swatch color={NO_DATA_COLOR} label="No data reported" />
+        <Swatch color={NO_DATA_COLOR} label={tr('No data reported', 'لا بيانات مُبلَّغة')} />
         {mode === 'both' && (
           <>
             <Divider sx={{ my: 0.75 }} />
-            <Swatch color="rgba(106,27,154,0.3)" label="Cholera cases (circle area)" round />
+            <Swatch color="rgba(106,27,154,0.3)" label={tr('Cholera cases (circle area)', 'حالات الكوليرا (مساحة الدائرة)')} round />
           </>
         )}
         {selected && (
           <>
             <Divider sx={{ my: 0.75 }} />
-            <Swatch color="rgba(33,113,181,0.7)" label="Flood-affected locality" />
+            <Swatch color="rgba(33,113,181,0.7)" label={tr('Flood-affected locality', 'محلية متأثرة بالفيضانات')} />
           </>
         )}
       </Box>

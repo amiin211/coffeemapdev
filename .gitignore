@@ -24,3 +24,6 @@ credentials.json
 # Local copies of the separate 3d viewer (tracked in amiin211/3d; multi-GB data)
 /3d/
 /3d - Copy/
+
+# Deployment bundle from `npm run package`
+/coffeemap-dist.zip

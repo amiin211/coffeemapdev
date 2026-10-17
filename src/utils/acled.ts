@@ -41,9 +41,11 @@ export interface MonthlyPoint extends Totals {
   month: string;
 }
 
-export function formatMonth(month: string): string {
+export function formatMonth(month: string, ar = false): string {
   const [y, m] = month.split('-');
-  const names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const names = ar
+    ? ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر']
+    : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   return `${names[parseInt(m, 10) - 1]} ${y}`;
 }
 

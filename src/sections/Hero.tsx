@@ -1,8 +1,10 @@
 'use client';
 
 import { Box, Container, Typography, Button, Stack } from '@mui/material';
+import { useI18n } from '@/i18n';
 
 const Hero = () => {
+  const { tr } = useI18n();
   const handleExploreClick = () => {
     const element = document.querySelector('#projects');
     if (element) {
@@ -14,7 +16,7 @@ const Hero = () => {
     <Box
       id="hero"
       sx={{
-        minHeight: '100vh',
+        minHeight: { xs: '100vh', md: '80vh' },
         display: 'flex',
         alignItems: 'center',
         background: 'linear-gradient(135deg, #FDFBF9 0%, #F5F0EB 100%)',
@@ -43,7 +45,7 @@ const Hero = () => {
                 lineHeight: 1.2,
               }}
             >
-              Brewing Data into
+              {tr('Brewing Data into', 'نحوّل البيانات إلى')}
               <Box
                 component="span"
                 sx={{
@@ -51,7 +53,7 @@ const Hero = () => {
                   color: 'secondary.main',
                 }}
               >
-                Actionable Geospatial Insights
+                {tr('Actionable Geospatial Insights', 'رؤى جيومكانية قابلة للتنفيذ')}
               </Box>
             </Typography>
 
@@ -65,7 +67,11 @@ const Hero = () => {
                 lineHeight: 1.7,
               }}
             >
-              CoffeeMap.dev, created by Amin Adnan Gasim, is a geospatial engineering platform focused on enterprise GIS, web mapping, GeoAI, and BIM integration—transforming complex spatial data into clear, actionable intelligence for infrastructure and environmental applications.
+              {tr('CoffeeMap.dev, created by ', 'CoffeeMap.dev، من إعداد ')}<b>{tr('Amin Adnan Gasim', 'أمين عدنان قاسم')}</b>
+              {tr(
+                ', is a geospatial engineering platform focused on enterprise GIS, web mapping, GeoAI, and BIM integration—transforming complex spatial data into clear, actionable intelligence for infrastructure and environmental applications.',
+                '، منصة للهندسة الجيومكانية تركّز على نظم المعلومات الجغرافية المؤسسية، والخرائط التفاعلية على الويب، والذكاء الجيومكاني (GeoAI)، والتكامل مع نمذجة معلومات البناء (BIM)، وتحوّل البيانات المكانية المعقدة إلى معلومات واضحة قابلة للتنفيذ لتطبيقات البنية التحتية والبيئة.',
+              )}
             </Typography>
 
             <Stack
@@ -89,7 +95,7 @@ const Hero = () => {
                   },
                 }}
               >
-                Explore Projects
+                {tr('Explore Projects', 'استكشف المشاريع')}
               </Button>
               <Button
                 variant="outlined"
@@ -113,7 +119,7 @@ const Hero = () => {
                   },
                 }}
               >
-                Get in Touch
+                {tr('Get in Touch', 'تواصل معنا')}
               </Button>
             </Stack>
           </Box>
@@ -129,7 +135,7 @@ const Hero = () => {
             <Box
               component="img"
               src="/logo.svg"
-              alt="CoffeeMap Geospatial Platform"
+              alt={tr('CoffeeMap Geospatial Platform', 'منصة CoffeeMap الجيومكانية')}
               sx={{
                 maxWidth: '100%',
                 height: 'auto',

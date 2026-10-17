@@ -113,3 +113,43 @@ export const DESTROYED_COLOR = '#b71c1c';
 export const DAMAGED_COLOR = '#ef8a3c';
 
 export const fmt = (v: number | null | undefined) => (v == null ? '–' : v.toLocaleString());
+
+// ----------------------------------------------------------------- Arabic --
+// State and locality names in Arabic come from the OCHA boundaries
+// (adm1_name1 / adm2_name1); the free text in the data files is translated here.
+export function arabicNames(data: FloodData) {
+  const names = new Map<string, string>();
+  for (const f of [...data.admin1.features, ...data.admin2.features]) {
+    const p = f.properties as Record<string, string | null>;
+    if (p.adm2_pcode && p.adm2_name1) names.set(p.adm2_pcode, p.adm2_name1);
+    else if (p.adm1_pcode && p.adm1_name1 && !p.adm2_pcode) names.set(p.adm1_pcode, p.adm1_name1);
+  }
+  for (const s of data.states) if (s.arabic_name) names.set(s.pcode, s.arabic_name);
+  return (pcode: string, fallback: string) => names.get(pcode) ?? fallback;
+}
+
+export const NOTES_AR: Record<string, string> = {
+  'Flood affected, 25,800 at risk of famine (IPC 5)': 'متأثرة بالفيضانات، و25,800 شخص معرّضون لخطر المجاعة (IPC 5)',
+  'Affected locality in Kassala': 'محلية متأثرة في كسلا',
+  '37 villages affected': '37 قرية متأثرة',
+  'Also known as Sergaila': 'تُعرف أيضًا باسم سرقيلا',
+  'Flood affected locality': 'محلية متأثرة بالفيضانات',
+  'Flood affected, 18,700 at risk of famine': 'متأثرة بالفيضانات، و18,700 شخص معرّضون لخطر المجاعة',
+  'All seven localities affected in Northern State': 'المحليات السبع كلها متأثرة في الولاية الشمالية',
+  'West Kassala locality': 'محلية غرب كسلا',
+  'Kassala city area': 'منطقة مدينة كسلا',
+  'Zamzam IDP camp in famine conditions': 'مخيم زمزم للنازحين في ظروف مجاعة',
+  'Aroma locality': 'محلية أروما',
+  'Most affected locality in South Darfur': 'أكثر المحليات تأثرًا في جنوب دارفور',
+  'Central Darfur capital': 'عاصمة وسط دارفور',
+  'Khashm Elgirba locality': 'محلية خشم القربة',
+  'Flood affected together with Kutum': 'متأثرة بالفيضانات مع كتم',
+  'Kassala locality': 'محلية كسلا',
+};
+
+export const TEXT_AR: Record<string, string> = {
+  'OCHA Sudan Flash Update No. 04 (5 September 2024)': 'تحديث أوتشا العاجل للسودان رقم 04 (5 سبتمبر 2024)',
+  'Data covers period from June 2024 to September 2024': 'تغطي البيانات الفترة من يونيو 2024 إلى سبتمبر 2024',
+  'Sudan Federal Ministry of Health (FMoH)': 'وزارة الصحة الاتحادية السودانية',
+  '22 July - 1 September 2024': '22 يوليو - 1 سبتمبر 2024',
+};

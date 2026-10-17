@@ -66,10 +66,10 @@ const SLOPE_MAX = 5; // degrees: at or above this, no slope risk
 const DIST_SCALE = 5000; // m: river-proximity risk falls to 1/e over this distance
 
 export const RISK_CLASSES = [
-  { label: 'Low', min: 0, color: [254, 217, 118], alpha: 60 },
-  { label: 'Medium', min: 0.25, color: [253, 141, 60], alpha: 170 },
-  { label: 'High', min: 0.5, color: [227, 26, 28], alpha: 190 },
-  { label: 'Very High', min: 0.75, color: [128, 0, 38], alpha: 210 },
+  { label: 'Low', labelAr: 'منخفضة', min: 0, color: [254, 217, 118], alpha: 60 },
+  { label: 'Medium', labelAr: 'متوسطة', min: 0.25, color: [253, 141, 60], alpha: 170 },
+  { label: 'High', labelAr: 'مرتفعة', min: 0.5, color: [227, 26, 28], alpha: 190 },
+  { label: 'Very High', labelAr: 'مرتفعة جدًا', min: 0.75, color: [128, 0, 38], alpha: 210 },
 ] as const;
 export const FLOOD_COLOR = [30, 136, 229];
 export const PERMANENT_WATER_COLOR = [13, 71, 161];

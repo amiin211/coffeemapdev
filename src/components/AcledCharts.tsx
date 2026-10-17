@@ -5,9 +5,11 @@ import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip, type
 import { Bar } from 'react-chartjs-2';
 import { MonthlyPoint, NamedTotals, formatMonth } from '@/utils/acled';
 import { unBlue } from '@/theme/unColors';
+import { setChartFontForDocument, chartDir, useI18n } from '@/i18n';
 
 if (typeof window !== 'undefined') {
   ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip);
+  setChartFontForDocument(ChartJS);
 }
 
 export type Measure = 'events' | 'fatalities';
@@ -40,11 +42,12 @@ interface MonthlyChartProps {
 export function MonthlyChart({ series, measure, monthRange, partialNote, onMonthClick, height }: MonthlyChartProps) {
   const color = MEASURE_COLOR[measure];
   const last = series.length - 1;
+  const { isAr, tr } = useI18n();
   const data = {
-    labels: series.map((p) => formatMonth(p.month)),
+    labels: series.map((p) => formatMonth(p.month, isAr)),
     datasets: [
       {
-        label: measure === 'events' ? 'Events' : 'Fatalities',
+        label: measure === 'events' ? tr('Events', 'الأحداث') : tr('Fatalities', 'الوفيات'),
         data: series.map((p) => p[measure]),
         backgroundColor: series.map((_, i) => (i >= monthRange[0] && i <= monthRange[1] ? `${color}dd` : `${color}33`)),
         borderRadius: 3,
@@ -61,6 +64,7 @@ export function MonthlyChart({ series, measure, monthRange, partialNote, onMonth
     plugins: {
       legend: { display: false },
       tooltip: {
+        ...chartDir(isAr),
         callbacks: {
           afterLabel: (item: TooltipItem<'bar'>) => (item.dataIndex === last && partialNote ? partialNote : ''),
         },
@@ -79,7 +83,7 @@ export function MonthlyChart({ series, measure, monthRange, partialNote, onMonth
   return (
     <Box sx={{ height }}>
       <Typography variant="subtitle2" sx={{ fontFamily: 'Roboto, sans-serif', mb: 0.5 }}>
-        {measure === 'events' ? 'Political Violence Events per Month' : 'Reported Fatalities per Month'}
+        {measure === 'events' ? tr('Political Violence Events per Month', 'أحداث العنف السياسي شهريًا') : tr('Reported Fatalities per Month', 'الوفيات المُبلَّغ عنها شهريًا')}
       </Typography>
       <Box sx={{ height: height - 28 }}>
         <Bar data={data} options={options} />
@@ -94,16 +98,19 @@ interface TopBarChartProps {
   measure: Measure;
   selected: string | null;
   onSelect?: (name: string | null) => void;
+  labelFor?: (name: string) => string; // display name for an entry (entries keep their data keys)
   height: number;
 }
 
-export function TopBarChart({ title, entries, measure, selected, onSelect, height }: TopBarChartProps) {
+export function TopBarChart({ title, entries, measure, selected, onSelect, labelFor = (n) => n, height }: TopBarChartProps) {
   const color = MEASURE_COLOR[measure];
+  const { isAr, tr } = useI18n();
+  const measureLabel = (m: Measure) => (m === 'events' ? tr('Events', 'الأحداث') : tr('Fatalities', 'الوفيات'));
   const data = {
-    labels: entries.map((e) => e.name),
+    labels: entries.map((e) => labelFor(e.name)),
     datasets: [
       {
-        label: measure === 'events' ? 'Events' : 'Fatalities',
+        label: measureLabel(measure),
         data: entries.map((e) => e[measure]),
         backgroundColor: entries.map((e) => (!selected || e.name === selected ? `${color}dd` : `${color}33`)),
         borderRadius: 4,
@@ -121,15 +128,16 @@ export function TopBarChart({ title, entries, measure, selected, onSelect, heigh
     plugins: {
       legend: { display: false },
       tooltip: {
+        ...chartDir(isAr),
         callbacks: {
-          afterLabel: (item: TooltipItem<'bar'>) =>
-            `${other === 'events' ? 'Events' : 'Fatalities'}: ${entries[item.dataIndex][other].toLocaleString()}`,
+          afterLabel: (item: TooltipItem<'bar'>) => `${measureLabel(other)}: ${entries[item.dataIndex][other].toLocaleString()}`,
         },
       },
     },
+    // Arabic mirrors the bars: labels on the right, growing leftwards.
     scales: {
-      x: { ...axisStyle, beginAtZero: true },
-      y: { ...axisStyle, grid: { display: false } },
+      x: { ...axisStyle, beginAtZero: true, reverse: isAr },
+      y: { ...axisStyle, position: isAr ? ('right' as const) : ('left' as const), grid: { display: false } },
     },
     onClick: (_: unknown, elements: { index: number }[]) => {
       if (!elements.length || !onSelect) return;
@@ -148,7 +156,7 @@ export function TopBarChart({ title, entries, measure, selected, onSelect, heigh
         {entries.length ? (
           <Bar data={data} options={options} />
         ) : (
-          <Typography variant="caption" color="text.secondary">No events in this period</Typography>
+          <Typography variant="caption" color="text.secondary">{tr('No events in this period', 'لا أحداث في هذه الفترة')}</Typography>
         )}
       </Box>
     </Box>

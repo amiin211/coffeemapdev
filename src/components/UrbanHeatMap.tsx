@@ -21,6 +21,7 @@ import {
   gridCorners,
 } from '@/lib/urbanHeat';
 import { MAPLIBRE_WORKER_URL } from '@/lib/maplibre';
+import { useI18n } from '@/i18n';
 
 export interface UrbanLayerVisibility {
   hillshade: boolean;
@@ -101,6 +102,9 @@ export default function UrbanHeatMap({ grid, images, trees, parks, visible, lstR
   const [popup, setPopup] = useState<CellInfo | null>(null);
   const mapRef = useRef<MapRef>(null);
   const corners = grid ? gridCorners(grid) : null;
+  const { isAr, tr } = useI18n();
+  // Arabic mirrors the map chrome: controls on the left, legend on the right.
+  const side = isAr ? 'left' : 'right';
 
   useEffect(() => {
     if (focus) mapRef.current?.flyTo({ center: [focus.lon, focus.lat], zoom: 13.5, duration: 1500 });
@@ -119,8 +123,8 @@ export default function UrbanHeatMap({ grid, images, trees, parks, visible, lstR
         onClick={onClick}
         cursor="crosshair"
       >
-        <NavigationControl position="top-right" />
-        <ScaleControl position="bottom-right" />
+        <NavigationControl position={`top-${side}`} />
+        <ScaleControl position={`bottom-${side}`} />
 
         {/* DEM hillshade, rendered by MapLibre (WebGL) from terrain tiles. */}
         <Source id="dem" type="raster-dem" tiles={[DEM_SOURCE.tiles]} tileSize={DEM_SOURCE.tileSize} encoding={DEM_SOURCE.encoding} maxzoom={DEM_SOURCE.maxzoom}>
@@ -184,21 +188,21 @@ export default function UrbanHeatMap({ grid, images, trees, parks, visible, lstR
                 pointerEvents: 'none',
               }}
             >
-              {d.name}
+              {isAr ? d.nameAr : d.name}
             </Box>
           </Marker>
         ))}
 
         {popup && (
           <Popup longitude={popup.lng} latitude={popup.lat} onClose={() => setPopup(null)} closeOnClick={false} maxWidth="280px">
-            <Typography variant="caption" color="text.secondary">
-              {popup.lat.toFixed(4)}° N, {popup.lng.toFixed(4)}° E
+            <Typography variant="caption" color="text.secondary" component="div">
+              <bdi>{popup.lat.toFixed(4)}° N, {popup.lng.toFixed(4)}° E</bdi>
             </Typography>
             <Box component="table" sx={{ mt: 0.5, borderCollapse: 'collapse', '& td': { py: 0.2, fontSize: '0.74rem' } }}>
               <tbody>
                 {popup.rows.map(([label, value]) => (
                   <tr key={label}>
-                    <td style={{ paddingRight: 12, color: '#666' }}>{label}</td>
+                    <td style={{ paddingInlineEnd: 12, color: '#666' }}>{label}</td>
                     <td style={{ fontWeight: 600 }}>{value}</td>
                   </tr>
                 ))}
@@ -222,16 +226,16 @@ export default function UrbanHeatMap({ grid, images, trees, parks, visible, lstR
         }}
       >
         {visible.heat && lstRange && (
-          <RampLegend title="Land surface temp." ramp={HEAT_RAMP} left={`${Math.round(lstRange[0] - 4)} °C`} right={`${Math.round(lstRange[1] + 4)} °C`} />
+          <RampLegend title={tr('Land surface temp.', 'حرارة سطح الأرض')} ramp={HEAT_RAMP} left={`${Math.round(lstRange[0] - 4)} ${isAr ? '°م' : '°C'}`} right={`${Math.round(lstRange[1] + 4)} ${isAr ? '°م' : '°C'}`} />
         )}
         {visible.vegetation && <RampLegend title="NDVI" ramp={NDVI_RAMP} left={String(NDVI_LEGEND[0])} right={String(NDVI_LEGEND[1])} />}
-        {visible.equity && <RampLegend title="Canopy equity" ramp={EQUITY_RAMP} left="Deficit" right="Good access" />}
+        {visible.equity && <RampLegend title={tr('Canopy equity', 'عدالة مظلة الأشجار')} ramp={EQUITY_RAMP} left={tr('Deficit', 'عجز')} right={tr('Good access', 'وصول جيد')} />}
         {(visible.heat || visible.vegetation || visible.equity) && <Divider sx={{ my: 0.5 }} />}
-        <Swatch color={rgb(PRIORITY_COLOR)} label="Priority planting zone" />
-        <Swatch color={rgb(HOTSPOT_COLOR)} label="Heat hotspot (k-means)" />
-        <Swatch color="rgb(0,90,50)" label="Tree canopy" />
-        <Swatch color="rgba(46,125,50,0.55)" label="Park (OSM)" />
-        <Swatch color="#43a047" label="Tree (OSM)" round />
+        <Swatch color={rgb(PRIORITY_COLOR)} label={tr('Priority planting zone', 'منطقة أولوية للتشجير')} />
+        <Swatch color={rgb(HOTSPOT_COLOR)} label={tr('Heat hotspot (k-means)', 'بؤرة حرارية (k-means)')} />
+        <Swatch color="rgb(0,90,50)" label={tr('Tree canopy', 'مظلة الأشجار')} />
+        <Swatch color="rgba(46,125,50,0.55)" label={tr('Park (OSM)', 'حديقة (OSM)')} />
+        <Swatch color="#43a047" label={tr('Tree (OSM)', 'شجرة (OSM)')} round />
       </Box>
     </Box>
   );

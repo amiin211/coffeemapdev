@@ -2,20 +2,28 @@
 
 import { AppBar, Toolbar, Box, Button, IconButton, Drawer, List, ListItem, ListItemButton, ListItemText, useTheme, useMediaQuery } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
+import TranslateIcon from '@mui/icons-material/Translate';
 import { useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { Bi, switchLocalePath, useI18n } from '@/i18n';
 
-const navItems = [
-  { label: 'Home', href: '/' },
-  { label: 'About', href: '/about' },
-  { label: 'Expertise', href: '/#capabilities' },
-  { label: 'Contact', href: '/#contact' },
+const NAV_ITEMS: { label: Bi; href: string }[] = [
+  { label: { en: 'Home', ar: 'الرئيسية' }, href: '/' },
+  { label: { en: 'About', ar: 'نبذة' }, href: '/about' },
+  { label: { en: 'Expertise', ar: 'الخبرات' }, href: '/#capabilities' },
+  { label: { en: 'Contact', ar: 'تواصل' }, href: '/#contact' },
 ];
 
 const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const { isAr, pick, href } = useI18n();
+  const pathname = usePathname() ?? '/';
+  const navItems = NAV_ITEMS.map((item) => ({ label: pick(item.label), href: href(item.href) }));
+  // A full page load, so the document switches language and direction cleanly.
+  const otherLanguage = { href: switchLocalePath(pathname, isAr ? 'en' : 'ar'), label: isAr ? 'English' : 'العربية', lang: isAr ? 'en' : 'ar' };
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -40,6 +48,11 @@ const Navbar = () => {
             </ListItemButton>
           </ListItem>
         ))}
+        <ListItem disablePadding>
+          <ListItemButton component="a" href={otherLanguage.href} lang={otherLanguage.lang} sx={{ textAlign: 'center' }}>
+            <ListItemText primary={otherLanguage.label} primaryTypographyProps={{ fontWeight: 700 }} />
+          </ListItemButton>
+        </ListItem>
       </List>
     </Box>
   );
@@ -64,7 +77,7 @@ const Navbar = () => {
       >
         <Box
           component={Link}
-          href="/"
+          href={href('/')}
           sx={{
             display: 'flex',
             alignItems: 'center',
@@ -81,7 +94,7 @@ const Navbar = () => {
 
         {isMobile ? (
           <IconButton
-            aria-label="open drawer"
+            aria-label={isAr ? 'فتح القائمة' : 'open drawer'}
             edge="end"
             onClick={handleDrawerToggle}
             sx={{ color: 'primary.main' }}
@@ -107,6 +120,17 @@ const Navbar = () => {
                 {item.label}
               </Button>
             ))}
+            <Button
+              component="a"
+              href={otherLanguage.href}
+              lang={otherLanguage.lang}
+              variant="outlined"
+              size="small"
+              startIcon={<TranslateIcon sx={{ fontSize: '18px !important' }} />}
+              sx={{ ml: 1, px: 1.5, py: 0.5, alignSelf: 'center', fontWeight: 700, gap: 0.5 }}
+            >
+              {otherLanguage.label}
+            </Button>
           </Box>
         )}
       </Toolbar>
