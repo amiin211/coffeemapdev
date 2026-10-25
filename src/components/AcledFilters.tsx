@@ -1,15 +1,13 @@
 'use client';
 
-import { useState } from 'react';
-import { Box, Button, FormControl, InputLabel, MenuItem, Select, Slider, Typography } from '@mui/material';
-import { AcledFilters as Filters, formatMonth } from '@/utils/acled';
+import { Box, Button, FormControl, InputLabel, MenuItem, Select, Typography } from '@mui/material';
+import { AcledFilters as Filters } from '@/utils/acled';
 import { unBlue } from '@/theme/unColors';
 import { useI18n } from '@/i18n';
 import { useSudanNames } from '@/utils/sudanNamesAr';
 
 interface AcledFiltersProps {
   filters: Filters;
-  months: string[];
   stateOptions: string[];
   localityOptions: string[];
   onChange: (patch: Partial<Filters>) => void;
@@ -21,53 +19,12 @@ const fieldSx = {
   '& .MuiInputLabel-root': { fontSize: '0.8rem' },
 };
 
-export default function AcledFilters({ filters, months, stateOptions, localityOptions, onChange, onReset }: AcledFiltersProps) {
-  // The slider tracks its thumbs locally and only commits on release, so
-  // dragging doesn't re-aggregate the whole dashboard on every pixel.
-  const [range, setRange] = useState(filters.monthRange);
-  // Follow outside changes (reset, chart clicks) by adjusting state during
-  // render, not in an effect: https://react.dev/learn/you-might-not-need-an-effect
-  const [committed, setCommitted] = useState(filters.monthRange);
+export default function AcledFilters({ filters, stateOptions, localityOptions, onChange, onReset }: AcledFiltersProps) {
   const { isAr, tr } = useI18n();
   const names = useSudanNames(isAr);
-  const month = (i: number) => formatMonth(months[i], isAr);
-  if (committed !== filters.monthRange) {
-    setCommitted(filters.monthRange);
-    setRange(filters.monthRange);
-  }
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      <Box>
-        <Typography variant="caption" sx={{ fontWeight: 600, display: 'block' }}>
-          {tr('Time Range', 'الفترة الزمنية')}
-        </Typography>
-        <Typography variant="caption" color="text.secondary">
-          {range[0] === range[1] ? month(range[0]) : `${month(range[0])} – ${month(range[1])}`}
-        </Typography>
-        <Box sx={{ px: 1 }}>
-          <Slider
-            size="small"
-            min={0}
-            max={months.length - 1}
-            value={range}
-            onChange={(_, v) => setRange(v as [number, number])}
-            onChangeCommitted={(_, v) => onChange({ monthRange: v as [number, number] })}
-            valueLabelDisplay="auto"
-            valueLabelFormat={(i) => month(i)}
-            sx={{ color: unBlue.DEFAULT }}
-          />
-        </Box>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: -0.5 }}>
-          <Typography variant="caption" sx={{ fontSize: '0.65rem' }} color="text.secondary">
-            {month(0)}
-          </Typography>
-          <Typography variant="caption" sx={{ fontSize: '0.65rem' }} color="text.secondary">
-            {month(months.length - 1)}
-          </Typography>
-        </Box>
-      </Box>
-
       <FormControl size="small" fullWidth sx={fieldSx}>
         <InputLabel>{tr('State (Admin 1)', 'الولاية (المستوى الإداري 1)')}</InputLabel>
         <Select
@@ -107,7 +64,7 @@ export default function AcledFilters({ filters, months, stateOptions, localityOp
       )}
 
       <Button size="small" variant="outlined" onClick={onReset} sx={{ color: unBlue.dark, borderColor: unBlue.DEFAULT }}>
-        {tr('Reset Filters', 'إعادة ضبط التصفية')}
+        {tr('Reset All', 'إعادة ضبط الكل')}
       </Button>
     </Box>
   );

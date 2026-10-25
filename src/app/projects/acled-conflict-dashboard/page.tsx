@@ -8,6 +8,8 @@ import {
   Divider,
   CircularProgress,
   IconButton,
+  Button,
+  Chip,
   ToggleButton,
   ToggleButtonGroup,
   useMediaQuery,
@@ -19,18 +21,24 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import CloseIcon from '@mui/icons-material/Close';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import TuneIcon from '@mui/icons-material/Tune';
+import MapOutlinedIcon from '@mui/icons-material/MapOutlined';
+import ViewInArIcon from '@mui/icons-material/ViewInAr';
+import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import AppLayout from '@/components/AppLayout';
 import DashboardHeader from '@/components/DashboardHeader';
 import AcledFilters from '@/components/AcledFilters';
-import type { AcledMetric } from '@/components/AcledMap';
+import AcledTimeline, { MONTH_MS, usePlayback } from '@/components/AcledTimeline';
+import type { AcledMapMode, AcledMetric } from '@/components/AcledMap';
 import { unBlue, unCategorical } from '@/theme/unColors';
 import type { Admin1Collection, Admin2Collection } from '@/utils/geo';
 import {
   AcledData,
   AcledFilters as Filters,
+  AreaRef,
   byLocality,
   byState,
   formatMonth,
+  monthlyMax,
   monthlySeries,
   totals as computeTotals,
 } from '@/utils/acled';
@@ -76,6 +84,14 @@ function DashboardContent() {
   const [admin2, setAdmin2] = useState<Admin2Collection | null>(null);
   const [filters, setFilters] = useState<Filters>({ monthRange: [0, 0], state: null, locality: null });
   const [metric, setMetric] = useState<AcledMetric>('events');
+  const [mapMode, setMapMode] = useState<AcledMapMode>('2d');
+  // Linked views: an area hovered on the map or a bar chart, or a month
+  // hovered on the trend charts (previewed on the map only).
+  const [hoverArea, setHoverArea] = useState<AreaRef | null>(null);
+  const [hoverMonth, setHoverMonth] = useState<number | null>(null);
+  // One time state for the whole dashboard: the range, and while playing (or
+  // paused on a month) the single month on screen.
+  const playback = usePlayback(filters.monthRange);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [aboutOpen, setAboutOpen] = useState(false);
 
@@ -97,10 +113,21 @@ function DashboardContent() {
     fetch('/data/sdn_admin2.geojson').then((res) => res.json()).then(setAdmin2);
   }, []);
 
-  const stateTotals = useMemo(() => (data ? byState(data, filters) : new Map()), [data, filters]);
-  const localityTotals = useMemo(() => (data ? byLocality(data, filters) : []), [data, filters]);
+  const current = playback.current;
+  const view = useMemo<Filters>(() => (current === null ? filters : { ...filters, monthRange: [current, current] }), [filters, current]);
+  const mapMonth = hoverMonth ?? current;
+  const mapView = useMemo<Filters>(() => (mapMonth === null ? filters : { ...filters, monthRange: [mapMonth, mapMonth] }), [filters, mapMonth]);
+
+  const stateTotals = useMemo(() => (data ? byState(data, view) : new Map()), [data, view]);
+  const localityTotals = useMemo(() => (data ? byLocality(data, view) : []), [data, view]);
   const series = useMemo(() => (data ? monthlySeries(data, filters) : []), [data, filters]);
-  const totals = useMemo(() => (data ? computeTotals(data, filters) : { events: 0, fatalities: 0 }), [data, filters]);
+  const totals = useMemo(() => (data ? computeTotals(data, view) : { events: 0, fatalities: 0 }), [data, view]);
+
+  const mapStateTotals = useMemo(() => (data ? byState(data, mapView) : new Map()), [data, mapView]);
+  const mapLocalityTotals = useMemo(() => (data ? byLocality(data, mapView) : []), [data, mapView]);
+  const nationalLocalityTotals = useMemo(() => (data ? byLocality(data, { ...mapView, state: null, locality: null }) : []), [data, mapView]);
+  const singleMonth = mapMonth !== null;
+  const scaleMax = useMemo(() => (data && singleMonth ? monthlyMax(data, filters, metric) : null), [data, filters, metric, singleMonth]);
 
   const topStates = useMemo(
     () => Array.from(stateTotals.values()).filter((s) => s[metric] > 0).sort((a, b) => b[metric] - a[metric]).slice(0, 10),
@@ -112,7 +139,7 @@ function DashboardContent() {
         .filter((l) => l[metric] > 0)
         .sort((a, b) => b[metric] - a[metric])
         .slice(0, 10)
-        .map((l) => ({ name: l.locality.name, events: l.events, fatalities: l.fatalities, state: l.locality.state })),
+        .map((l) => ({ name: l.locality.name, events: l.events, fatalities: l.fatalities, state: l.locality.state, pcode: l.locality.pcode })),
     [localityTotals, metric]
   );
 
@@ -120,6 +147,7 @@ function DashboardContent() {
   const peak = inRange.reduce<(typeof series)[number] | null>((best, p) => (!best || p[metric] > best[metric] ? p : best), null);
   const statesAffected = Array.from(stateTotals.values()).filter((s) => s.events > 0).length;
   const localitiesAffected = localityTotals.filter((l) => l.events > 0 && (!filters.locality || l.locality.name === filters.locality)).length;
+  const hoveredLocalityName = hoverArea?.pcode ? data?.localities.find((l) => l.pcode === hoverArea.pcode)?.name ?? null : null;
 
   if (!data || !admin1 || !admin2) {
     return (
@@ -134,14 +162,28 @@ function DashboardContent() {
   const { months } = data;
   const lastMonth = months[months.length - 1];
   const [from, to] = filters.monthRange;
-  const periodLabel = from === to ? month(months[from]) : `${month(months[from])} – ${month(months[to])}`;
+  const rangeLabel = from === to ? month(months[from]) : `${month(months[from])} – ${month(months[to])}`;
+  const periodLabel = current === null ? rangeLabel : month(months[current]);
+  const mapPeriodLabel = mapMonth === null ? rangeLabel : month(months[mapMonth]);
   const partialNote = data.asOf ? tr(`Partial month — data as of ${data.asOf}`, `شهر جزئي — البيانات حتى ${data.asOf}`) : null;
   const metricName = (m: 'events' | 'fatalities') => (m === 'events' ? tr('Events', 'الأحداث') : tr('Fatalities', 'الوفيات'));
 
   const updateFilters = (patch: Partial<Filters>) => setFilters((prev) => ({ ...prev, ...patch }));
-  const resetFilters = () => setFilters({ monthRange: [0, months.length - 1], state: null, locality: null });
-  const handleMonthClick = (i: number) =>
-    updateFilters({ monthRange: from === i && to === i ? [0, months.length - 1] : [i, i] });
+  const resetFilters = () => {
+    setFilters({ monthRange: [0, months.length - 1], state: null, locality: null });
+    playback.stop();
+    setHoverArea(null);
+  };
+  const isFiltered = !!filters.state || from !== 0 || to !== months.length - 1 || current !== null;
+  // Clicking a month on the trend charts jumps the timeline there (again to
+  // go back to the whole range).
+  const handleMonthClick = (i: number) => {
+    if (current === i) return playback.stop();
+    if (i < from || i > to) updateFilters({ monthRange: [Math.min(from, i), Math.max(to, i)] });
+    playback.seek(i);
+  };
+  const selectState = (state: string | null) => updateFilters({ state, locality: null });
+  const transitionMs = playback.playing ? Math.min(700, (MONTH_MS / playback.speed) * 0.75) : 450;
 
   const stateOptions = data.states;
   const localityOptions = filters.state
@@ -151,7 +193,6 @@ function DashboardContent() {
   const filtersNode = (
     <AcledFilters
       filters={filters}
-      months={months}
       stateOptions={stateOptions}
       localityOptions={localityOptions}
       onChange={updateFilters}
@@ -159,8 +200,28 @@ function DashboardContent() {
     />
   );
 
+  const timelineNode = (
+    <AcledTimeline
+      months={months}
+      series={series}
+      measure={metric}
+      range={filters.monthRange}
+      current={current}
+      playing={playback.playing}
+      speed={playback.speed}
+      partialNote={partialNote}
+      onRangeChange={(monthRange) => updateFilters({ monthRange })}
+      onToggle={playback.toggle}
+      onStop={playback.stop}
+      onSeek={playback.seek}
+      onSpeedChange={playback.setSpeed}
+      compact={!isDesktop}
+    />
+  );
+
   const statsNode = (
     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.25 }}>
+      <StatTile label={current === null ? tr('Period', 'الفترة') : tr('Showing month', 'الشهر المعروض')} value={periodLabel} color={unBlue.DEFAULT} />
       <StatTile
         label={`${filters.locality ? names.locality(filters.locality) : filters.state ? names.state(filters.state) : tr('Sudan', 'السودان')} · ${tr('Events', 'الأحداث')}`}
         value={totals.events}
@@ -170,25 +231,28 @@ function DashboardContent() {
       {!filters.state && <StatTile label={tr('States Affected', 'الولايات المتأثرة')} value={statesAffected} color={unCategorical[3]} />}
       <StatTile label={tr('Localities Affected', 'المحليات المتأثرة')} value={localitiesAffected} color={unCategorical[4]} />
       <StatTile
-        label={tr(`Peak Month (${metric})`, `شهر الذروة (${metricName(metric)})`)}
+        label={tr(`Peak Month in Range (${metric})`, `شهر الذروة في الفترة (${metricName(metric)})`)}
         value={peak && peak[metric] > 0 ? `${month(peak.month)} · ${peak[metric].toLocaleString()}` : '—'}
         color={unCategorical[5]}
       />
     </Box>
   );
 
+  const toggleSx = {
+    fontFamily: 'Roboto, sans-serif',
+    fontSize: '0.7rem',
+    px: 1.25,
+    gap: 0.5,
+    '&.Mui-selected': { bgcolor: unBlue.DEFAULT, color: 'white', '&:hover': { bgcolor: unBlue.dark } },
+  };
+
   const metricToggleNode = (
-    <ToggleButtonGroup size="small" exclusive value={metric} onChange={(_, value) => value && setMetric(value)}>
+    <ToggleButtonGroup size="small" exclusive value={metric} onChange={(_, value) => value && setMetric(value)} aria-label={tr('Measure', 'المقياس')}>
       {(['events', 'fatalities'] as AcledMetric[]).map((m) => (
         <ToggleButton
           key={m}
           value={m}
-          sx={{
-            fontFamily: 'Roboto, sans-serif',
-            fontSize: '0.7rem',
-            px: 1.5,
-            '&.Mui-selected': { bgcolor: unBlue.DEFAULT, color: 'white', '&:hover': { bgcolor: unBlue.dark } },
-          }}
+          sx={toggleSx}
         >
           {metricName(m)}
         </ToggleButton>
@@ -196,21 +260,76 @@ function DashboardContent() {
     </ToggleButtonGroup>
   );
 
+  const modeToggleNode = (
+    <ToggleButtonGroup size="small" exclusive value={mapMode} onChange={(_, value) => value && setMapMode(value)} aria-label={tr('Map view', 'عرض الخريطة')}>
+      <ToggleButton value="2d" sx={toggleSx}>
+        <MapOutlinedIcon sx={{ fontSize: 16 }} />
+        {tr('Choropleth', 'خريطة تظليلية')}
+      </ToggleButton>
+      <ToggleButton value="3d" sx={toggleSx}>
+        <ViewInArIcon sx={{ fontSize: 16 }} />
+        {tr('3D localities', 'المحليات ثلاثية الأبعاد')}
+      </ToggleButton>
+    </ToggleButtonGroup>
+  );
+
+  // Active filters as removable chips, plus one reset for everything.
+  const activeFiltersNode = isFiltered && (
+    <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 0.5 }}>
+      {filters.state && <Chip size="small" label={names.state(filters.state)} onDelete={() => selectState(null)} />}
+      {filters.locality && <Chip size="small" label={names.locality(filters.locality)} onDelete={() => updateFilters({ locality: null })} />}
+      {(from !== 0 || to !== months.length - 1) && (
+        <Chip size="small" label={rangeLabel} onDelete={() => updateFilters({ monthRange: [0, months.length - 1] })} />
+      )}
+      <Button
+        size="small"
+        variant="contained"
+        startIcon={<RestartAltIcon />}
+        onClick={resetFilters}
+        sx={{ bgcolor: unBlue.dark, fontSize: '0.7rem', py: 0.25, '&:hover': { bgcolor: unBlue.DEFAULT } }}
+      >
+        {tr('Reset', 'إعادة ضبط')}
+      </Button>
+    </Box>
+  );
+
   const mapNode = (
     <Box sx={{ height: '100%', position: 'relative' }}>
       <AcledMap
         admin1={admin1}
         admin2={admin2}
-        stateTotals={stateTotals}
-        localityTotals={localityTotals}
-        periodLabel={periodLabel}
+        stateTotals={mapStateTotals}
+        localityTotals={mapLocalityTotals}
+        nationalLocalityTotals={nationalLocalityTotals}
+        scaleMax={scaleMax}
+        periodLabel={mapPeriodLabel}
         metric={metric}
+        mode={mapMode}
         selectedState={filters.state}
         selectedLocality={filters.locality}
-        onStateSelect={(state) => updateFilters({ state, locality: null })}
-        onLocalitySelect={(locality) => updateFilters({ locality })}
+        highlight={hoverArea}
+        transitionMs={transitionMs}
+        onStateSelect={selectState}
+        onLocalitySelect={(locality, state) => updateFilters(locality ? { state, locality } : { locality: null })}
+        onHover={setHoverArea}
       />
-      <Box sx={{ position: 'absolute', top: 16, left: 16, zIndex: 500, ...floatingPanelSx }}>{metricToggleNode}</Box>
+      <Box sx={{ position: 'absolute', top: 12, left: 12, right: 64, zIndex: 500, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 0.75, pointerEvents: 'none', '& > *': { pointerEvents: 'auto' } }}>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+          <Box sx={floatingPanelSx}>{metricToggleNode}</Box>
+          <Box sx={floatingPanelSx}>{modeToggleNode}</Box>
+        </Box>
+        {activeFiltersNode && <Box sx={{ ...floatingPanelSx, p: 0.5 }}>{activeFiltersNode}</Box>}
+      </Box>
+      {/* What the map shows right now — follows playback and month previews */}
+      <Box
+        aria-live="polite"
+        style={{ left: '50%', transform: 'translateX(-50%)' }}
+        sx={{ position: 'absolute', bottom: 20, zIndex: 500, px: 1.5, py: 0.5, ...floatingPanelSx, pointerEvents: 'none', whiteSpace: 'nowrap', display: { xs: 'none', sm: 'block' } }}
+      >
+        <Typography variant="subtitle2" sx={{ fontFamily: 'Roboto, sans-serif', fontWeight: 700, color: unBlue.dark }}>
+          {hoverMonth !== null ? tr(`Preview: ${mapPeriodLabel}`, `معاينة: ${mapPeriodLabel}`) : mapPeriodLabel}
+        </Typography>
+      </Box>
     </Box>
   );
 
@@ -222,7 +341,9 @@ function DashboardContent() {
         labelFor={names.state}
         measure={metric}
         selected={filters.state}
-        onSelect={(state) => updateFilters({ state, locality: null })}
+        highlighted={hoverArea?.state ?? null}
+        onSelect={selectState}
+        onHover={(state) => setHoverArea(state ? { state, pcode: null } : null)}
         height={isDesktop ? 290 : 280}
       />
       <Divider />
@@ -232,9 +353,14 @@ function DashboardContent() {
         labelFor={names.locality}
         measure={metric}
         selected={filters.locality}
+        highlighted={hoveredLocalityName}
         onSelect={(locality) => {
           const match = topLocalities.find((l) => l.name === locality);
           updateFilters(locality && match ? { state: match.state, locality } : { locality: null });
+        }}
+        onHover={(locality) => {
+          const match = topLocalities.find((l) => l.name === locality);
+          setHoverArea(match ? { state: match.state, pcode: match.pcode } : null);
         }}
         height={isDesktop ? 290 : 280}
       />
@@ -250,8 +376,10 @@ function DashboardContent() {
               series={series}
               measure={measure}
               monthRange={filters.monthRange}
+              current={current}
               partialNote={partialNote}
               onMonthClick={handleMonthClick}
+              onMonthHover={setHoverMonth}
               height={190}
             />
           </Box>
@@ -259,8 +387,8 @@ function DashboardContent() {
       </Box>
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
         {tr(
-          `Click a month to focus on it. ${formatMonth(lastMonth)} is a partial month${data.asOf ? ` (data as of ${data.asOf})` : ''}.`,
-          `انقر شهرًا للتركيز عليه. ${month(lastMonth)} شهر جزئي${data.asOf ? ` (البيانات حتى ${data.asOf})` : ''}.`,
+          `Hover a month to preview it on the map; click to jump the timeline to it. ${formatMonth(lastMonth)} is a partial month${data.asOf ? ` (data as of ${data.asOf})` : ''}.`,
+          `مرّر المؤشر على شهر لمعاينته على الخريطة، وانقره لنقل الخط الزمني إليه. ${month(lastMonth)} شهر جزئي${data.asOf ? ` (البيانات حتى ${data.asOf})` : ''}.`,
         )}
       </Typography>
     </>
@@ -374,13 +502,14 @@ function DashboardContent() {
                     {sidebarOpen ? <ChevronLeftIcon sx={{ transform: isAr ? 'scaleX(-1)' : undefined }} /> : <TuneIcon />}
                   </IconButton>
                 </Box>
-                {sidebarOpen && <Box sx={{ px: 2, pb: 2, overflowY: 'auto', minWidth: 248 }}>{filtersNode}</Box>}
+                {sidebarOpen && <Box sx={{ px: 2, pt: 1, pb: 2, overflowY: 'auto', minWidth: 248 }}>{filtersNode}</Box>}
               </Paper>
 
-              <Box sx={{ flex: 1, position: 'relative', height: 620, minWidth: 0 }}>
-                <Paper elevation={2} sx={{ height: '100%', overflow: 'hidden' }}>
+              <Box sx={{ flex: 1, position: 'relative', height: 620, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1.25 }}>
+                <Paper elevation={2} sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
                   {mapNode}
                 </Paper>
+                <Paper elevation={2} sx={{ px: 1.5, py: 1, flexShrink: 0 }}>{timelineNode}</Paper>
 
                 {aboutOpen && (
                   <Box
@@ -431,9 +560,10 @@ function DashboardContent() {
               </Box>
               {sidebarOpen && <Box sx={{ px: 2, pb: 2, pt: 1 }}>{filtersNode}</Box>}
             </Paper>
-            <Paper elevation={2} sx={{ height: 440, mb: 2, overflow: 'hidden' }}>
+            <Paper elevation={2} sx={{ height: 440, mb: 1.25, overflow: 'hidden' }}>
               {mapNode}
             </Paper>
+            <Paper elevation={2} sx={{ p: 1.5, mb: 2 }}>{timelineNode}</Paper>
             {aboutOpen && (
               <Paper elevation={2} sx={{ p: 2.5, mb: 2 }}>
                 {aboutHeader}

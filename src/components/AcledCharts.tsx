@@ -1,9 +1,10 @@
 'use client';
 
+import { useRef } from 'react';
 import { Box, Typography } from '@mui/material';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip, type ChartEvent, type TooltipItem } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
-import { MonthlyPoint, NamedTotals, formatMonth } from '@/utils/acled';
+import { Measure, MonthlyPoint, NamedTotals, formatMonth } from '@/utils/acled';
 import { unBlue } from '@/theme/unColors';
 import { setChartFontForDocument, chartDir, useI18n } from '@/i18n';
 
@@ -12,9 +13,10 @@ if (typeof window !== 'undefined') {
   setChartFontForDocument(ChartJS);
 }
 
-export type Measure = 'events' | 'fatalities';
+export type { Measure };
 
 const MEASURE_COLOR: Record<Measure, string> = { events: unBlue.dark, fatalities: '#C62828' };
+const HIGHLIGHT_COLOR = '#F2A900'; // matches the map's hover outline and the timeline playhead
 
 const axisStyle = {
   grid: { color: 'rgba(0,0,0,0.06)' },
@@ -27,20 +29,34 @@ function setPointer(event: ChartEvent, elements: unknown[], clickable: boolean) 
   if (target) target.style.cursor = clickable && elements.length ? 'pointer' : 'default';
 }
 
+// Chart.js calls onHover on every mouse move (and with no elements on
+// mouseout); only report changes.
+function useHoverReporter<T>(report?: (value: T | null) => void) {
+  const last = useRef<T | null>(null);
+  return (value: T | null) => {
+    if (!report || value === last.current) return;
+    last.current = value;
+    report(value);
+  };
+}
+
 interface MonthlyChartProps {
   series: MonthlyPoint[];
   measure: Measure;
   monthRange: [number, number];
+  current?: number | null; // the month the timeline is on
   partialNote?: string | null; // tooltip note for the last, incomplete month
   onMonthClick?: (index: number) => void;
+  onMonthHover?: (index: number | null) => void;
   height: number;
 }
 
 // One measure per chart — fatalities run ~3× events and spike independently,
 // so each gets its own y-axis in its own chart rather than a dual axis.
 // Bars outside the selected time range stay visible but dimmed.
-export function MonthlyChart({ series, measure, monthRange, partialNote, onMonthClick, height }: MonthlyChartProps) {
+export function MonthlyChart({ series, measure, monthRange, current = null, partialNote, onMonthClick, onMonthHover, height }: MonthlyChartProps) {
   const color = MEASURE_COLOR[measure];
+  const reportHover = useHoverReporter(onMonthHover);
   const last = series.length - 1;
   const { isAr, tr } = useI18n();
   const data = {
@@ -49,7 +65,9 @@ export function MonthlyChart({ series, measure, monthRange, partialNote, onMonth
       {
         label: measure === 'events' ? tr('Events', 'الأحداث') : tr('Fatalities', 'الوفيات'),
         data: series.map((p) => p[measure]),
-        backgroundColor: series.map((_, i) => (i >= monthRange[0] && i <= monthRange[1] ? `${color}dd` : `${color}33`)),
+        backgroundColor: series.map((_, i) =>
+          i === current ? HIGHLIGHT_COLOR : i >= monthRange[0] && i <= monthRange[1] ? `${color}dd` : `${color}33`
+        ),
         borderRadius: 3,
         barPercentage: 0.85,
         categoryPercentage: 0.9,
@@ -77,11 +95,14 @@ export function MonthlyChart({ series, measure, monthRange, partialNote, onMonth
     onClick: (_: unknown, elements: { index: number }[]) => {
       if (elements.length && onMonthClick) onMonthClick(elements[0].index);
     },
-    onHover: (event: ChartEvent, elements: unknown[]) => setPointer(event, elements, !!onMonthClick),
+    onHover: (event: ChartEvent, elements: { index: number }[]) => {
+      setPointer(event, elements, !!onMonthClick);
+      reportHover(elements.length ? elements[0].index : null);
+    },
   };
 
   return (
-    <Box sx={{ height }}>
+    <Box sx={{ height }} onMouseLeave={() => reportHover(null)}>
       <Typography variant="subtitle2" sx={{ fontFamily: 'Roboto, sans-serif', mb: 0.5 }}>
         {measure === 'events' ? tr('Political Violence Events per Month', 'أحداث العنف السياسي شهريًا') : tr('Reported Fatalities per Month', 'الوفيات المُبلَّغ عنها شهريًا')}
       </Typography>
@@ -97,13 +118,16 @@ interface TopBarChartProps {
   entries: NamedTotals[];
   measure: Measure;
   selected: string | null;
+  highlighted?: string | null; // hovered here or on the map
   onSelect?: (name: string | null) => void;
+  onHover?: (name: string | null) => void;
   labelFor?: (name: string) => string; // display name for an entry (entries keep their data keys)
   height: number;
 }
 
-export function TopBarChart({ title, entries, measure, selected, onSelect, labelFor = (n) => n, height }: TopBarChartProps) {
+export function TopBarChart({ title, entries, measure, selected, highlighted = null, onSelect, onHover, labelFor = (n) => n, height }: TopBarChartProps) {
   const color = MEASURE_COLOR[measure];
+  const reportHover = useHoverReporter(onHover);
   const { isAr, tr } = useI18n();
   const measureLabel = (m: Measure) => (m === 'events' ? tr('Events', 'الأحداث') : tr('Fatalities', 'الوفيات'));
   const data = {
@@ -113,6 +137,9 @@ export function TopBarChart({ title, entries, measure, selected, onSelect, label
         label: measureLabel(measure),
         data: entries.map((e) => e[measure]),
         backgroundColor: entries.map((e) => (!selected || e.name === selected ? `${color}dd` : `${color}33`)),
+        borderColor: entries.map((e) => (e.name === highlighted ? HIGHLIGHT_COLOR : 'transparent')),
+        borderWidth: 2,
+        borderSkipped: false,
         borderRadius: 4,
         barPercentage: 0.8,
       },
@@ -144,11 +171,14 @@ export function TopBarChart({ title, entries, measure, selected, onSelect, label
       const name = entries[elements[0].index].name;
       onSelect(name === selected ? null : name);
     },
-    onHover: (event: ChartEvent, elements: unknown[]) => setPointer(event, elements, !!onSelect),
+    onHover: (event: ChartEvent, elements: { index: number }[]) => {
+      setPointer(event, elements, !!onSelect);
+      reportHover(elements.length ? entries[elements[0].index]?.name ?? null : null);
+    },
   };
 
   return (
-    <Box sx={{ height }}>
+    <Box sx={{ height }} onMouseLeave={() => reportHover(null)}>
       <Typography variant="subtitle2" sx={{ fontFamily: 'Roboto, sans-serif', mb: 0.5 }}>
         {title}
       </Typography>
