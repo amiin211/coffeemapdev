@@ -1,0 +1,704 @@
+<!doctype html>
+<html lang="ar" dir="rtl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="/logo-icon.svg" type="image/svg+xml">
+<title>منصة ضبط وضمان جودة البيانات الجيومكانية</title>
+<meta name="description" content="ضبط وضمان الجودة عمليًا للصور المصححة ونماذج الارتفاع والبيانات الطبوغرافية المتجهية وخرائط الغطاء الأرضي: ماذا تفحص، وكيف تفحصه في ArcGIS Pro وQGIS والشيفرة، وعنصر الجودة وفق ISO 19157-1 خلف كل خطوة.">
+<style>
+@font-face{font-family:'Cairo';src:url(/fonts/Cairo-Arabic.woff2) format('woff2');font-weight:200 1000;font-display:swap;unicode-range:U+0600-06FF,U+0750-077F,U+FB50-FDFF,U+FE70-FEFF,U+200C-200F}
+:root{--bg:#FBF7F2;--card:#FFFFFF;--ink:#2B1D14;--ink2:#5B4A3D;--muted:#8A796B;--line:#DCCFC1;--soft:#F4EEE6;
+--ph1:#1F6FB2;--ph2:#2E7D4F;--ph3:#B07A1E;--ph4:#8A4FB0;--ph5:#1A4F4F;
+--ok:#2E7D4F;--ok-bg:#E6F4EC;--bad:#C0392B;--bad-bg:#FBEAE7;--warn:#9A6A12;--warn-bg:#FBF1DC;--focus:#C77D2A;--code:#F6F1EA;
+--img1:#CDBB9C;--img2:#B9A67F;--roof:#9C8F84;--road:#6E6259;--veg:#6F9A5B;--water:#4E8CC2;--dem1:#E7E2DA;--dem2:#8F877C}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#17120E;--card:#221A14;--ink:#F3EBE2;--ink2:#CDBFB0;--muted:#9C8C7D;--line:#40342A;--soft:#2A211A;
+--ph1:#6FAEE8;--ph2:#6CC795;--ph3:#E3B55A;--ph4:#C69BE6;--ph5:#7FC7C0;
+--ok:#6CC795;--ok-bg:#13291C;--bad:#F08A7E;--bad-bg:#3A1A16;--warn:#E3B55A;--warn-bg:#33270F;--focus:#E3A15A;--code:#1C1611;
+--img1:#6F6250;--img2:#5E523F;--roof:#8A7F76;--road:#B3A69A;--veg:#5E8A4C;--water:#4E8CC2;--dem1:#4A4038;--dem2:#A99E90}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.75 Cairo,Inter,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+.wrap{max-width:1200px;margin:0 auto;padding:24px 16px 40px}
+h1{font-size:clamp(22px,3vw,30px);line-height:1.2;margin:0 0 6px}
+h2{font-size:20px;margin:0 0 8px;line-height:1.25}
+h3{font-size:16px;margin:0 0 6px}
+p{margin:0 0 10px}
+.sub{color:var(--muted);margin:0 0 14px;max-width:820px}
+button{font:inherit;cursor:pointer;color:inherit}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.tabs{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 16px;border-bottom:1px solid var(--line);padding-bottom:10px}
+.tab{border:1px solid var(--line);background:var(--card);padding:8px 14px;border-radius:999px;font-size:14px}
+.tab[aria-selected=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.panel[hidden]{display:none}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px}
+.muted{color:var(--muted)}.small{font-size:13px}
+code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+pre{direction:ltr;text-align:left;background:var(--code);border:1px solid var(--line);border-radius:10px;padding:10px 12px;overflow-x:auto;font-size:12.5px;line-height:1.5;margin:6px 0 0;white-space:pre}
+/* products */
+.products{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:0 0 16px}
+.prod{text-align:right;background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;gap:12px;align-items:flex-start}
+.prod:hover{border-color:var(--ink2)}
+.prod[aria-pressed=true]{border-color:var(--focus);box-shadow:0 0 0 2px var(--focus) inset}
+.prod svg{flex:0 0 56px;height:42px;border-radius:8px}
+.prod b{display:block;font-size:15px}
+.prod span{display:block;font-size:12.5px;color:var(--ink2);line-height:1.4;margin-top:2px}
+.facts{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
+.fact{background:var(--soft);border-radius:10px;padding:6px 10px;font-size:13px}
+.fact b{color:var(--muted);font-weight:600;margin-left:4px}
+/* phases */
+.phases{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px;align-items:center;font-size:12.5px;color:var(--muted)}
+.ph{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--ink2)}
+.ph i{width:9px;height:9px;border-radius:50%;display:inline-block}
+/* layout */
+.work{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:980px){.work{grid-template-columns:320px minmax(0,1fr)}}
+.steps{display:flex;flex-direction:column;gap:8px}
+.step{display:flex;gap:10px;text-align:right;background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;align-items:flex-start}
+.step:hover{border-color:var(--ink2)}
+.step[aria-current=true]{border-color:var(--focus);box-shadow:0 0 0 2px var(--focus) inset}
+.step .n{flex:0 0 26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:800;color:#fff}
+.step b{display:block;font-size:14.5px;line-height:1.3}
+.step span.tag{display:block;font-size:12px;color:var(--muted);margin-top:2px}
+.detail .kick{font-size:12px;font-weight:700;letter-spacing:0;text-transform:uppercase;margin:0 0 4px}
+.detail h4{font-size:13px;margin:14px 0 4px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.detail ul,.detail ol{margin:0;padding-right:20px;padding-left:0}.detail li{margin:3px 0;color:var(--ink2)}
+.detail li b{color:var(--ink)}
+.how{display:grid;grid-template-columns:1fr;gap:10px;margin-top:6px}
+@media (min-width:760px){.how{grid-template-columns:1fr 1fr}}
+.how>div{background:var(--soft);border-radius:12px;padding:10px 12px}
+.how h5{margin:0 0 4px;font-size:13.5px}
+.how ol{font-size:13.5px}
+.iso{display:grid;grid-template-columns:1fr;gap:10px;margin-top:4px}
+@media (min-width:760px){.iso{grid-template-columns:1fr 1fr}}
+.iso div{border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:13.5px}
+.iso div b{display:block;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px}
+.nav{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--card);padding:7px 13px;border-radius:999px;font-size:14px}
+.btn.primary{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.btn[disabled]{opacity:.45;cursor:default}
+.linkbtn{background:none;border:none;color:var(--focus);padding:0;text-decoration:underline;font-size:inherit}
+.errchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.errchip{border:1px solid var(--bad);color:var(--bad);background:var(--bad-bg);border-radius:999px;padding:2px 10px;font-size:12.5px}
+/* gallery */
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin-top:10px}
+.err{background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:8px;text-align:right}
+.err:hover{border-color:var(--bad)}
+.err[aria-pressed=true]{border-color:var(--bad);box-shadow:0 0 0 2px var(--bad) inset}
+.err svg{width:100%;height:auto;display:block;border-radius:8px;background:var(--soft)}
+.err b{display:block;font-size:13.5px;margin-top:6px}
+.err span{display:block;font-size:12px;color:var(--muted)}
+.errinfo{margin-top:12px}
+/* calculators */
+.calc{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:900px){.calc{grid-template-columns:1fr 1fr}}
+label{display:block;font-size:13px;font-weight:600;margin:10px 0 4px}
+input,select,textarea{font:inherit;width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink)}
+textarea{direction:ltr;text-align:left;min-height:180px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin:12px 0}
+.stat{background:var(--soft);border-radius:12px;padding:10px 12px}
+.stat .v{font-size:22px;font-weight:800;line-height:1.2}
+.stat .k{font-size:12px;color:var(--muted)}
+.verdict{border-radius:12px;padding:12px 14px;font-weight:700;margin:12px 0}
+.verdict.ok{background:var(--ok-bg);color:var(--ok)}.verdict.bad{background:var(--bad-bg);color:var(--bad)}.verdict.warn{background:var(--warn-bg);color:var(--warn)}
+.verdict span{display:block;font-weight:400;font-size:13.5px;color:var(--ink2);margin-top:2px}
+svg.plot{width:100%;max-width:360px;height:auto;display:block;margin:6px auto 0}
+.note{font-size:12.5px;color:var(--muted);margin-top:12px}
+.subtabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+table.cm{border-collapse:collapse;font-size:13px;width:100%}
+table.cm th,table.cm td{border:1px solid var(--line);padding:4px;text-align:center}
+table.cm th{background:var(--soft);font-weight:600}
+table.cm input{direction:ltr;width:64px;padding:4px 6px;text-align:right}
+table.std{width:100%;border-collapse:collapse;font-size:13.5px}
+table.std th,table.std td{text-align:right;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+table.std th{color:var(--muted);font-weight:600;font-size:12.5px}
+details{border-top:1px solid var(--line);padding:8px 0}
+summary{cursor:pointer;font-weight:600;font-size:14px}
+details p{font-size:13.5px;color:var(--ink2);margin:6px 0 0}
+.grid3{display:grid;grid-template-columns:1fr;gap:14px}
+@media (min-width:700px){.grid3{grid-template-columns:repeat(2,1fr)}}
+@media (min-width:1050px){.grid3{grid-template-columns:repeat(3,1fr)}}
+.foot{margin-top:24px;font-size:13px;color:var(--muted)}.foot a{color:inherit}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <h1>منصة ضبط وضمان جودة البيانات الجيومكانية</h1>
+  <p class="sub"><b>ضبط الجودة وضمانها (QA/QC)</b> يعني فحص مجموعة البيانات المسلَّمة مقابل مواصفتها قبل أن يستخدمها أحد. اختر المنتج الذي تفحصه. تعرض كل خطوة <b>ماذا تفحص</b>، و<b>كيف تنفّذه</b> في ArcGIS Pro وQGIS والشيفرة، وعنصر الجودة وفق <b>ISO 19157-1</b> الذي تختبره، و<b>الأخطاء</b> التي ترصدها.</p>
+
+  <div class="tabs" role="tablist" aria-label="الأقسام">
+    <button class="tab" role="tab" aria-selected="true" aria-controls="t-work" id="b-work">سير العمل حسب المنتج</button>
+    <button class="tab" role="tab" aria-selected="false" aria-controls="t-tools" id="b-tools">الحاسبات</button>
+    <button class="tab" role="tab" aria-selected="false" aria-controls="t-el" id="b-el">عناصر الجودة وفق ISO</button>
+    <button class="tab" role="tab" aria-selected="false" aria-controls="t-std" id="b-std">المواصفات</button>
+  </div>
+
+  <!-- ===================== WORKFLOW ===================== -->
+  <section class="panel" id="t-work" role="tabpanel" aria-labelledby="b-work">
+    <div class="products" id="products" role="group" aria-label="اختر منتجًا"></div>
+    <div class="facts" id="facts"></div>
+    <div class="phases" id="phases"></div>
+    <div class="work">
+      <nav class="steps" id="steps" aria-label="الخطوات"></nav>
+      <article class="card detail" id="detail" aria-live="polite"></article>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h2>أخطاء شائعة في هذا المنتج</h2>
+      <p class="small muted">انقر خطأً لترى ما هو، ولماذا يهم، وأي خطوة ترصده.</p>
+      <div class="gallery" id="gallery"></div>
+      <div class="errinfo" id="errinfo"></div>
+    </div>
+  </section>
+
+  <!-- ===================== CALCULATORS ===================== -->
+  <section class="panel" id="t-tools" role="tabpanel" aria-labelledby="b-tools" hidden>
+    <div class="subtabs" role="tablist" aria-label="الحاسبات">
+      <button class="tab" role="tab" aria-selected="true" data-sub="c-aql">حجم العينة (ISO 2859-1)</button>
+      <button class="tab" role="tab" aria-selected="false" data-sub="c-pos">الدقة الموضعية</button>
+      <button class="tab" role="tab" aria-selected="false" data-sub="c-cm">مصفوفة الالتباس</button>
+    </div>
+
+    <div class="calc sub" id="c-aql">
+      <div class="card">
+        <h2>كم عنصرًا يجب فحصه؟</h2>
+        <p class="muted small">في المراجعة اليدوية تفحص عينة. أدخل عدد العناصر في الدفعة، مثل tiles الخريطة، أو خلايا شبكة 1 كم، أو المباني، أو tiles نموذج الارتفاع.</p>
+        <label for="lot">حجم الدفعة (عدد العناصر فيها)</label><input id="lot" type="number" min="2" value="2400">
+        <div class="row2">
+          <div><label for="lvl">مستوى الفحص</label>
+            <select id="lvl"><option value="I">عام I (أخف)</option><option value="II" selected>عام II (افتراضي)</option><option value="III">عام III (أشد)</option></select></div>
+          <div><label for="aql">AQL، نسبة العيوب المسموحة %</label><select id="aql"></select></div>
+        </div>
+        <label for="found">العناصر المعيبة الموجودة في العينة</label><input id="found" type="number" min="0" value="2">
+      </div>
+      <div class="card" aria-live="polite">
+        <h2>خطة المعاينة</h2>
+        <div class="stats">
+          <div class="stat"><div class="v" id="o-letter">–</div><div class="k">الحرف الرمزي</div></div>
+          <div class="stat"><div class="v" id="o-n">–</div><div class="k">افحص (n)</div></div>
+          <div class="stat"><div class="v" id="o-ac">–</div><div class="k">اقبل إذا ≤</div></div>
+          <div class="stat"><div class="v" id="o-re">–</div><div class="k">ارفض إذا ≥</div></div>
+        </div>
+        <div id="o-verdict"></div><p class="small muted" id="o-explain"></p>
+        <p class="note">معاينة مفردة، فحص عادي (ISO 2859-1 الجدول 1 والجدول 2-A). اختر العينة عشوائيًا، مثلًا بأداة <i>Subset Features</i> في ArcGIS Pro أو <i>Random selection</i> في QGIS. تحقق من الخطط للأعمال التعاقدية مقابل المواصفة نفسها.</p>
+      </div>
+    </div>
+
+    <div class="calc sub" id="c-pos" hidden>
+      <div class="card">
+        <h2>RMSE وCE90 وLE90 من نقاط التحقق</h2>
+        <p class="muted small">نقطة واحدة في كل سطر: <code>dx, dy</code> أو <code>dx, dy, dz</code> بالأمتار (البيانات ناقص نقطة التحقق). صدّرها من <i>Extract Values to Points</i> في ArcGIS Pro أو <i>Sample raster values</i> في QGIS والصقها هنا.</p>
+        <label for="res">البواقي</label><textarea id="res" spellcheck="false"></textarea>
+        <div class="row2">
+          <div><label for="tolH">التفاوت الأفقي، CE90 (م)</label><input id="tolH" type="number" step="0.1" value="4.5"></div>
+          <div><label for="tolV">التفاوت الرأسي، LE90 (م)</label><input id="tolV" type="number" step="0.1" value="3"></div>
+        </div>
+        <div class="nav"><button class="btn" id="ex">تحميل مثال</button><button class="btn" id="clr">مسح</button></div>
+      </div>
+      <div class="card" aria-live="polite">
+        <h2>النتائج</h2>
+        <div class="stats">
+          <div class="stat"><div class="v" id="p-n">–</div><div class="k">النقاط</div></div>
+          <div class="stat"><div class="v" id="p-rx">–</div><div class="k">RMSE x (م)</div></div>
+          <div class="stat"><div class="v" id="p-ry">–</div><div class="k">RMSE y (م)</div></div>
+          <div class="stat"><div class="v" id="p-ce">–</div><div class="k">CE90 (م)</div></div>
+          <div class="stat"><div class="v" id="p-rz">–</div><div class="k">RMSE z (م)</div></div>
+          <div class="stat"><div class="v" id="p-le">–</div><div class="k">LE90 (م)</div></div>
+        </div>
+        <div id="p-verdict"></div>
+        <svg class="plot" id="plot" viewBox="0 0 320 320" role="img" aria-label="انتشار البواقي الأفقية مع دائرة CE90"></svg>
+        <p class="small muted" id="p-notes"></p>
+        <p class="note">CE90 ≈ 1.5175 × RMSE<sub>r</sub>، وLE90 ≈ 1.6449 × RMSE<sub>z</sub>، بافتراض أخطاء طبيعية بلا انحياز وقيم RMSE متقاربة في x وy. استخدم 20 نقطة تحقق مستقلة وموزعة جيدًا على الأقل.</p>
+      </div>
+    </div>
+
+    <div class="calc sub" id="c-cm" hidden>
+      <div class="card">
+        <h2>مصفوفة الالتباس للغطاء الأرضي</h2>
+        <p class="muted small">الصفوف: الفئة على <b>الخريطة</b>. الأعمدة: الفئة في <b>المرجع</b> (ما رآه المراجع). أدخل عدد نقاط العينة في كل خلية.</p>
+        <div style="overflow-x:auto"><table class="cm" id="cm"></table></div>
+        <div class="nav"><button class="btn" id="cmex">تحميل مثال</button><button class="btn" id="cmclr">مسح</button></div>
+      </div>
+      <div class="card" aria-live="polite">
+        <h2>الدقة</h2>
+        <div class="stats">
+          <div class="stat"><div class="v" id="m-oa">–</div><div class="k">الدقة الكلية</div></div>
+          <div class="stat"><div class="v" id="m-k">–</div><div class="k">معامل كابا</div></div>
+          <div class="stat"><div class="v" id="m-n">–</div><div class="k">نقاط العينة</div></div>
+        </div>
+        <div style="overflow-x:auto"><table class="std" id="m-cls"></table></div>
+        <p class="note"><b>دقة المستخدم</b>: من النقاط المرسومة ضمن فئة ما، كم منها ينتمي فعلًا إلى تلك الفئة (موثوقية الخريطة لمستخدميها). <b>دقة المنتج</b>: من الفئة الحقيقية، كم التقطت الخريطة منها. في ArcGIS Pro تنتج <i>Compute Confusion Matrix</i> الجدول نفسه؛ وفي QGIS إضافة AcATaMa.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== ISO ELEMENTS ===================== -->
+  <section class="panel" id="t-el" role="tabpanel" aria-labelledby="b-el" hidden>
+    <p>كل فحص في سير العمل يختبر أحد عناصر الجودة الستة في ISO 19157-1. افتح عنصرًا فرعيًا لتعريف مبسّط ومثال من المنتجات الأربعة.</p>
+    <div class="grid3" id="elements"></div>
+  </section>
+
+  <!-- ===================== STANDARDS ===================== -->
+  <section class="panel" id="t-std" role="tabpanel" aria-labelledby="b-std" hidden>
+    <div class="card">
+      <h2>المواصفات المستخدمة</h2>
+      <table class="std"><thead><tr><th>المواصفة</th><th>تغطي</th><th>تُستخدم في</th></tr></thead><tbody>
+        <tr><td><b>ISO 19157-1</b></td><td>جودة البيانات: العناصر والمقاييس والتقييم والتقرير</td><td>كل فحص وتقرير الجودة</td></tr>
+        <tr><td><b>ISO 19131</b></td><td>مواصفات منتجات البيانات</td><td>المتطلبات التي يُفحص كل منتج مقابلها</td></tr>
+        <tr><td><b>ISO 19110</b></td><td>فهرسة المعالم</td><td>أنواع المعالم وسماتها والقيم المسموحة للبيانات المتجهية</td></tr>
+        <tr><td><b>ISO 19115-1</b></td><td>البيانات الوصفية</td><td>فحص البيانات الوصفية المسلَّمة وتسجيل نتائج الجودة</td></tr>
+        <tr><td><b>ISO 19158</b></td><td>ضمان جودة توريد البيانات</td><td>تقييم عمليات المنتِج، لا تسليمًا واحدًا فقط</td></tr>
+        <tr><td><b>ISO 2859-1</b></td><td>المعاينة بالسمات (AQL)</td><td>أحجام العينات وأرقام القبول/الرفض للمراجعة اليدوية</td></tr>
+      </tbody></table>
+      <p class="note">التفاوتات الموسومة «مثال» توضيحية. القيم الحقيقية تأتي من مواصفة كل منتج. تصف هذه الصفحة الممارسة العامة، لا إجراءات جهة بعينها.</p>
+    </div>
+  </section>
+
+  <p class="foot"><b>أمين عدنان قاسم</b> · <a href="https://coffeemap.dev/ar/" target="_top">coffeemap.dev</a></p>
+</main>
+
+<script>
+/* ============ helpers ============ */
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function openTab(id){document.querySelectorAll('.tabs>.tab').forEach(t=>{const on=t.getAttribute('aria-controls')===id;t.setAttribute('aria-selected',on);$(t.getAttribute('aria-controls')).hidden=!on;});}
+document.querySelectorAll('.tabs>.tab').forEach(t=>t.onclick=()=>openTab(t.getAttribute('aria-controls')));
+function openSub(id){document.querySelectorAll('[data-sub]').forEach(b=>{const on=b.dataset.sub===id;b.setAttribute('aria-selected',on);$(b.dataset.sub).hidden=!on;});}
+document.querySelectorAll('[data-sub]').forEach(b=>b.onclick=()=>openSub(b.dataset.sub));
+function goCalc(id){openTab('t-tools');openSub(id);}
+
+const PH={Receive:['var(--ph1)','Receive'],Automated:['var(--ph2)','Automated checks (100%)'],Sample:['var(--ph3)','Sample review'],Accuracy:['var(--ph4)','Accuracy test'],Decide:['var(--ph5)','Decide and report']};
+
+/* ============ error illustrations (160x100) ============ */
+const B='var(--bad)';
+const bgImg='<rect width="160" height="100" fill="var(--img1)"/><path d="M0 70 C40 60 80 80 160 66 V100 H0Z" fill="var(--img2)"/>';
+const bgDem='<rect width="160" height="100" fill="var(--soft)"/>';
+const prof=d=>`${bgDem}<path d="${d}" fill="none" stroke="var(--ink2)" stroke-width="2.5"/>`;
+const SVG={
+ nodata:`${bgImg}<rect x="30" y="22" width="18" height="14" fill="var(--roof)"/><rect x="100" y="60" width="20" height="16" fill="var(--roof)"/><path d="M70 20 L110 18 L118 40 L96 52 L68 44Z" fill="#000"/><path d="M70 20 L110 18 L118 40 L96 52 L68 44Z" fill="none" stroke="${B}" stroke-width="2" stroke-dasharray="4 3"/>`,
+ cloud:`${bgImg}<rect x="20" y="60" width="20" height="16" fill="var(--roof)"/><g fill="#fff" opacity=".95"><ellipse cx="85" cy="42" rx="34" ry="20"/><ellipse cx="62" cy="48" rx="22" ry="15"/><ellipse cx="110" cy="50" rx="22" ry="14"/></g><ellipse cx="85" cy="46" rx="56" ry="28" fill="none" stroke="${B}" stroke-width="2" stroke-dasharray="4 3"/>`,
+ colour:`<rect width="80" height="100" fill="var(--img1)"/><rect x="80" width="80" height="100" fill="#9DB0A6"/><path d="M0 60 H160" stroke="var(--road)" stroke-width="5"/><path d="M80 0 V100" stroke="${B}" stroke-width="2" stroke-dasharray="4 3"/>`,
+ seam:`${bgImg}<rect x="55" y="22" width="44" height="26" fill="var(--roof)"/><rect x="63" y="50" width="44" height="26" fill="var(--roof)"/><path d="M0 49 C40 47 110 51 160 49" stroke="${B}" stroke-width="2" stroke-dasharray="5 3" fill="none"/>`,
+ lean:`${bgImg}<rect x="60" y="56" width="34" height="26" fill="none" stroke="var(--ink)" stroke-width="1.5" stroke-dasharray="3 2"/><path d="M60 56 L82 22 H116 L94 56Z" fill="var(--img2)" opacity=".8"/><path d="M94 56 L116 22 V48 L94 82Z" fill="var(--img2)"/><rect x="82" y="22" width="34" height="26" fill="var(--roof)"/><path d="M70 72 L88 40" stroke="${B}" stroke-width="2.5" marker-end="url(#a)"/>`,
+ void:`<rect width="160" height="100" fill="var(--dem2)"/><rect width="160" height="50" fill="var(--dem1)" opacity=".6"/><path d="M60 30 C80 18 110 28 104 50 C98 70 70 72 58 58Z" fill="var(--bg)"/><path d="M60 30 C80 18 110 28 104 50 C98 70 70 72 58 58Z" fill="none" stroke="${B}" stroke-width="2" stroke-dasharray="4 3"/>`,
+ step:prof('M5 70 C30 64 55 66 80 60 L80 40 C105 36 130 42 155 38')+`<circle cx="80" cy="50" r="14" fill="none" stroke="${B}" stroke-width="2"/>`,
+ spike:prof('M5 70 C30 64 60 66 78 62 L82 14 L86 60 C110 56 135 60 155 58')+`<circle cx="82" cy="24" r="12" fill="none" stroke="${B}" stroke-width="2"/>`,
+ pit:prof('M5 50 C30 46 60 48 78 50 L82 94 L86 50 C110 48 135 52 155 50')+`<circle cx="82" cy="84" r="12" fill="none" stroke="${B}" stroke-width="2"/>`,
+ bridge:`${bgDem}<rect x="60" y="66" width="40" height="18" fill="var(--water)" opacity=".7"/><path d="M5 40 C30 42 50 50 60 66 L60 44 H100 L100 66 C110 50 130 42 155 40" fill="none" stroke="var(--ink2)" stroke-width="2.5"/><rect x="58" y="36" width="44" height="14" fill="none" stroke="${B}" stroke-width="2" stroke-dasharray="4 3"/>`,
+ lake:`${bgDem}<rect x="30" y="50" width="100" height="34" fill="var(--water)" opacity=".6"/><path d="M5 30 C15 34 25 44 30 50 C45 42 60 58 75 46 C90 56 105 42 130 50 C138 42 148 34 155 30" fill="none" stroke="var(--ink2)" stroke-width="2.5"/><path d="M30 50 H130" stroke="${B}" stroke-width="1.5" stroke-dasharray="4 3"/>`,
+ overlap:`<rect width="160" height="100" fill="var(--soft)"/><rect x="38" y="24" width="50" height="40" fill="var(--roof)" opacity=".75"/><rect x="72" y="40" width="50" height="40" fill="var(--roof)" opacity=".75"/><rect x="72" y="40" width="16" height="24" fill="${B}"/>`,
+ dangle:`<rect width="160" height="100" fill="var(--soft)"/><path d="M10 70 H150" stroke="var(--road)" stroke-width="5"/><path d="M80 10 V60" stroke="var(--road)" stroke-width="5"/><circle cx="80" cy="66" r="10" fill="none" stroke="${B}" stroke-width="2"/>`,
+ overshoot:`<rect width="160" height="100" fill="var(--soft)"/><path d="M10 60 H150" stroke="var(--road)" stroke-width="5"/><path d="M80 10 V60" stroke="var(--road)" stroke-width="5"/><path d="M80 60 V80" stroke="${B}" stroke-width="5"/>`,
+ sliver:`<rect width="160" height="100" fill="var(--soft)"/><path d="M20 15 H78 L82 85 H20Z" fill="var(--veg)" opacity=".75"/><path d="M84 15 H140 V85 H86Z" fill="var(--img2)"/><path d="M78 15 L84 15 L86 85 L82 85Z" fill="${B}"/>`,
+ selfint:`<rect width="160" height="100" fill="var(--soft)"/><path d="M40 20 L120 80 L120 20 L40 80Z" fill="var(--roof)" opacity=".7" stroke="var(--ink2)" stroke-width="1.5"/><circle cx="80" cy="50" r="7" fill="none" stroke="${B}" stroke-width="2.5"/>`,
+ dup:`<rect width="160" height="100" fill="var(--soft)"/><rect x="50" y="28" width="50" height="40" fill="var(--roof)" opacity=".6"/><rect x="54" y="32" width="50" height="40" fill="none" stroke="${B}" stroke-width="2"/><text x="112" y="30" font-size="16" font-weight="700" fill="${B}">×2</text>`,
+ missing:`${bgImg}<rect x="22" y="20" width="26" height="20" fill="var(--roof)"/><rect x="22" y="20" width="26" height="20" fill="none" stroke="var(--ok)" stroke-width="2"/><rect x="70" y="30" width="28" height="22" fill="var(--roof)"/><rect x="70" y="30" width="28" height="22" fill="none" stroke="var(--ok)" stroke-width="2"/><rect x="112" y="56" width="26" height="20" fill="var(--roof)"/><rect x="108" y="52" width="34" height="28" fill="none" stroke="${B}" stroke-width="2" stroke-dasharray="4 3"/>`,
+ wrongclass:`${bgImg}<path d="M0 60 C50 50 100 66 160 54" stroke="#C7B08A" stroke-width="6" fill="none"/><path d="M0 60 C50 50 100 66 160 54" stroke="${B}" stroke-width="2.5" fill="none" stroke-dasharray="8 4"/><text x="152" y="30" direction="rtl" font-size="12" font-weight="700" fill="${B}">الفئة: طريق رئيسي</text><text x="152" y="92" direction="rtl" font-size="11" fill="var(--ink)">الصورة: طريق ترابي</text>`,
+ displaced:`${bgImg}<rect x="54" y="34" width="40" height="30" fill="var(--roof)"/><rect x="72" y="22" width="40" height="30" fill="none" stroke="${B}" stroke-width="2"/><path d="M76 50 L90 38" stroke="${B}" stroke-width="2" marker-end="url(#a)"/>`,
+ noise:(()=>{let s='';const c=['var(--veg)','var(--img2)','var(--roof)'];for(let y=0;y<5;y++)for(let x=0;x<8;x++){const k=(x<4?0:1);s+=`<rect x="${x*20}" y="${y*20}" width="20" height="20" fill="${c[k]}"/>`;}return s+`<rect x="20" y="40" width="20" height="20" fill="var(--roof)"/><rect x="120" y="20" width="20" height="20" fill="var(--veg)"/><rect x="20" y="40" width="20" height="20" fill="none" stroke="${B}" stroke-width="2.5"/><rect x="120" y="20" width="20" height="20" fill="none" stroke="${B}" stroke-width="2.5"/>`;})(),
+ misclass:`<rect width="160" height="100" fill="var(--roof)"/><path d="M0 50 H160 M80 0 V100" stroke="var(--road)" stroke-width="5"/><rect x="96" y="12" width="46" height="28" fill="var(--water)"/><rect x="96" y="12" width="46" height="28" fill="none" stroke="${B}" stroke-width="2.5"/><text x="150" y="90" direction="rtl" font-size="11" font-weight="700" fill="${B}">«ماء» على سقف</text>`
+};
+const defs='<defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--bad)"/></marker></defs>';
+const svg=(k,label)=>`<svg viewBox="0 0 160 100" role="img" aria-label="${esc(label)}">${defs}${SVG[k]}</svg>`;
+
+/* ============ content ============ */
+const DECIDE=(unit,extra)=>({ph:'Decide',t:'Decide and report',
+ what:['Summarise every check in one table: <b>check</b>, <b>ISO element</b>, <b>measure</b>, <b>result</b>, <b>tolerance</b>, <b>pass/fail</b>',`Accept the lot only if <b>every</b> check passes; for sampled checks, defective ${unit} must be at or below the acceptance number (Ac)`,'If rejected, return the <b>defect layer</b> (location, error type, severity, comment) with the report, then re-inspect the corrected delivery with a <b>fresh sample</b>','Write the results into the <b>ISO 19115-1 metadata</b> (data quality section) so users can see them'].concat(extra||[]),
+ arc:['Keep all findings in one <b>review feature class</b> with fields: error_type, severity, step, comment, status','Use <b>Data Reviewer</b> (if licensed) to manage review sessions and track corrections','<b>Table To Excel</b> for the summary table; a <b>layout</b> with map frames for the report'],
+ qgis:['A <b>review GeoPackage</b> layer with <i>Value Map</i> widgets for error type and severity','<b>Print Layout</b> with an <b>Atlas</b> page per defect for the report','<b>Statistics by categories</b> to count defects by type'],
+ code:null,iso:'All elements → ISO 19157-1 quality evaluation report',tol:'Decision rules are fixed in the specification before inspection starts',calc:['c-aql','Check the sample decision'],errs:[]});
+
+const P={
+ ortho:{name:'Orthoimage mosaic',icon:'ortho',type:'Raster · 8/16-bit RGB or RGB+NIR',formats:'GeoTIFF / Cloud-Optimised GeoTIFF, tiled',source:'Pan-sharpened satellite imagery (e.g. 0.5–1.5 m) or aerial photography',unit:'tiles or grid cells',
+  errs:['nodata','cloud','colour','seam','lean'],
+  steps:[
+  {ph:'Receive',t:'Delivery and raster properties',
+   what:['Every tile listed in the delivery note is present and opens','<b>CRS</b> matches the specification (e.g. the right UTM zone, EPSG code)','<b>Pixel size</b> is exactly as specified, and identical in x and y','<b>Bands and order</b> (R, G, B, NIR), <b>bit depth</b> (8 or 16-bit) and <b>NoData</b> value are correct','<b>Pyramids/overviews</b> and <b>ISO 19115-1 metadata</b> are included'],
+   arc:['Catalog pane → right-click a tile → <b>Properties</b> → Raster Information and Spatial Reference','Create a <b>Mosaic Dataset</b> → <b>Add Rasters To Mosaic Dataset</b>; open the Footprint attribute table to compare cell size and band count across all tiles','<b>Build Pyramids And Statistics</b> on the folder if missing'],
+   qgis:['<b>Raster → Miscellaneous → Build Virtual Raster</b> to load all tiles as one layer','Layer Properties → <b>Information</b> for CRS, pixel size, bands, NoData','Processing → <b>Raster layer statistics</b>'],
+   code:{l:'bash + Python',c:String.raw`for f in tiles/*.tif; do
+  gdalinfo "$f" | grep -E "Size is|Pixel Size|EPSG|Type=|NoData"
+done
+
+import glob, rasterio
+for f in sorted(glob.glob("tiles/*.tif")):
+    with rasterio.open(f) as r:
+        print(f, r.crs.to_epsg(), r.res, r.count, r.dtypes[0], r.nodata)`},
+   iso:'Logical consistency → format consistency · Completeness → omission (missing tiles)',tol:'Example: 0 missing tiles; 100% of tiles with the specified CRS, pixel size and band order',errs:[]},
+  {ph:'Automated',t:'Coverage and NoData holes',
+   what:['Tiles cover the whole <b>area of interest (AOI)</b>','No <b>NoData holes</b> or black edges inside the AOI','Tiles align on one grid: no gaps or overlaps between neighbouring tiles'],
+   arc:['<b>Build Footprints</b> on the mosaic dataset (or <b>Raster Domain</b> per tile)','<b>Pairwise Erase</b>: AOI minus footprints; any polygon left is uncovered area','For holes inside tiles: <b>Raster Calculator</b> <code>IsNull("tile")</code> → <b>Raster to Polygon</b>'],
+   qgis:['<b>Raster → Miscellaneous → Tile Index</b>','<b>Vector → Geoprocessing → Difference</b> (AOI minus tile index)','Raster Calculator on the NoData mask, then <b>Polygonize</b>'],
+   code:{l:'bash + Python',c:String.raw`gdaltindex -f GPKG footprints.gpkg tiles/*.tif
+
+import geopandas as gpd
+aoi = gpd.read_file("aoi.gpkg")
+fp  = gpd.read_file("footprints.gpkg").to_crs(aoi.crs)
+gaps = aoi.overlay(fp, how="difference")
+print(round(gaps.area.sum()), "m² of the AOI not covered")`},
+   iso:'Completeness → omission · area not covered (m², % of AOI)',tol:'Example: 0 m² uncovered inside the AOI',errs:['nodata']},
+  {ph:'Automated',t:'Radiometric quality',
+   what:['<b>Cloud and haze</b> below the allowed percentage per tile','No <b>saturated</b> (burnt white) or <b>crushed</b> (pure black) areas','<b>Consistent colour</b> between neighbouring tiles and scenes','No striping, banding or blur'],
+   arc:['Symbology → <b>Histogram</b> to spot clipping at 0 or 255','<b>Swipe</b> (Appearance tab) between neighbouring scenes to compare colour','Digitise cloud polygons in a review layer; <b>Tabulate Intersection</b> with tiles gives % cloud per tile'],
+   qgis:['Layer Properties → <b>Histogram</b>','Processing → <b>Raster layer statistics</b> per band','Digitise cloud polygons; <b>Overlap analysis</b> gives % per tile'],
+   code:{l:'Python',c:String.raw`import numpy as np, rasterio
+with rasterio.open("tiles/T0412.tif") as r:
+    a = r.read(masked=True)            # all bands, NoData masked
+n = a.count()
+print("saturated %", round((a == 255).sum() / n * 100, 2))   # 8-bit
+print("black %",     round((a == 0).sum()   / n * 100, 2))`},
+   iso:'Usability · % cloud-covered area, % saturated pixels',tol:'Example: cloud ≤ 5% per tile; saturated pixels ≤ 0.5%',errs:['cloud','colour']},
+  {ph:'Sample',t:'Seamlines and ortho distortions',
+   what:['<b>Seamlines</b> run along roads or open ground, never through buildings','No doubled or missing strips where scenes meet','Tall objects (buildings, bridges, towers) not leaning or "melted"','Roads continuous across tile and scene edges'],
+   arc:['Mosaic dataset → <b>Seamlines</b> layer to see where scenes join','<b>Generate Tessellation</b> (e.g. 1 km squares) → <b>Subset Features</b> to pick a random sample of cells (sample size from the calculator)','Review each cell at full resolution; log defects as points in the review layer'],
+   qgis:['<b>Vector → Research Tools → Create Grid</b>','Processing → <b>Random selection</b> (number = sample size)','Print Layout <b>Atlas</b> to step through the selected cells one by one'],
+   code:{l:'Python',c:String.raw`import geopandas as gpd
+grid = gpd.read_file("grid_1km.gpkg")
+sample = grid.sample(n=125, random_state=42)   # n from the sampling calculator
+sample.to_file("review_cells.gpkg")`},
+   iso:'Positional accuracy → relative (internal) · Usability · defects per sampled cell',tol:'Example: AQL 1.0 at inspection level II',calc:['c-aql','Work out the sample size'],errs:['seam','lean']},
+  {ph:'Accuracy',t:'Positional accuracy',
+   what:['Use <b>independent check points</b> (GNSS survey), never the control points used to make the ortho','At least <b>20</b> well-distributed, clearly visible points (road markings, corners of slabs)','Measure each point in the image; compute <b>dx, dy</b>, <b>RMSE</b> and <b>CE90</b>'],
+   arc:['Add the check points; use <b>Georeferencing → Add Control Points</b> as a measuring aid, or digitise the image position of each point','<b>Add XY Coordinates</b>, then <b>Calculate Field</b> for dx and dy','Copy dx, dy into the positional accuracy calculator'],
+   qgis:['<b>Georeferencer</b>: add check points and read the residual table','Or digitise image positions, then the field calculator for dx and dy'],
+   code:{l:'Python',c:String.raw`import pandas as pd, numpy as np
+p = pd.read_csv("checkpoints.csv")   # id, x_ref, y_ref, x_img, y_img
+dx, dy = p.x_img - p.x_ref, p.y_img - p.y_ref
+rmse_r = np.sqrt((dx**2).mean() + (dy**2).mean())
+print("CE90 ≈", round(1.5175 * rmse_r, 2), "m")`},
+   iso:'Positional accuracy → gridded data positional accuracy · RMSE, CE90',tol:'Example: CE90 ≤ 3 × pixel size',calc:['c-pos','Open the positional accuracy calculator'],errs:[]},
+  DECIDE('tiles or cells')]},
+
+ dem:{name:'Elevation model (DTM / DSM)',icon:'dem',type:'Raster · 32-bit float heights',formats:'GeoTIFF, tiled; heights in metres',source:'Stereo satellite or aerial image matching, or LiDAR',unit:'tiles',
+  errs:['void','step','spike','pit','bridge','lake'],
+  steps:[
+  {ph:'Receive',t:'Delivery, datum and units',
+   what:['<b>DTM</b> (bare earth) and <b>DSM</b> (surface with buildings and trees) are clearly labelled','Horizontal CRS <b>and vertical datum</b> are stated (e.g. geoid heights vs ellipsoidal heights)','Units in metres, <b>32-bit float</b>, correct <b>cell size</b> and <b>NoData</b> value','Min/max heights are plausible for the area'],
+   arc:['Raster Properties → <b>Spatial Reference</b>: check the vertical coordinate system','<b>Calculate Statistics</b>, then check min/max in Properties','Symbology stretch to spot extreme values'],
+   qgis:['Layer Properties → <b>Information</b> (CRS, data type, NoData)','Processing → <b>Raster layer statistics</b> for min/max'],
+   code:{l:'bash',c:String.raw`gdalinfo -stats dtm.tif | grep -E "Type=|Pixel Size|NoData|STATISTICS_(MIN|MAX)"
+gdalsrsinfo -o wkt2 dtm.tif | grep -iE "VERTCRS|VDATUM"   # vertical datum, if encoded`},
+   iso:'Logical consistency → format consistency',tol:'Example: vertical datum as specified; heights within the known terrain range',errs:[]},
+  {ph:'Automated',t:'Voids and tile edges',
+   what:['No <b>voids</b> (NoData) inside the AOI','No <b>steps</b> where tiles meet: heights continue smoothly across edges'],
+   arc:['<b>Raster Calculator</b>: <code>IsNull("dtm")</code> → <b>Raster to Polygon</b> to map voids','<b>Mosaic To New Raster</b>, then <b>Hillshade</b>: tile-edge steps show as straight lines'],
+   qgis:['Raster Calculator on the NoData mask → <b>Polygonize</b>','<b>Build Virtual Raster</b> + <b>Hillshade</b> to see edge steps'],
+   code:{l:'bash + Python',c:String.raw`gdalbuildvrt dtm.vrt tiles/*.tif
+gdaldem hillshade dtm.vrt hillshade.tif -z 3      # edges and artefacts pop out
+
+import numpy as np, rasterio
+with rasterio.open("dtm.vrt") as r:
+    d = r.read(1, masked=True)
+print("void cells:", int(d.mask.sum()))`},
+   iso:'Completeness → omission (void area) · Positional accuracy → relative (edge steps)',tol:'Example: 0 voids > 4 cells inside the AOI; edge steps ≤ 0.5 m',errs:['void','step']},
+  {ph:'Automated',t:'Spikes and pits (blunders)',
+   what:['Isolated cells much <b>higher or lower</b> than their neighbours (matching errors, water glint, birds)','Found by comparing each cell with a <b>local median</b>','Confirm each candidate on the hillshade before calling it an error'],
+   arc:['<b>Focal Statistics</b> (rectangle 5×5, MEDIAN)','<b>Raster Calculator</b>: <code>Abs("dtm" - "dtm_med") &gt; 5</code>','<b>Raster to Polygon</b> → review layer'],
+   qgis:['Processing → GRASS <b>r.neighbors</b> (method: median, size 5)','Raster Calculator for the absolute difference','<b>Polygonize</b> the result'],
+   code:{l:'Python',c:String.raw`import numpy as np, rasterio
+from scipy.ndimage import median_filter
+with rasterio.open("dtm.tif") as r:
+    dem = r.read(1).astype("float32")
+diff = dem - median_filter(dem, size=5)
+spikes = diff > 5      # example threshold, metres
+pits   = diff < -5
+print(int(spikes.sum()), "spike cells,", int(pits.sum()), "pit cells")`},
+   iso:'Thematic accuracy → quantitative attribute accuracy · count of blunders',tol:'Example: 0 confirmed blunders larger than 5 m',errs:['spike','pit']},
+  {ph:'Sample',t:'Terrain logic',
+   what:['<b>DTM</b>: buildings, trees and vehicles removed','<b>DTM</b>: bridges removed, so rivers are not dammed','<b>Water</b>: lakes flat, rivers always flowing downhill','<b>DSM</b>: buildings present with sharp edges'],
+   arc:['<b>Hillshade</b> and <b>Contour</b> for visual review of sampled tiles','<b>Zonal Statistics as Table</b> (statistic RANGE) with lake polygons: any range above a few cm means the lake is not flat','<b>Profile graph</b> along river centrelines'],
+   qgis:['Hillshade and Contour','<b>Zonal statistics</b> (range) with lake polygons','<b>Elevation Profile</b> tool along rivers'],
+   code:{l:'Python',c:String.raw`from rasterstats import zonal_stats
+zs = zonal_stats("lakes.gpkg", "dtm.tif", stats=["min", "max"])
+not_flat = [i for i, z in enumerate(zs)
+            if z["max"] is not None and z["max"] - z["min"] > 0.1]
+print(len(not_flat), "lakes not flat")`},
+   iso:'Logical consistency · Thematic accuracy · lakes not flat, bridges not removed',tol:'Example: lake height range ≤ 0.1 m',calc:['c-aql','Work out the sample size'],errs:['bridge','lake']},
+  {ph:'Accuracy',t:'Vertical accuracy',
+   what:['Independent <b>GNSS check points</b> on open, flat ground (not under trees or next to buildings)','Read the DEM height at each point; <b>dz = DEM − check point</b>','Compute <b>RMSEz</b> and <b>LE90</b>; report open ground and vegetated areas separately if the specification asks'],
+   arc:['<b>Extract Values to Points</b> (DEM value at each check point)','<b>Calculate Field</b>: dz = RASTERVALU − Z_ref'],
+   qgis:['Processing → <b>Sample raster values</b>','Field calculator for dz'],
+   code:{l:'bash + Python',c:String.raw`gdallocationinfo -valonly -geoloc dtm.tif 512300.5 2745100.2
+
+import rasterio, pandas as pd, numpy as np
+p = pd.read_csv("gnss_points.csv")          # x, y, z_ref
+with rasterio.open("dtm.tif") as r:
+    p["z_dem"] = [v[0] for v in r.sample(zip(p.x, p.y))]
+dz = p.z_dem - p.z_ref
+print("LE90 ≈", round(1.6449 * np.sqrt((dz**2).mean()), 2), "m")`},
+   iso:'Positional accuracy → gridded data positional accuracy (vertical) · RMSEz, LE90',tol:'Example: LE90 ≤ 3 m in open terrain',calc:['c-pos','Open the positional accuracy calculator'],errs:[]},
+  DECIDE('tiles')]},
+
+ vector:{name:'Topographic vector data',icon:'vector',type:'Vector · points, lines, polygons',formats:'File geodatabase or GeoPackage',source:'Digitised from orthoimagery and field data: roads, buildings, hydrography, points of interest',unit:'features or grid cells',
+  errs:['overlap','dangle','overshoot','sliver','selfint','dup','missing','wrongclass','displaced'],
+  steps:[
+  {ph:'Receive',t:'Schema check',
+   what:['All expected <b>feature classes</b> are present (e.g. roads, buildings, water lines, water areas, points of interest)','Every <b>field</b> exists with the right type and length (per the ISO 19110 feature catalogue)','<b>Coded-value domains</b> and subtypes match the specification','All layers share one <b>CRS</b>'],
+   arc:['<b>Generate Schema Report</b> on the delivery and on your template; compare','<b>Feature Compare</b> / <b>Table Compare</b> (schema only) against the template geodatabase','Data Design → <b>Domains</b> view to check coded values'],
+   qgis:['Browser → expand the GeoPackage to list layers','Layer Properties → <b>Fields</b>','Processing → <b>Refactor fields</b> to see types side by side with a template'],
+   code:{l:'Python',c:String.raw`import fiona, geopandas as gpd
+for layer in fiona.listlayers("delivery.gpkg"):
+    g = gpd.read_file("delivery.gpkg", layer=layer, rows=1)
+    print(layer, g.crs.to_epsg(), dict(g.dtypes))`},
+   iso:'Logical consistency → conceptual and format consistency',tol:'Example: 100% match with the specified schema',errs:[]},
+  {ph:'Automated',t:'Geometry and topology (every feature)',
+   what:['<b>Invalid geometry</b>: self-intersections, empty or null shapes','Buildings <b>must not overlap</b>','Roads <b>connect</b>: no dangles, undershoots or overshoots','<b>No gaps or slivers</b> where polygons must cover an area','<b>Duplicates</b> and features below the <b>minimum size</b>'],
+   arc:['<b>Check Geometry</b> (report only; repair later) on every feature class','Create a geodatabase <b>Topology</b> with rules: <i>Must Not Overlap</i> (buildings), <i>Must Not Have Dangles</i> (roads), <i>Must Not Have Gaps</i>, <i>Must Not Self-Intersect</i> → <b>Validate Topology</b> → <b>Error Inspector</b>','<b>Data Reviewer</b> checks: Duplicate Feature, Invalid Geometry, Polygon Area'],
+   qgis:['Processing → <b>Check validity</b>','<b>Topology Checker</b> plugin: must not overlap, must not have dangles, must not have gaps, must not have duplicates','<b>Geometry Checker</b> for slivers and small features'],
+   code:{l:'PostGIS SQL',c:String.raw`-- invalid geometries
+SELECT id, ST_IsValidReason(geom) FROM buildings WHERE NOT ST_IsValid(geom);
+
+-- overlapping buildings
+SELECT a.id, b.id FROM buildings a
+JOIN buildings b ON a.id < b.id AND ST_Overlaps(a.geom, b.geom);
+
+-- road ends that touch nothing (dangles), within 2 m = undershoot
+WITH ends AS (
+  SELECT id, ST_StartPoint(geom) AS p FROM roads
+  UNION ALL SELECT id, ST_EndPoint(geom) FROM roads)
+SELECT e.id FROM ends e
+WHERE NOT EXISTS (SELECT 1 FROM roads r
+                  WHERE r.id <> e.id AND ST_Intersects(e.p, r.geom))
+  AND EXISTS     (SELECT 1 FROM roads r
+                  WHERE r.id <> e.id AND ST_DWithin(e.p, r.geom, 2));`},
+   iso:'Logical consistency → topological consistency · errors per rule, per 1,000 features',tol:'Example: 0 invalid geometries; 0 building overlaps',errs:['overlap','dangle','overshoot','sliver','selfint','dup']},
+  {ph:'Automated',t:'Attributes and domains',
+   what:['Values within their <b>coded domains</b> (e.g. road class, surface type)','<b>Mandatory</b> attributes filled (no NULL names on named roads)','Plausible numbers (building height &gt; 0, lanes 1–8)','Consistent combinations (a bridge flag where a road crosses water)'],
+   arc:['<b>Select By Attributes</b>: <code>road_class NOT IN (…)</code> or <code>name IS NULL</code>','<b>Attribute Rules</b> (validation type) → <b>Evaluate Rules</b>','Data Reviewer: <b>Domain</b> and <b>Regular Expression</b> checks'],
+   qgis:['<b>Select by expression</b>: <code>"road_class" NOT IN (\'primary\',\'secondary\',\'track\')</code>','Processing → <b>Basic statistics for fields</b>','Statistics panel for min/max and NULL counts'],
+   code:{l:'PostGIS SQL',c:String.raw`-- values outside the domain
+SELECT id, road_class FROM roads
+WHERE road_class NOT IN ('primary', 'secondary', 'tertiary', 'track');
+
+-- mandatory attribute missing
+SELECT count(*) FROM roads WHERE road_class = 'primary' AND name IS NULL;
+
+-- implausible values
+SELECT id FROM buildings WHERE height <= 0 OR height > 300;`},
+   iso:'Logical consistency → domain consistency · Thematic accuracy → non-quantitative attribute correctness',tol:'Example: 0 values outside domains; mandatory fields 100% filled',errs:['wrongclass']},
+  {ph:'Sample',t:'Completeness and classification against imagery',
+   what:['Overlay the vectors on the orthoimage in <b>randomly sampled grid cells</b>','Count <b>omissions</b> (real features not captured) and <b>commissions</b> (captured features that do not exist)','Check <b>classification</b> on the same sample (paved vs unpaved road, building vs shed)'],
+   arc:['<b>Generate Tessellation</b> (e.g. 500 m squares) → <b>Subset Features</b> (sample size from the calculator)','Review each cell with the ortho; log each defect as a point in the review layer (type: omission, commission, wrong class)'],
+   qgis:['<b>Create Grid</b> → <b>Random selection</b>','Print Layout <b>Atlas</b> over the selected cells; digitise defects into the review GeoPackage'],
+   code:{l:'Python',c:String.raw`import geopandas as gpd
+grid = gpd.read_file("grid_500m.gpkg")
+cells = grid.sample(n=80, random_state=7)       # n from the sampling calculator
+b = gpd.read_file("delivery.gpkg", layer="buildings")
+counts = gpd.sjoin(b, cells, predicate="intersects").groupby("index_right").size()
+cells["buildings"] = counts.reindex(cells.index, fill_value=0)
+cells.to_file("review_cells.gpkg")             # reviewer adds omission/commission counts`},
+   iso:'Completeness → omission, commission · Thematic accuracy → classification correctness',tol:'Example: omission ≤ 2%, commission ≤ 1%, AQL 1.0',calc:['c-aql','Work out the sample size'],errs:['missing','wrongclass']},
+  {ph:'Accuracy',t:'Positional accuracy',
+   what:['<b>Absolute</b>: well-defined points (building corners, road intersections) against GNSS check points','<b>Relative</b>: shapes kept (straight walls, right angles, correct distances)','<b>Edge matching</b>: features line up across sheet or tile boundaries'],
+   arc:['<b>Generate Near Table</b> (with location) from check points to building corners','<b>Edgematch Features</b> or a visual check along tile boundaries'],
+   qgis:['Processing → <b>Join attributes by nearest</b> (gives the distance)','Snapping check along tile edges'],
+   code:{l:'Python',c:String.raw`import geopandas as gpd
+cp = gpd.read_file("checkpoints.gpkg")
+corners = gpd.read_file("building_corners.gpkg").to_crs(cp.crs)
+m = gpd.sjoin_nearest(cp, corners, distance_col="d")
+print("RMSE r =", round((m.d**2).mean()**0.5, 2), "m")`},
+   iso:'Positional accuracy → absolute and relative accuracy · RMSE, CE90',tol:'Example: CE90 ≤ 4.5 m',calc:['c-pos','Open the positional accuracy calculator'],errs:['displaced']},
+  DECIDE('features or cells')]},
+
+ lc:{name:'Land cover map',icon:'lc',type:'Raster (integer class codes) or polygons',formats:'GeoTIFF or GeoPackage',source:'Classified satellite imagery (e.g. Sentinel-2 or very high resolution)',unit:'sample points',
+  errs:['noise','misclass'],
+  steps:[
+  {ph:'Receive',t:'Legend and class codes',
+   what:['Every class code is in the <b>legend</b>; no unknown or unclassified values','<b>Minimum mapping unit</b> is stated and respected','Imagery <b>reference date</b> is recorded in the metadata'],
+   arc:['Symbology → <b>Unique Values</b> lists every code present','<b>Build Raster Attribute Table</b>, then <b>Tabulate Area</b> for class totals'],
+   qgis:['Processing → <b>Raster layer unique values report</b>','Paletted/Unique values symbology'],
+   code:{l:'Python',c:String.raw`import numpy as np, rasterio
+with rasterio.open("landcover.tif") as r:
+    lc = r.read(1)
+codes, counts = np.unique(lc, return_counts=True)
+legend = {10, 20, 30, 40, 50, 60, 80}          # example legend codes
+print("unknown codes:", set(codes.tolist()) - legend - {r.nodata})`},
+   iso:'Logical consistency → domain consistency',tol:'Example: 0 cells with codes outside the legend',errs:[]},
+  {ph:'Automated',t:'Noise and spatial logic',
+   what:['<b>Salt-and-pepper</b> noise: isolated pixels below the minimum mapping unit','Impossible combinations: water on steep slopes, cropland inside dense urban cores','Class boundaries continue across tile and scene edges'],
+   arc:['<b>Region Group</b> → <b>Zonal Geometry</b> to find patches below the minimum size','<b>Slope</b> + <b>Combine</b> with land cover to find water on slopes above 10°'],
+   qgis:['<b>Raster → Analysis → Sieve</b> (run on a copy and compare counts; don\'t overwrite before reporting)','Raster Calculator for class/slope combinations'],
+   code:{l:'bash',c:String.raw`gdal_sieve.py -st 10 -8 landcover.tif sieved.tif    # patches < 10 px removed
+# compare the two rasters to count and map the noisy patches`},
+   iso:'Logical consistency · Thematic accuracy',tol:'Example: no patches smaller than the minimum mapping unit',errs:['noise','misclass']},
+  {ph:'Sample',t:'Reference sample design',
+   what:['<b>Stratified random</b> sample by class, so rare classes get enough points (e.g. at least 50 per class)','Reference labels from higher-resolution imagery or field visits','Interpret <b>blind</b>: the checker does not see the map class while labelling'],
+   arc:['<b>Create Accuracy Assessment Points</b> (sampling: stratified random)','Label the GrndTruth field, then <b>Update Accuracy Assessment Points</b>'],
+   qgis:['<b>AcATaMa</b> plugin: sampling design and blind response labelling'],
+   code:{l:'Python',c:String.raw`import numpy as np, rasterio
+from rasterio.transform import xy
+with rasterio.open("landcover.tif") as r:
+    lc, t, nd = r.read(1), r.transform, r.nodata
+rng, pts = np.random.default_rng(1), []
+for c in np.unique(lc[lc != nd]):
+    rows, cols = np.nonzero(lc == c)
+    k = rng.choice(len(rows), size=min(50, len(rows)), replace=False)
+    pts += [(int(c), *xy(t, rows[i], cols[i])) for i in k]`},
+   iso:'Metaquality → representativity',tol:'Example: at least 50 points per class',errs:[]},
+  {ph:'Accuracy',t:'Thematic accuracy',
+   what:['Build the <b>confusion matrix</b>: map class against reference class','<b>Overall accuracy</b>, plus <b>user\'s</b> and <b>producer\'s accuracy</b> for each class','Kappa or F1 if the specification asks'],
+   arc:['<b>Compute Confusion Matrix</b> from the updated assessment points'],
+   qgis:['<b>AcATaMa</b> → Accuracy assessment'],
+   code:{l:'Python',c:String.raw`from sklearn.metrics import confusion_matrix, cohen_kappa_score
+cm = confusion_matrix(reference, mapped)       # arrays of class codes
+oa = cm.trace() / cm.sum()
+print("overall accuracy", round(oa, 3),
+      "kappa", round(cohen_kappa_score(reference, mapped), 3))`},
+   iso:'Thematic accuracy → classification correctness · overall, user\'s and producer\'s accuracy',tol:'Example: overall ≥ 85%, every class ≥ 70%',calc:['c-cm','Open the confusion matrix calculator'],errs:[]},
+  DECIDE('sample points')]}
+};
+
+const ERR={
+ nodata:['NoData hole','A patch with no image data inside the area. Users see a black hole; anything underneath cannot be mapped.'],
+ cloud:['Cloud cover','Cloud or haze hides the ground. Features under it cannot be mapped or checked.'],
+ colour:['Colour jump between tiles','Neighbouring tiles or scenes have different colour balance, so the same surface looks different and a visible line appears.'],
+ seam:['Seamline through a building','The join between two scenes cuts a building, so its two halves do not line up.'],
+ lean:['Leaning building','A tall building leans away from its footprint because it was not fully orthorectified. The roof sits away from where the walls meet the ground.'],
+ void:['Void','Cells with no height value, usually over water, shadows or dense vegetation where matching failed.'],
+ step:['Step at tile edge','Heights jump where two tiles meet, creating a false cliff.'],
+ spike:['Spike','A single cell far higher than its neighbours, usually a matching error.'],
+ pit:['Pit','A single cell far lower than its neighbours. It can trap water in flow models.'],
+ bridge:['Bridge left in the DTM','The bridge deck stays in the bare-earth model and acts like a dam across the river.'],
+ lake:['Lake not flat','The water surface should be one height; noise makes it rise and fall.'],
+ overlap:['Overlapping buildings','Two building polygons share area, so areas and counts are wrong.'],
+ dangle:['Undershoot (dangle)','A road stops just short of the road it should join, breaking the network for routing.'],
+ overshoot:['Overshoot','A road continues past the junction it should end at.'],
+ sliver:['Gap or sliver','A thin empty strip between polygons that should share a boundary.'],
+ selfint:['Self-intersection','A polygon crosses itself, so its area and shape are invalid.'],
+ dup:['Duplicate feature','The same feature captured twice, so counts and statistics are inflated.'],
+ missing:['Omission','A building visible in the image was not captured.'],
+ wrongclass:['Wrong classification','The feature is captured but given the wrong class, for example a dirt track recorded as a primary road.'],
+ displaced:['Displaced feature','The outline does not sit on the real object in the image.'],
+ noise:['Salt-and-pepper noise','Isolated pixels of a different class, smaller than the minimum mapping unit.'],
+ misclass:['Misclassified surface','A surface given an impossible class, for example a dark roof labelled as water.']
+};
+
+/* ============ Arabic: translate the data above ============ */
+const TR={"Receive": "الاستلام", "Automated checks (100%)": "الفحوص الآلية (100%)", "Sample review": "مراجعة العينة", "Accuracy test": "اختبار الدقة", "Decide and report": "القرار والتقرير", "Orthoimage mosaic": "موزاييك الصور المصححة", "Raster · 8/16-bit RGB or RGB+NIR": "نقطية · RGB أو RGB+NIR بعمق 8/16 بت", "GeoTIFF / Cloud-Optimised GeoTIFF, tiled": "GeoTIFF / GeoTIFF محسّن للسحابة، مقسّم إلى tiles", "Pan-sharpened satellite imagery (e.g. 0.5–1.5 m) or aerial photography": "صور أقمار صناعية محسّنة الدقة (مثل 0.5–1.5 م) أو تصوير جوي", "tiles or grid cells": "الـtiles أو خلايا الشبكة", "Delivery and raster properties": "التسليم وخصائص البيانات النقطية", "Logical consistency → format consistency · Completeness → omission (missing tiles)": "الاتساق المنطقي ← اتساق الصيغة · الاكتمال ← الإغفال (tiles مفقودة)", "Example: 0 missing tiles; 100% of tiles with the specified CRS, pixel size and band order": "مثال: 0 tiles مفقودة؛ و100% من الـtiles بنظام الإحداثيات وحجم البكسل وترتيب النطاقات المحددة", "Every tile listed in the delivery note is present and opens": "كل tile مذكورة في مذكرة التسليم موجودة وتُفتح", "<b>CRS</b> matches the specification (e.g. the right UTM zone, EPSG code)": "<b>نظام الإحداثيات</b> مطابق للمواصفة (مثل نطاق UTM الصحيح ورمز EPSG)", "<b>Pixel size</b> is exactly as specified, and identical in x and y": "<b>حجم البكسل</b> مطابق تمامًا للمواصفة، ومتساوٍ في x وy", "<b>Bands and order</b> (R, G, B, NIR), <b>bit depth</b> (8 or 16-bit) and <b>NoData</b> value are correct": "<b>النطاقات وترتيبها</b> (R, G, B, NIR)، و<b>عمق البت</b> (8 أو 16 بت)، وقيمة <b>NoData</b> صحيحة", "<b>Pyramids/overviews</b> and <b>ISO 19115-1 metadata</b> are included": "<b>الأهرامات/العروض المصغّرة</b> و<b>بيانات ISO 19115-1 الوصفية</b> مرفقة", "Catalog pane → right-click a tile → <b>Properties</b> → Raster Information and Spatial Reference": "لوحة Catalog ← انقر بالزر الأيمن على tile ← <b>Properties</b> ← Raster Information وSpatial Reference", "Create a <b>Mosaic Dataset</b> → <b>Add Rasters To Mosaic Dataset</b>; open the Footprint attribute table to compare cell size and band count across all tiles": "أنشئ <b>Mosaic Dataset</b> ← <b>Add Rasters To Mosaic Dataset</b>؛ وافتح جدول سمات Footprint لمقارنة حجم الخلية وعدد النطاقات في كل الـtiles", "<b>Build Pyramids And Statistics</b> on the folder if missing": "نفّذ <b>Build Pyramids And Statistics</b> على المجلد إن كانت مفقودة", "<b>Raster → Miscellaneous → Build Virtual Raster</b> to load all tiles as one layer": "<b>Raster ← Miscellaneous ← Build Virtual Raster</b> لتحميل كل الـtiles كطبقة واحدة", "Layer Properties → <b>Information</b> for CRS, pixel size, bands, NoData": "Layer Properties ← <b>Information</b> لنظام الإحداثيات وحجم البكسل والنطاقات وNoData", "Processing → <b>Raster layer statistics</b>": "Processing ← <b>Raster layer statistics</b>", "Coverage and NoData holes": "التغطية وثغرات NoData", "Completeness → omission · area not covered (m², % of AOI)": "الاكتمال ← الإغفال · المساحة غير المغطاة (م²، % من منطقة الاهتمام)", "Example: 0 m² uncovered inside the AOI": "مثال: 0 م² غير مغطاة داخل منطقة الاهتمام", "Tiles cover the whole <b>area of interest (AOI)</b>": "الـtiles تغطي <b>منطقة الاهتمام (AOI)</b> كاملة", "No <b>NoData holes</b> or black edges inside the AOI": "لا <b>ثغرات NoData</b> ولا حواف سوداء داخل منطقة الاهتمام", "Tiles align on one grid: no gaps or overlaps between neighbouring tiles": "الـtiles متراصفة على شبكة واحدة: لا فجوات ولا تداخلات بين الـtiles المتجاورة", "<b>Build Footprints</b> on the mosaic dataset (or <b>Raster Domain</b> per tile)": "<b>Build Footprints</b> على مجموعة الموزاييك (أو <b>Raster Domain</b> لكل tile)", "<b>Pairwise Erase</b>: AOI minus footprints; any polygon left is uncovered area": "<b>Pairwise Erase</b>: منطقة الاهتمام ناقص البصمات؛ أي مضلع متبقٍ مساحة غير مغطاة", "For holes inside tiles: <b>Raster Calculator</b> <code>IsNull(\"tile\")</code> → <b>Raster to Polygon</b>": "للثغرات داخل الـtiles: <b>Raster Calculator</b> <code>IsNull(\"tile\")</code> ← <b>Raster to Polygon</b>", "<b>Raster → Miscellaneous → Tile Index</b>": "<b>Raster ← Miscellaneous ← Tile Index</b>", "<b>Vector → Geoprocessing → Difference</b> (AOI minus tile index)": "<b>Vector ← Geoprocessing ← Difference</b> (منطقة الاهتمام ناقص فهرس الـtiles)", "Raster Calculator on the NoData mask, then <b>Polygonize</b>": "Raster Calculator على قناع NoData، ثم <b>Polygonize</b>", "Radiometric quality": "الجودة الإشعاعية", "Usability · % cloud-covered area, % saturated pixels": "قابلية الاستخدام · % المساحة المغطاة بالغيوم، % البكسلات المشبعة", "Example: cloud ≤ 5% per tile; saturated pixels ≤ 0.5%": "مثال: الغيوم ≤ 5% لكل tile؛ البكسلات المشبعة ≤ 0.5%", "<b>Cloud and haze</b> below the allowed percentage per tile": "<b>الغيوم والضباب</b> أقل من النسبة المسموحة لكل tile", "No <b>saturated</b> (burnt white) or <b>crushed</b> (pure black) areas": "لا مناطق <b>مشبعة</b> (بيضاء محترقة) ولا <b>معتمة</b> (سوداء تمامًا)", "<b>Consistent colour</b> between neighbouring tiles and scenes": "<b>ألوان متسقة</b> بين الـtiles والمشاهد المتجاورة", "No striping, banding or blur": "لا خطوط ولا أشرطة ولا ضبابية", "Symbology → <b>Histogram</b> to spot clipping at 0 or 255": "Symbology ← <b>Histogram</b> لرصد القص عند 0 أو 255", "<b>Swipe</b> (Appearance tab) between neighbouring scenes to compare colour": "<b>Swipe</b> (تبويب Appearance) بين المشاهد المتجاورة لمقارنة الألوان", "Digitise cloud polygons in a review layer; <b>Tabulate Intersection</b> with tiles gives % cloud per tile": "ارسم مضلعات الغيوم في طبقة مراجعة؛ و<b>Tabulate Intersection</b> مع الـtiles يعطي % الغيوم لكل tile", "Layer Properties → <b>Histogram</b>": "Layer Properties ← <b>Histogram</b>", "Processing → <b>Raster layer statistics</b> per band": "Processing ← <b>Raster layer statistics</b> لكل نطاق", "Digitise cloud polygons; <b>Overlap analysis</b> gives % per tile": "ارسم مضلعات الغيوم؛ و<b>Overlap analysis</b> يعطي النسبة لكل tile", "Seamlines and ortho distortions": "خطوط الوصل وتشوهات التصحيح", "Positional accuracy → relative (internal) · Usability · defects per sampled cell": "الدقة الموضعية ← النسبية (الداخلية) · قابلية الاستخدام · العيوب لكل خلية في العينة", "Example: AQL 1.0 at inspection level II": "مثال: AQL 1.0 عند مستوى الفحص II", "<b>Seamlines</b> run along roads or open ground, never through buildings": "<b>خطوط الوصل</b> تمر على الطرق أو الأرض المكشوفة، ولا تقطع المباني أبدًا", "No doubled or missing strips where scenes meet": "لا شرائط مكررة أو مفقودة حيث تلتقي المشاهد", "Tall objects (buildings, bridges, towers) not leaning or \"melted\"": "الأجسام العالية (المباني والجسور والأبراج) غير مائلة ولا «ذائبة»", "Roads continuous across tile and scene edges": "الطرق متصلة عبر حواف الـtiles والمشاهد", "Mosaic dataset → <b>Seamlines</b> layer to see where scenes join": "مجموعة الموزاييك ← طبقة <b>Seamlines</b> لمعرفة أماكن التقاء المشاهد", "<b>Generate Tessellation</b> (e.g. 1 km squares) → <b>Subset Features</b> to pick a random sample of cells (sample size from the calculator)": "<b>Generate Tessellation</b> (مثل مربعات 1 كم) ← <b>Subset Features</b> لاختيار عينة عشوائية من الخلايا (حجم العينة من الحاسبة)", "Review each cell at full resolution; log defects as points in the review layer": "راجع كل خلية بالدقة الكاملة؛ وسجّل العيوب نقاطًا في طبقة المراجعة", "<b>Vector → Research Tools → Create Grid</b>": "<b>Vector ← Research Tools ← Create Grid</b>", "Processing → <b>Random selection</b> (number = sample size)": "Processing ← <b>Random selection</b> (العدد = حجم العينة)", "Print Layout <b>Atlas</b> to step through the selected cells one by one": "<b>Atlas</b> في Print Layout للمرور على الخلايا المختارة واحدة تلو الأخرى", "Work out the sample size": "احسب حجم العينة", "Positional accuracy": "الدقة الموضعية", "Positional accuracy → gridded data positional accuracy · RMSE, CE90": "الدقة الموضعية ← الدقة الموضعية للبيانات الشبكية · RMSE، CE90", "Example: CE90 ≤ 3 × pixel size": "مثال: CE90 ≤ 3 × حجم البكسل", "Use <b>independent check points</b> (GNSS survey), never the control points used to make the ortho": "استخدم <b>نقاط تحقق مستقلة</b> (مسح GNSS)، لا نقاط التحكم التي استُخدمت في إنتاج الصورة المصححة أبدًا", "At least <b>20</b> well-distributed, clearly visible points (road markings, corners of slabs)": "<b>20</b> نقطة على الأقل، موزعة جيدًا وواضحة (علامات الطرق، زوايا البلاطات الخرسانية)", "Measure each point in the image; compute <b>dx, dy</b>, <b>RMSE</b> and <b>CE90</b>": "قِس كل نقطة في الصورة؛ واحسب <b>dx وdy</b> و<b>RMSE</b> و<b>CE90</b>", "Add the check points; use <b>Georeferencing → Add Control Points</b> as a measuring aid, or digitise the image position of each point": "أضف نقاط التحقق؛ واستخدم <b>Georeferencing ← Add Control Points</b> أداةً للقياس، أو ارسم موضع كل نقطة في الصورة", "<b>Add XY Coordinates</b>, then <b>Calculate Field</b> for dx and dy": "<b>Add XY Coordinates</b>، ثم <b>Calculate Field</b> لحساب dx وdy", "Copy dx, dy into the positional accuracy calculator": "انسخ dx وdy إلى حاسبة الدقة الموضعية", "<b>Georeferencer</b>: add check points and read the residual table": "<b>Georeferencer</b>: أضف نقاط التحقق واقرأ جدول البواقي", "Or digitise image positions, then the field calculator for dx and dy": "أو ارسم مواضع الصورة، ثم استخدم حاسبة الحقول لحساب dx وdy", "Open the positional accuracy calculator": "افتح حاسبة الدقة الموضعية", "All elements → ISO 19157-1 quality evaluation report": "كل العناصر ← تقرير تقييم الجودة وفق ISO 19157-1", "Decision rules are fixed in the specification before inspection starts": "قواعد القرار تُحدَّد في المواصفة قبل بدء الفحص", "Summarise every check in one table: <b>check</b>, <b>ISO element</b>, <b>measure</b>, <b>result</b>, <b>tolerance</b>, <b>pass/fail</b>": "لخّص كل فحص في جدول واحد: <b>الفحص</b>، <b>عنصر ISO</b>، <b>المقياس</b>، <b>النتيجة</b>، <b>التفاوت المسموح</b>، <b>ناجح/راسب</b>", "Accept the lot only if <b>every</b> check passes; for sampled checks, defective tiles or cells must be at or below the acceptance number (Ac)": "اقبل الدفعة فقط إذا نجح <b>كل</b> فحص؛ وفي الفحوص بالعينة يجب أن تكون الـtiles أو الخلايا المعيبة عند رقم القبول (Ac) أو دونه", "If rejected, return the <b>defect layer</b> (location, error type, severity, comment) with the report, then re-inspect the corrected delivery with a <b>fresh sample</b>": "عند الرفض، أعِد <b>طبقة العيوب</b> (الموقع، نوع الخطأ، الخطورة، التعليق) مع التقرير، ثم أعِد فحص التسليم المصحح <b>بعينة جديدة</b>", "Write the results into the <b>ISO 19115-1 metadata</b> (data quality section) so users can see them": "اكتب النتائج في <b>بيانات ISO 19115-1 الوصفية</b> (قسم جودة البيانات) ليراها المستخدمون", "Keep all findings in one <b>review feature class</b> with fields: error_type, severity, step, comment, status": "احفظ كل النتائج في <b>فئة معالم للمراجعة</b> واحدة بالحقول: error_type، severity، step، comment، status", "Use <b>Data Reviewer</b> (if licensed) to manage review sessions and track corrections": "استخدم <b>Data Reviewer</b> (إن كان مرخّصًا) لإدارة جلسات المراجعة وتتبع التصحيحات", "<b>Table To Excel</b> for the summary table; a <b>layout</b> with map frames for the report": "<b>Table To Excel</b> لجدول الملخص؛ و<b>layout</b> بإطارات خرائط للتقرير", "A <b>review GeoPackage</b> layer with <i>Value Map</i> widgets for error type and severity": "طبقة <b>GeoPackage للمراجعة</b> بأدوات <i>Value Map</i> لنوع الخطأ وخطورته", "<b>Print Layout</b> with an <b>Atlas</b> page per defect for the report": "<b>Print Layout</b> مع صفحة <b>Atlas</b> لكل عيب في التقرير", "<b>Statistics by categories</b> to count defects by type": "<b>Statistics by categories</b> لعدّ العيوب حسب النوع", "Check the sample decision": "تحقق من قرار العينة", "Elevation model (DTM / DSM)": "نموذج الارتفاع (DTM / DSM)", "Raster · 32-bit float heights": "نقطية · ارتفاعات عشرية 32 بت", "GeoTIFF, tiled; heights in metres": "GeoTIFF مقسّم إلى tiles؛ الارتفاعات بالأمتار", "Stereo satellite or aerial image matching, or LiDAR": "مطابقة الصور المجسمة من الأقمار الصناعية أو الجوية، أو ليدار (LiDAR)", "tiles": "الـtiles", "Delivery, datum and units": "التسليم والمرجع الرأسي والوحدات", "Logical consistency → format consistency": "الاتساق المنطقي ← اتساق الصيغة", "Example: vertical datum as specified; heights within the known terrain range": "مثال: المرجع الرأسي كما في المواصفة؛ الارتفاعات ضمن نطاق التضاريس المعروف", "<b>DTM</b> (bare earth) and <b>DSM</b> (surface with buildings and trees) are clearly labelled": "<b>DTM</b> (سطح الأرض العاري) و<b>DSM</b> (السطح بالمباني والأشجار) موسومان بوضوح", "Horizontal CRS <b>and vertical datum</b> are stated (e.g. geoid heights vs ellipsoidal heights)": "نظام الإحداثيات الأفقي <b>والمرجع الرأسي</b> مذكوران (مثل ارتفاعات الجيويد مقابل الارتفاعات الإهليلجية)", "Units in metres, <b>32-bit float</b>, correct <b>cell size</b> and <b>NoData</b> value": "الوحدات بالأمتار، و<b>عشري 32 بت</b>، و<b>حجم الخلية</b> وقيمة <b>NoData</b> صحيحان", "Min/max heights are plausible for the area": "أدنى وأعلى ارتفاع معقولان للمنطقة", "Raster Properties → <b>Spatial Reference</b>: check the vertical coordinate system": "Raster Properties ← <b>Spatial Reference</b>: تحقق من نظام الإحداثيات الرأسي", "<b>Calculate Statistics</b>, then check min/max in Properties": "<b>Calculate Statistics</b>، ثم تحقق من الأدنى/الأعلى في Properties", "Symbology stretch to spot extreme values": "تمديد الترميز (Symbology stretch) لرصد القيم المتطرفة", "Layer Properties → <b>Information</b> (CRS, data type, NoData)": "Layer Properties ← <b>Information</b> (نظام الإحداثيات، نوع البيانات، NoData)", "Processing → <b>Raster layer statistics</b> for min/max": "Processing ← <b>Raster layer statistics</b> للأدنى/الأعلى", "Voids and tile edges": "الفراغات وحواف الـtiles", "Completeness → omission (void area) · Positional accuracy → relative (edge steps)": "الاكتمال ← الإغفال (مساحة الفراغات) · الدقة الموضعية ← النسبية (درجات الحواف)", "Example: 0 voids > 4 cells inside the AOI; edge steps ≤ 0.5 m": "مثال: 0 فراغات أكبر من 4 خلايا داخل منطقة الاهتمام؛ درجات الحواف ≤ 0.5 م", "No <b>voids</b> (NoData) inside the AOI": "لا <b>فراغات</b> (NoData) داخل منطقة الاهتمام", "No <b>steps</b> where tiles meet: heights continue smoothly across edges": "لا <b>درجات</b> حيث تلتقي الـtiles: الارتفاعات تستمر بسلاسة عبر الحواف", "<b>Raster Calculator</b>: <code>IsNull(\"dtm\")</code> → <b>Raster to Polygon</b> to map voids": "<b>Raster Calculator</b>: <code>IsNull(\"dtm\")</code> ← <b>Raster to Polygon</b> لرسم الفراغات", "<b>Mosaic To New Raster</b>, then <b>Hillshade</b>: tile-edge steps show as straight lines": "<b>Mosaic To New Raster</b>، ثم <b>Hillshade</b>: تظهر درجات حواف الـtiles خطوطًا مستقيمة", "Raster Calculator on the NoData mask → <b>Polygonize</b>": "Raster Calculator على قناع NoData ← <b>Polygonize</b>", "<b>Build Virtual Raster</b> + <b>Hillshade</b> to see edge steps": "<b>Build Virtual Raster</b> + <b>Hillshade</b> لرؤية درجات الحواف", "Spikes and pits (blunders)": "النتوءات والحفر (الأخطاء الجسيمة)", "Thematic accuracy → quantitative attribute accuracy · count of blunders": "الدقة الموضوعية ← دقة السمات الكمية · عدد الأخطاء الجسيمة", "Example: 0 confirmed blunders larger than 5 m": "مثال: 0 أخطاء جسيمة مؤكدة أكبر من 5 م", "Isolated cells much <b>higher or lower</b> than their neighbours (matching errors, water glint, birds)": "خلايا منفردة <b>أعلى أو أدنى</b> بكثير من جيرانها (أخطاء مطابقة، لمعان الماء، طيور)", "Found by comparing each cell with a <b>local median</b>": "تُرصد بمقارنة كل خلية مع <b>الوسيط المحلي</b>", "Confirm each candidate on the hillshade before calling it an error": "أكّد كل حالة مرشحة على تظليل التضاريس قبل اعتبارها خطأ", "<b>Focal Statistics</b> (rectangle 5×5, MEDIAN)": "<b>Focal Statistics</b> (مستطيل 5×5، MEDIAN)", "<b>Raster Calculator</b>: <code>Abs(\"dtm\" - \"dtm_med\") &gt; 5</code>": "<b>Raster Calculator</b>: <code>Abs(\"dtm\" - \"dtm_med\") &gt; 5</code>", "<b>Raster to Polygon</b> → review layer": "<b>Raster to Polygon</b> ← طبقة المراجعة", "Processing → GRASS <b>r.neighbors</b> (method: median, size 5)": "Processing ← <b>r.neighbors</b> من GRASS (الطريقة: الوسيط، الحجم 5)", "Raster Calculator for the absolute difference": "Raster Calculator لحساب الفرق المطلق", "<b>Polygonize</b> the result": "نفّذ <b>Polygonize</b> على النتيجة", "Terrain logic": "منطق التضاريس", "Logical consistency · Thematic accuracy · lakes not flat, bridges not removed": "الاتساق المنطقي · الدقة الموضوعية · بحيرات غير مستوية، وجسور لم تُزَل", "Example: lake height range ≤ 0.1 m": "مثال: مدى ارتفاع البحيرة ≤ 0.1 م", "<b>DTM</b>: buildings, trees and vehicles removed": "<b>DTM</b>: المباني والأشجار والمركبات مُزالة", "<b>DTM</b>: bridges removed, so rivers are not dammed": "<b>DTM</b>: الجسور مُزالة، فلا تُسدّ الأنهار", "<b>Water</b>: lakes flat, rivers always flowing downhill": "<b>المياه</b>: البحيرات مستوية، والأنهار تنحدر دائمًا", "<b>DSM</b>: buildings present with sharp edges": "<b>DSM</b>: المباني موجودة بحواف حادة", "<b>Hillshade</b> and <b>Contour</b> for visual review of sampled tiles": "<b>Hillshade</b> و<b>Contour</b> للمراجعة البصرية لـtiles المختارة في العينة", "<b>Zonal Statistics as Table</b> (statistic RANGE) with lake polygons: any range above a few cm means the lake is not flat": "<b>Zonal Statistics as Table</b> (الإحصاء RANGE) مع مضلعات البحيرات: أي مدى يتجاوز بضعة سنتيمترات يعني أن البحيرة غير مستوية", "<b>Profile graph</b> along river centrelines": "<b>Profile graph</b> على امتداد المحاور الوسطى للأنهار", "Hillshade and Contour": "Hillshade وContour", "<b>Zonal statistics</b> (range) with lake polygons": "<b>Zonal statistics</b> (المدى) مع مضلعات البحيرات", "<b>Elevation Profile</b> tool along rivers": "أداة <b>Elevation Profile</b> على امتداد الأنهار", "Vertical accuracy": "الدقة الرأسية", "Positional accuracy → gridded data positional accuracy (vertical) · RMSEz, LE90": "الدقة الموضعية ← الدقة الموضعية للبيانات الشبكية (رأسيًا) · RMSEz، LE90", "Example: LE90 ≤ 3 m in open terrain": "مثال: LE90 ≤ 3 م في الأرض المكشوفة", "Independent <b>GNSS check points</b> on open, flat ground (not under trees or next to buildings)": "<b>نقاط تحقق GNSS</b> مستقلة على أرض مكشوفة مستوية (لا تحت الأشجار ولا بجوار المباني)", "Read the DEM height at each point; <b>dz = DEM − check point</b>": "اقرأ ارتفاع نموذج الارتفاع عند كل نقطة؛ <b>dz = نموذج الارتفاع − نقطة التحقق</b>", "Compute <b>RMSEz</b> and <b>LE90</b>; report open ground and vegetated areas separately if the specification asks": "احسب <b>RMSEz</b> و<b>LE90</b>؛ وأبلغ عن الأرض المكشوفة والمناطق النباتية كلٌّ على حدة إن طلبت المواصفة", "<b>Extract Values to Points</b> (DEM value at each check point)": "<b>Extract Values to Points</b> (قيمة نموذج الارتفاع عند كل نقطة تحقق)", "<b>Calculate Field</b>: dz = RASTERVALU − Z_ref": "<b>Calculate Field</b>: dz = RASTERVALU − Z_ref", "Processing → <b>Sample raster values</b>": "Processing ← <b>Sample raster values</b>", "Field calculator for dz": "حاسبة الحقول لحساب dz", "Accept the lot only if <b>every</b> check passes; for sampled checks, defective tiles must be at or below the acceptance number (Ac)": "اقبل الدفعة فقط إذا نجح <b>كل</b> فحص؛ وفي الفحوص بالعينة يجب أن تكون الـtiles المعيبة عند رقم القبول (Ac) أو دونه", "Topographic vector data": "البيانات الطبوغرافية المتجهية", "Vector · points, lines, polygons": "متجهية · نقاط، خطوط، مضلعات", "File geodatabase or GeoPackage": "File geodatabase أو GeoPackage", "Digitised from orthoimagery and field data: roads, buildings, hydrography, points of interest": "مرسومة من الصور المصححة والبيانات الميدانية: الطرق والمباني والمسطحات المائية ونقاط الاهتمام", "features or grid cells": "المعالم أو خلايا الشبكة", "Schema check": "فحص المخطط (Schema)", "Logical consistency → conceptual and format consistency": "الاتساق المنطقي ← الاتساق المفاهيمي واتساق الصيغة", "Example: 100% match with the specified schema": "مثال: مطابقة 100% للمخطط المحدد", "All expected <b>feature classes</b> are present (e.g. roads, buildings, water lines, water areas, points of interest)": "كل <b>فئات المعالم</b> المتوقعة موجودة (مثل الطرق والمباني وخطوط المياه والمسطحات المائية ونقاط الاهتمام)", "Every <b>field</b> exists with the right type and length (per the ISO 19110 feature catalogue)": "كل <b>حقل</b> موجود بالنوع والطول الصحيحين (وفق كتالوج المعالم ISO 19110)", "<b>Coded-value domains</b> and subtypes match the specification": "<b>نطاقات القيم المرمّزة</b> والأنواع الفرعية مطابقة للمواصفة", "All layers share one <b>CRS</b>": "كل الطبقات تشترك في <b>نظام إحداثيات</b> واحد", "<b>Generate Schema Report</b> on the delivery and on your template; compare": "<b>Generate Schema Report</b> على التسليم وعلى قالبك، ثم قارن", "<b>Feature Compare</b> / <b>Table Compare</b> (schema only) against the template geodatabase": "<b>Feature Compare</b> / <b>Table Compare</b> (المخطط فقط) مقابل قاعدة البيانات القالب", "Data Design → <b>Domains</b> view to check coded values": "Data Design ← عرض <b>Domains</b> للتحقق من القيم المرمّزة", "Browser → expand the GeoPackage to list layers": "Browser ← وسّع GeoPackage لسرد الطبقات", "Layer Properties → <b>Fields</b>": "Layer Properties ← <b>Fields</b>", "Processing → <b>Refactor fields</b> to see types side by side with a template": "Processing ← <b>Refactor fields</b> لرؤية الأنواع جنبًا إلى جنب مع قالب", "Geometry and topology (every feature)": "الهندسة والطوبولوجيا (كل معلم)", "Logical consistency → topological consistency · errors per rule, per 1,000 features": "الاتساق المنطقي ← الاتساق الطوبولوجي · الأخطاء لكل قاعدة، لكل 1,000 معلم", "Example: 0 invalid geometries; 0 building overlaps": "مثال: 0 أشكال هندسية غير صالحة؛ 0 تداخلات بين المباني", "<b>Invalid geometry</b>: self-intersections, empty or null shapes": "<b>هندسة غير صالحة</b>: تقاطع ذاتي، أو أشكال فارغة أو خالية", "Buildings <b>must not overlap</b>": "المباني <b>يجب ألا تتداخل</b>", "Roads <b>connect</b>: no dangles, undershoots or overshoots": "الطرق <b>متصلة</b>: لا أطراف معلّقة، ولا قِصَر، ولا تجاوز", "<b>No gaps or slivers</b> where polygons must cover an area": "<b>لا فجوات ولا شرائح رفيعة</b> حيث يجب أن تغطي المضلعات مساحة كاملة", "<b>Duplicates</b> and features below the <b>minimum size</b>": "<b>التكرارات</b> والمعالم الأصغر من <b>الحد الأدنى للحجم</b>", "<b>Check Geometry</b> (report only; repair later) on every feature class": "<b>Check Geometry</b> (تقرير فقط؛ الإصلاح لاحقًا) على كل فئة معالم", "Create a geodatabase <b>Topology</b> with rules: <i>Must Not Overlap</i> (buildings), <i>Must Not Have Dangles</i> (roads), <i>Must Not Have Gaps</i>, <i>Must Not Self-Intersect</i> → <b>Validate Topology</b> → <b>Error Inspector</b>": "أنشئ <b>Topology</b> في قاعدة البيانات بقواعد: <i>Must Not Overlap</i> (المباني)، و<i>Must Not Have Dangles</i> (الطرق)، و<i>Must Not Have Gaps</i>، و<i>Must Not Self-Intersect</i> ← <b>Validate Topology</b> ← <b>Error Inspector</b>", "<b>Data Reviewer</b> checks: Duplicate Feature, Invalid Geometry, Polygon Area": "فحوص <b>Data Reviewer</b>: Duplicate Feature، Invalid Geometry، Polygon Area", "Processing → <b>Check validity</b>": "Processing ← <b>Check validity</b>", "<b>Topology Checker</b> plugin: must not overlap, must not have dangles, must not have gaps, must not have duplicates": "إضافة <b>Topology Checker</b>: يجب ألا تتداخل، يجب ألا تكون لها أطراف معلّقة، يجب ألا تكون بها فجوات، يجب ألا تكون مكررة", "<b>Geometry Checker</b> for slivers and small features": "<b>Geometry Checker</b> للشرائح الرفيعة والمعالم الصغيرة", "Attributes and domains": "السمات والنطاقات", "Logical consistency → domain consistency · Thematic accuracy → non-quantitative attribute correctness": "الاتساق المنطقي ← اتساق النطاق · الدقة الموضوعية ← صحة السمات غير الكمية", "Example: 0 values outside domains; mandatory fields 100% filled": "مثال: 0 قيم خارج النطاقات؛ الحقول الإلزامية ممتلئة 100%", "Values within their <b>coded domains</b> (e.g. road class, surface type)": "القيم ضمن <b>نطاقاتها المرمّزة</b> (مثل فئة الطريق ونوع السطح)", "<b>Mandatory</b> attributes filled (no NULL names on named roads)": "السمات <b>الإلزامية</b> ممتلئة (لا أسماء NULL للطرق المسماة)", "Plausible numbers (building height &gt; 0, lanes 1–8)": "أرقام معقولة (ارتفاع المبنى &gt; 0، الحارات 1–8)", "Consistent combinations (a bridge flag where a road crosses water)": "تركيبات متسقة (علامة جسر حيث يعبر الطريق الماء)", "<b>Select By Attributes</b>: <code>road_class NOT IN (…)</code> or <code>name IS NULL</code>": "<b>Select By Attributes</b>: <code>road_class NOT IN (…)</code> أو <code>name IS NULL</code>", "<b>Attribute Rules</b> (validation type) → <b>Evaluate Rules</b>": "<b>Attribute Rules</b> (من نوع التحقق) ← <b>Evaluate Rules</b>", "Data Reviewer: <b>Domain</b> and <b>Regular Expression</b> checks": "Data Reviewer: فحوص <b>Domain</b> و<b>Regular Expression</b>", "<b>Select by expression</b>: <code>\"road_class\" NOT IN ('primary','secondary','track')</code>": "<b>Select by expression</b>: <code>\"road_class\" NOT IN ('primary','secondary','track')</code>", "Processing → <b>Basic statistics for fields</b>": "Processing ← <b>Basic statistics for fields</b>", "Statistics panel for min/max and NULL counts": "لوحة Statistics للأدنى/الأعلى وأعداد NULL", "Completeness and classification against imagery": "الاكتمال والتصنيف مقابل الصور", "Completeness → omission, commission · Thematic accuracy → classification correctness": "الاكتمال ← الإغفال، الزيادة · الدقة الموضوعية ← صحة التصنيف", "Example: omission ≤ 2%, commission ≤ 1%, AQL 1.0": "مثال: الإغفال ≤ 2%، الزيادة ≤ 1%، AQL 1.0", "Overlay the vectors on the orthoimage in <b>randomly sampled grid cells</b>": "اعرض المتجهات فوق الصورة المصححة في <b>خلايا شبكة مختارة عشوائيًا</b>", "Count <b>omissions</b> (real features not captured) and <b>commissions</b> (captured features that do not exist)": "عُدّ <b>الإغفالات</b> (معالم حقيقية لم تُرسم) و<b>الزيادات</b> (معالم مرسومة غير موجودة)", "Check <b>classification</b> on the same sample (paved vs unpaved road, building vs shed)": "تحقق من <b>التصنيف</b> على العينة نفسها (طريق معبّد مقابل غير معبّد، مبنى مقابل مظلة)", "<b>Generate Tessellation</b> (e.g. 500 m squares) → <b>Subset Features</b> (sample size from the calculator)": "<b>Generate Tessellation</b> (مثل مربعات 500 م) ← <b>Subset Features</b> (حجم العينة من الحاسبة)", "Review each cell with the ortho; log each defect as a point in the review layer (type: omission, commission, wrong class)": "راجع كل خلية مع الصورة المصححة؛ وسجّل كل عيب نقطةً في طبقة المراجعة (النوع: إغفال، زيادة، تصنيف خاطئ)", "<b>Create Grid</b> → <b>Random selection</b>": "<b>Create Grid</b> ← <b>Random selection</b>", "Print Layout <b>Atlas</b> over the selected cells; digitise defects into the review GeoPackage": "<b>Atlas</b> في Print Layout على الخلايا المختارة؛ وارسم العيوب في GeoPackage المراجعة", "Positional accuracy → absolute and relative accuracy · RMSE, CE90": "الدقة الموضعية ← الدقة المطلقة والنسبية · RMSE، CE90", "Example: CE90 ≤ 4.5 m": "مثال: CE90 ≤ 4.5 م", "<b>Absolute</b>: well-defined points (building corners, road intersections) against GNSS check points": "<b>مطلقة</b>: نقاط محددة جيدًا (زوايا المباني، تقاطعات الطرق) مقابل نقاط تحقق GNSS", "<b>Relative</b>: shapes kept (straight walls, right angles, correct distances)": "<b>نسبية</b>: الأشكال محفوظة (جدران مستقيمة، زوايا قائمة، مسافات صحيحة)", "<b>Edge matching</b>: features line up across sheet or tile boundaries": "<b>مطابقة الحواف</b>: المعالم متصلة عبر حدود اللوحات أو الـtiles", "<b>Generate Near Table</b> (with location) from check points to building corners": "<b>Generate Near Table</b> (مع الموقع) من نقاط التحقق إلى زوايا المباني", "<b>Edgematch Features</b> or a visual check along tile boundaries": "<b>Edgematch Features</b> أو فحص بصري على امتداد حدود الـtiles", "Processing → <b>Join attributes by nearest</b> (gives the distance)": "Processing ← <b>Join attributes by nearest</b> (يعطي المسافة)", "Snapping check along tile edges": "فحص الالتقاط (Snapping) على امتداد حواف الـtiles", "Accept the lot only if <b>every</b> check passes; for sampled checks, defective features or cells must be at or below the acceptance number (Ac)": "اقبل الدفعة فقط إذا نجح <b>كل</b> فحص؛ وفي الفحوص بالعينة يجب أن تكون المعالم أو الخلايا المعيبة عند رقم القبول (Ac) أو دونه", "Land cover map": "خريطة الغطاء الأرضي", "Raster (integer class codes) or polygons": "نقطية (رموز فئات صحيحة) أو مضلعات", "GeoTIFF or GeoPackage": "GeoTIFF أو GeoPackage", "Classified satellite imagery (e.g. Sentinel-2 or very high resolution)": "صور أقمار صناعية مصنّفة (مثل Sentinel-2 أو عالية الدقة جدًا)", "sample points": "نقاط العينة", "Legend and class codes": "مفتاح الخريطة ورموز الفئات", "Logical consistency → domain consistency": "الاتساق المنطقي ← اتساق النطاق", "Example: 0 cells with codes outside the legend": "مثال: 0 خلايا برموز خارج مفتاح الخريطة", "Every class code is in the <b>legend</b>; no unknown or unclassified values": "كل رمز فئة موجود في <b>مفتاح الخريطة</b>؛ لا قيم مجهولة أو غير مصنّفة", "<b>Minimum mapping unit</b> is stated and respected": "<b>أصغر وحدة رسم</b> مذكورة ومُراعاة", "Imagery <b>reference date</b> is recorded in the metadata": "<b>تاريخ مرجع</b> الصور مسجّل في البيانات الوصفية", "Symbology → <b>Unique Values</b> lists every code present": "Symbology ← <b>Unique Values</b> يسرد كل الرموز الموجودة", "<b>Build Raster Attribute Table</b>, then <b>Tabulate Area</b> for class totals": "<b>Build Raster Attribute Table</b>، ثم <b>Tabulate Area</b> لمجاميع الفئات", "Processing → <b>Raster layer unique values report</b>": "Processing ← <b>Raster layer unique values report</b>", "Paletted/Unique values symbology": "ترميز Paletted/Unique values", "Noise and spatial logic": "الضوضاء والمنطق المكاني", "Logical consistency · Thematic accuracy": "الاتساق المنطقي · الدقة الموضوعية", "Example: no patches smaller than the minimum mapping unit": "مثال: لا بقع أصغر من أصغر وحدة رسم", "<b>Salt-and-pepper</b> noise: isolated pixels below the minimum mapping unit": "ضوضاء <b>الملح والفلفل</b>: بكسلات منفردة أصغر من أصغر وحدة رسم", "Impossible combinations: water on steep slopes, cropland inside dense urban cores": "تركيبات مستحيلة: مياه على منحدرات شديدة، وأراضٍ زراعية داخل مراكز حضرية كثيفة", "Class boundaries continue across tile and scene edges": "حدود الفئات تستمر عبر حواف الـtiles والمشاهد", "<b>Region Group</b> → <b>Zonal Geometry</b> to find patches below the minimum size": "<b>Region Group</b> ← <b>Zonal Geometry</b> لإيجاد البقع الأصغر من الحد الأدنى", "<b>Slope</b> + <b>Combine</b> with land cover to find water on slopes above 10°": "<b>Slope</b> + <b>Combine</b> مع الغطاء الأرضي لإيجاد المياه على منحدرات تزيد على 10°", "<b>Raster → Analysis → Sieve</b> (run on a copy and compare counts; don't overwrite before reporting)": "<b>Raster ← Analysis ← Sieve</b> (نفّذه على نسخة وقارن الأعداد؛ لا تستبدل الأصل قبل التقرير)", "Raster Calculator for class/slope combinations": "Raster Calculator لتركيبات الفئة/الانحدار", "Reference sample design": "تصميم العينة المرجعية", "Metaquality → representativity": "جودة الجودة ← التمثيلية", "Example: at least 50 points per class": "مثال: 50 نقطة على الأقل لكل فئة", "<b>Stratified random</b> sample by class, so rare classes get enough points (e.g. at least 50 per class)": "عينة <b>عشوائية طبقية</b> حسب الفئة، لتنال الفئات النادرة نقاطًا كافية (مثل 50 على الأقل لكل فئة)", "Reference labels from higher-resolution imagery or field visits": "وسوم مرجعية من صور أعلى دقة أو زيارات ميدانية", "Interpret <b>blind</b>: the checker does not see the map class while labelling": "التفسير <b>المُعمّى</b>: لا يرى المراجع فئة الخريطة أثناء الوسم", "<b>Create Accuracy Assessment Points</b> (sampling: stratified random)": "<b>Create Accuracy Assessment Points</b> (المعاينة: عشوائية طبقية)", "Label the GrndTruth field, then <b>Update Accuracy Assessment Points</b>": "املأ حقل GrndTruth، ثم <b>Update Accuracy Assessment Points</b>", "<b>AcATaMa</b> plugin: sampling design and blind response labelling": "إضافة <b>AcATaMa</b>: تصميم المعاينة والوسم المُعمّى للاستجابة", "Thematic accuracy": "الدقة الموضوعية", "Thematic accuracy → classification correctness · overall, user's and producer's accuracy": "الدقة الموضوعية ← صحة التصنيف · الدقة الكلية ودقة المستخدم ودقة المنتج", "Example: overall ≥ 85%, every class ≥ 70%": "مثال: الكلية ≥ 85%، وكل فئة ≥ 70%", "Build the <b>confusion matrix</b>: map class against reference class": "ابنِ <b>مصفوفة الالتباس</b>: فئة الخريطة مقابل الفئة المرجعية", "<b>Overall accuracy</b>, plus <b>user's</b> and <b>producer's accuracy</b> for each class": "<b>الدقة الكلية</b>، إضافة إلى <b>دقة المستخدم</b> و<b>دقة المنتج</b> لكل فئة", "Kappa or F1 if the specification asks": "معامل كابا أو F1 إن طلبت المواصفة", "<b>Compute Confusion Matrix</b> from the updated assessment points": "<b>Compute Confusion Matrix</b> من نقاط التقييم المحدّثة", "<b>AcATaMa</b> → Accuracy assessment": "<b>AcATaMa</b> ← Accuracy assessment", "Open the confusion matrix calculator": "افتح حاسبة مصفوفة الالتباس", "Accept the lot only if <b>every</b> check passes; for sampled checks, defective sample points must be at or below the acceptance number (Ac)": "اقبل الدفعة فقط إذا نجح <b>كل</b> فحص؛ وفي الفحوص بالعينة يجب أن تكون نقاط العينة المعيبة عند رقم القبول (Ac) أو دونه", "NoData hole": "ثغرة NoData", "A patch with no image data inside the area. Users see a black hole; anything underneath cannot be mapped.": "بقعة بلا بيانات صورة داخل المنطقة. يرى المستخدمون ثقبًا أسود، ولا يمكن رسم أي شيء تحته.", "Cloud cover": "غطاء الغيوم", "Cloud or haze hides the ground. Features under it cannot be mapped or checked.": "الغيوم أو الضباب تحجب الأرض. لا يمكن رسم المعالم تحتها ولا فحصها.", "Colour jump between tiles": "قفزة لونية بين الـtiles", "Neighbouring tiles or scenes have different colour balance, so the same surface looks different and a visible line appears.": "الـtiles أو المشاهد المتجاورة مختلفة في توازن الألوان، فيبدو السطح نفسه مختلفًا ويظهر خط واضح.", "Seamline through a building": "خط وصل يقطع مبنى", "The join between two scenes cuts a building, so its two halves do not line up.": "الوصلة بين مشهدين تقطع مبنى، فلا يتطابق نصفاه.", "Leaning building": "مبنى مائل", "A tall building leans away from its footprint because it was not fully orthorectified. The roof sits away from where the walls meet the ground.": "مبنى عالٍ يميل بعيدًا عن بصمته لأنه لم يُصحَّح تصحيحًا تعامديًا كاملًا. يقع السقف بعيدًا عن موضع التقاء الجدران بالأرض.", "Void": "فراغ", "Cells with no height value, usually over water, shadows or dense vegetation where matching failed.": "خلايا بلا قيمة ارتفاع، غالبًا فوق الماء أو الظلال أو النباتات الكثيفة حيث فشلت المطابقة.", "Step at tile edge": "درجة عند حافة الـtile", "Heights jump where two tiles meet, creating a false cliff.": "قفزة في الارتفاعات حيث يلتقي اثنان من الـtiles، فتنشأ جرف زائف.", "Spike": "نتوء", "A single cell far higher than its neighbours, usually a matching error.": "خلية منفردة أعلى بكثير من جيرانها، غالبًا بسبب خطأ مطابقة.", "Pit": "حفرة", "A single cell far lower than its neighbours. It can trap water in flow models.": "خلية منفردة أدنى بكثير من جيرانها. قد تحبس الماء في نماذج الجريان.", "Bridge left in the DTM": "جسر باقٍ في DTM", "The bridge deck stays in the bare-earth model and acts like a dam across the river.": "تبقى أرضية الجسر في نموذج سطح الأرض العاري فتعمل كسد عبر النهر.", "Lake not flat": "بحيرة غير مستوية", "The water surface should be one height; noise makes it rise and fall.": "يجب أن يكون سطح الماء بارتفاع واحد؛ والضوضاء تجعله يرتفع وينخفض.", "Overlapping buildings": "مبانٍ متداخلة", "Two building polygons share area, so areas and counts are wrong.": "مضلعا مبنيين يشتركان في مساحة، فتصبح المساحات والأعداد خاطئة.", "Undershoot (dangle)": "قِصَر (طرف معلّق)", "A road stops just short of the road it should join, breaking the network for routing.": "طريق يتوقف قبيل الطريق الذي يجب أن يتصل به، فتنقطع الشبكة عن التوجيه.", "Overshoot": "تجاوز", "A road continues past the junction it should end at.": "طريق يستمر بعد التقاطع الذي يجب أن ينتهي عنده.", "Gap or sliver": "فجوة أو شريحة رفيعة", "A thin empty strip between polygons that should share a boundary.": "شريط فارغ رفيع بين مضلعات يجب أن تتشارك حدًا واحدًا.", "Self-intersection": "تقاطع ذاتي", "A polygon crosses itself, so its area and shape are invalid.": "مضلع يتقاطع مع نفسه، فتصبح مساحته وشكله غير صالحين.", "Duplicate feature": "معلم مكرر", "The same feature captured twice, so counts and statistics are inflated.": "المعلم نفسه مرسوم مرتين، فتتضخم الأعداد والإحصاءات.", "Omission": "الإغفال", "A building visible in the image was not captured.": "مبنى ظاهر في الصورة لم يُرسم.", "Wrong classification": "تصنيف خاطئ", "The feature is captured but given the wrong class, for example a dirt track recorded as a primary road.": "المعلم مرسوم لكن بفئة خاطئة، مثل طريق ترابي مسجّل طريقًا رئيسيًا.", "Displaced feature": "معلم مُزاح", "The outline does not sit on the real object in the image.": "الحدود لا تقع على الجسم الحقيقي في الصورة.", "Salt-and-pepper noise": "ضوضاء الملح والفلفل", "Isolated pixels of a different class, smaller than the minimum mapping unit.": "بكسلات منفردة من فئة مختلفة، أصغر من أصغر وحدة رسم.", "Misclassified surface": "سطح مصنّف خطأً", "A surface given an impossible class, for example a dark roof labelled as water.": "سطح أُعطي فئة مستحيلة، مثل سقف داكن موسوم على أنه ماء.", "Completeness": "الاكتمال", "Is everything that should be there present, and nothing extra?": "هل كل ما يجب أن يكون موجودًا حاضر، ولا شيء زائد؟", "Real-world items missing from the data.": "عناصر من الواقع مفقودة من البيانات.", "A building visible in the orthoimage but not digitised; a void in a DEM.": "مبنى ظاهر في الصورة المصححة لكنه غير مرسوم؛ فراغ في نموذج ارتفاع.", "Commission": "الزيادة", "Items in the data that should not be there.": "عناصر في البيانات لا يجب أن تكون فيها.", "A demolished building still in the data; a duplicate road.": "مبنى مهدوم ما زال في البيانات؛ طريق مكرر.", "Logical consistency": "الاتساق المنطقي", "Does the data obey its own rules?": "هل تلتزم البيانات بقواعدها الخاصة؟", "Conceptual consistency": "الاتساق المفاهيمي", "Data follows the conceptual schema (feature types, relationships).": "البيانات تتبع المخطط المفاهيمي (أنواع المعالم والعلاقات).", "A water line stored in the roads feature class.": "خط مياه مخزّن في فئة معالم الطرق.", "Domain consistency": "اتساق النطاق", "Values fall within allowed lists or ranges.": "القيم تقع ضمن القوائم أو النطاقات المسموحة.", "A road class code not in the domain; a land cover code not in the legend.": "رمز فئة طريق غير موجود في النطاق؛ رمز غطاء أرضي غير موجود في مفتاح الخريطة.", "Format consistency": "اتساق الصيغة", "Data is stored in the specified physical structure.": "البيانات مخزّنة بالبنية الفعلية المحددة.", "A 16-bit tile in an 8-bit delivery; wrong CRS on one layer.": "tile 16 بت في تسليم بـ8 بت؛ نظام إحداثيات خاطئ في طبقة واحدة.", "Topological consistency": "الاتساق الطوبولوجي", "Geometric relationships are correct.": "العلاقات الهندسية صحيحة.", "Overlapping buildings, road dangles, polygon gaps.": "مبانٍ متداخلة، وأطراف طرق معلّقة، وفجوات بين المضلعات.", "Is each thing in the right place?": "هل كل شيء في مكانه الصحيح؟", "Absolute (external)": "المطلقة (الخارجية)", "Closeness of coordinates to true positions.": "قرب الإحداثيات من المواقع الحقيقية.", "Building corners vs GNSS check points: RMSE, CE90.": "زوايا المباني مقابل نقاط تحقق GNSS: ‏RMSE، CE90.", "Relative (internal)": "النسبية (الداخلية)", "Correct positions of features relative to each other.": "صحة مواقع المعالم بالنسبة إلى بعضها.", "Straight walls and right angles kept; edges match across tiles.": "الجدران المستقيمة والزوايا القائمة محفوظة؛ والحواف متطابقة عبر الـtiles.", "Gridded data positional accuracy": "الدقة الموضعية للبيانات الشبكية", "Closeness of grid cell positions to true positions.": "قرب مواقع خلايا الشبكة من المواقع الحقيقية.", "Ortho or DEM check points: CE90, LE90.": "نقاط تحقق الصورة المصححة أو نموذج الارتفاع: CE90، LE90.", "Is each thing correctly described?": "هل كل شيء موصوف وصفًا صحيحًا؟", "Classification correctness": "صحة التصنيف", "Items assigned to the right class.": "العناصر مُسندة إلى الفئة الصحيحة.", "Land cover confusion matrix; a track recorded as a primary road.": "مصفوفة التباس الغطاء الأرضي؛ طريق ترابي مسجّل طريقًا رئيسيًا.", "Non-quantitative attribute correctness": "صحة السمات غير الكمية", "Descriptive attributes are right.": "السمات الوصفية صحيحة.", "Wrong surface type or road name.": "نوع سطح أو اسم طريق خاطئ.", "Quantitative attribute accuracy": "دقة السمات الكمية", "Numeric attributes are close to true values.": "السمات الرقمية قريبة من القيم الحقيقية.", "DEM heights, building heights, road widths.": "ارتفاعات نموذج الارتفاع، وارتفاعات المباني، وعروض الطرق.", "Temporal quality": "الجودة الزمنية", "Is the time information right?": "هل المعلومات الزمنية صحيحة؟", "Accuracy of a time measurement": "دقة القياس الزمني", "Recorded dates are correct.": "التواريخ المسجلة صحيحة.", "Wrong acquisition date in the ortho metadata.": "تاريخ التقاط خاطئ في البيانات الوصفية للصورة المصححة.", "Temporal consistency": "الاتساق الزمني", "Events are in the right order.": "الأحداث بالترتيب الصحيح.", "Demolition date before construction date.": "تاريخ الهدم قبل تاريخ الإنشاء.", "Temporal validity": "الصلاحية الزمنية", "Dates are within valid ranges.": "التواريخ ضمن النطاقات الصالحة.", "Capture date in the future.": "تاريخ التقاط في المستقبل.", "Usability": "قابلية الاستخدام", "Is it fit for a specific use?": "هل هي صالحة لاستخدام محدد؟", "Usability element": "عنصر قابلية الاستخدام", "A judgement of fitness for a named purpose.": "حكم على الصلاحية لغرض مسمّى.", "Cloud cover too high for building extraction, even if all other checks pass.": "غطاء غيوم مرتفع جدًا لاستخراج المباني، حتى لو نجحت كل الفحوص الأخرى."};
+const t_=s=>TR[s]??s;
+Object.values(PH).forEach(v=>{v[1]=t_(v[1]);});
+Object.values(P).forEach(p=>{['name','type','formats','source','unit'].forEach(k=>p[k]=t_(p[k]));
+ p.steps.forEach(s=>{s.t=t_(s.t);s.iso=t_(s.iso);s.tol=t_(s.tol);['what','arc','qgis'].forEach(k=>s[k]=s[k].map(t_));if(s.calc)s.calc=[s.calc[0],t_(s.calc[1])];});});
+Object.values(ERR).forEach(v=>{v[0]=t_(v[0]);v[1]=t_(v[1]);});
+
+/* ============ product icons ============ */
+const ICON={
+ ortho:`<svg viewBox="0 0 56 42"><rect width="56" height="42" fill="var(--img1)"/><path d="M0 30 C20 24 36 34 56 26 V42 H0Z" fill="var(--img2)"/><rect x="10" y="8" width="12" height="9" fill="var(--roof)"/><rect x="30" y="12" width="10" height="8" fill="var(--roof)"/><path d="M0 24 H56" stroke="var(--road)" stroke-width="2"/></svg>`,
+ dem:`<svg viewBox="0 0 56 42"><rect width="56" height="42" fill="var(--soft)"/><path d="M0 34 L12 22 L22 28 L34 10 L46 24 L56 18 V42 H0Z" fill="var(--dem2)"/><path d="M0 34 L12 22 L22 28 L34 10 L46 24 L56 18" fill="none" stroke="var(--ink2)" stroke-width="1.5"/></svg>`,
+ vector:`<svg viewBox="0 0 56 42"><rect width="56" height="42" fill="var(--soft)"/><path d="M0 28 H56 M30 0 V42" stroke="var(--road)" stroke-width="2.5"/><rect x="6" y="6" width="14" height="12" fill="none" stroke="var(--ink)" stroke-width="1.5"/><rect x="36" y="32" width="12" height="7" fill="none" stroke="var(--ink)" stroke-width="1.5"/><path d="M36 4 C42 10 48 8 54 14" stroke="var(--water)" stroke-width="2" fill="none"/></svg>`,
+ lc:`<svg viewBox="0 0 56 42"><rect width="28" height="21" fill="var(--veg)"/><rect x="28" width="28" height="21" fill="var(--roof)"/><rect y="21" width="20" height="21" fill="var(--water)"/><rect x="20" y="21" width="36" height="21" fill="var(--img2)"/></svg>`
+};
+
+/* ============ render workflow ============ */
+let cur='ortho', stepIdx=0;
+function renderProducts(){
+  $('products').innerHTML=Object.entries(P).map(([k,p])=>`<button class="prod" data-p="${k}" aria-pressed="${k===cur}">${ICON[p.icon]}<span><b>${p.name}</b><span>${p.type}</span></span></button>`).join('');
+  document.querySelectorAll('.prod').forEach(b=>b.onclick=()=>{cur=b.dataset.p;stepIdx=0;render();});
+}
+function render(){
+  const p=P[cur];
+  renderProducts();
+  $('facts').innerHTML=`<span class="fact"><b>نوع البيانات</b>${p.type}</span><span class="fact"><b>الصيغ</b>${p.formats}</span><span class="fact"><b>المصدر المعتاد</b>${p.source}</span>`;
+  $('phases').innerHTML='المراحل: '+Object.values(PH).map(([c,l])=>`<span class="ph"><i style="background:${c}"></i>${l}</span>`).join('');
+  $('steps').innerHTML=p.steps.map((s,i)=>`<button class="step" data-i="${i}" aria-current="${i===stepIdx}"><span class="n" style="background:${PH[s.ph][0]}">${i+1}</span><span><b>${s.t}</b><span class="tag">${PH[s.ph][1]}</span></span></button>`).join('');
+  document.querySelectorAll('.step').forEach(b=>b.onclick=()=>{stepIdx=+b.dataset.i;render();});
+  showStep();
+  $('gallery').innerHTML=p.errs.map(k=>`<button class="err" data-e="${k}" aria-pressed="false">${svg(k,ERR[k][0])}<b>${ERR[k][0]}</b><span>تُرصد في الخطوة ${p.steps.findIndex(s=>s.errs.includes(k))+1}</span></button>`).join('');
+  document.querySelectorAll('.err').forEach(b=>b.onclick=()=>showErr(b.dataset.e));
+  $('errinfo').innerHTML='';
+}
+function showStep(){
+  const p=P[cur], s=p.steps[stepIdx], c=PH[s.ph][0];
+  let h=`<p class="kick" style="color:${c}">الخطوة ${stepIdx+1} من ${p.steps.length} · ${PH[s.ph][1]}</p><h2>${s.t}</h2>
+  <h4>ماذا تفحص</h4><ul>${s.what.map(x=>`<li>${x}</li>`).join('')}</ul>
+  <h4>كيف تنفّذه</h4><div class="how"><div><h5>ArcGIS Pro</h5><ol>${s.arc.map(x=>`<li>${x}</li>`).join('')}</ol></div><div><h5>QGIS</h5><ol>${s.qgis.map(x=>`<li>${x}</li>`).join('')}</ol></div></div>`;
+  if(s.code) h+=`<h4>بالشيفرة · ${s.code.l}</h4><pre><code>${esc(s.code.c)}</code></pre>`;
+  h+=`<h4>مرجع الجودة</h4><div class="iso"><div><b>عنصر ISO 19157-1 ومقياسه</b>${s.iso}</div><div><b>التفاوت المسموح</b>${s.tol}</div></div>`;
+  if(s.errs.length) h+=`<h4>أخطاء ترصدها هذه الخطوة</h4><div class="errchips">${s.errs.map(k=>`<button class="errchip" data-e="${k}">${ERR[k][0]}</button>`).join('')}</div>`;
+  if(s.calc) h+=`<p style="margin-top:12px"><button class="linkbtn" data-calc="${s.calc[0]}">${s.calc[1]} ←</button></p>`;
+  h+=`<div class="nav"><button class="btn" data-mv="-1" ${stepIdx===0?'disabled':''}>→ السابق</button><button class="btn primary" data-mv="1" ${stepIdx===p.steps.length-1?'disabled':''}>الخطوة التالية ←</button></div>`;
+  $('detail').innerHTML=h;
+  $('detail').querySelectorAll('[data-mv]').forEach(b=>b.onclick=()=>{stepIdx+= +b.dataset.mv;render();$('detail').scrollIntoView({block:'nearest'});});
+  $('detail').querySelectorAll('[data-calc]').forEach(b=>b.onclick=()=>goCalc(b.dataset.calc));
+  $('detail').querySelectorAll('.errchip').forEach(b=>b.onclick=()=>{showErr(b.dataset.e);$('errinfo').scrollIntoView({block:'nearest',behavior:'smooth'});});
+}
+function showErr(k){
+  const p=P[cur], i=p.steps.findIndex(s=>s.errs.includes(k)), s=p.steps[i];
+  document.querySelectorAll('.err').forEach(b=>b.setAttribute('aria-pressed',b.dataset.e===k));
+  $('errinfo').innerHTML=`<div class="card" style="background:var(--soft);border:none"><h3 style="color:var(--bad)">${ERR[k][0]}</h3><p>${ERR[k][1]}</p><p class="small"><b>تُرصد في الخطوة ${i+1}:</b> ${s.t}. <b>عنصر ISO:</b> ${s.iso.split(' · ')[0]}.</p><button class="btn" id="goerr">افتح الخطوة ${i+1}</button></div>`;
+  $('goerr').onclick=()=>{stepIdx=i;showStep();document.querySelectorAll('.step').forEach(b=>b.setAttribute('aria-current',+b.dataset.i===i));$('detail').scrollIntoView({block:'nearest',behavior:'smooth'});};
+}
+render();
+
+/* ============ ISO elements ============ */
+const E_EN=[
+ ['Completeness','Is everything that should be there present, and nothing extra?',[['Omission','Real-world items missing from the data.','A building visible in the orthoimage but not digitised; a void in a DEM.'],['Commission','Items in the data that should not be there.','A demolished building still in the data; a duplicate road.']]],
+ ['Logical consistency','Does the data obey its own rules?',[['Conceptual consistency','Data follows the conceptual schema (feature types, relationships).','A water line stored in the roads feature class.'],['Domain consistency','Values fall within allowed lists or ranges.','A road class code not in the domain; a land cover code not in the legend.'],['Format consistency','Data is stored in the specified physical structure.','A 16-bit tile in an 8-bit delivery; wrong CRS on one layer.'],['Topological consistency','Geometric relationships are correct.','Overlapping buildings, road dangles, polygon gaps.']]],
+ ['Positional accuracy','Is each thing in the right place?',[['Absolute (external)','Closeness of coordinates to true positions.','Building corners vs GNSS check points: RMSE, CE90.'],['Relative (internal)','Correct positions of features relative to each other.','Straight walls and right angles kept; edges match across tiles.'],['Gridded data positional accuracy','Closeness of grid cell positions to true positions.','Ortho or DEM check points: CE90, LE90.']]],
+ ['Thematic accuracy','Is each thing correctly described?',[['Classification correctness','Items assigned to the right class.','Land cover confusion matrix; a track recorded as a primary road.'],['Non-quantitative attribute correctness','Descriptive attributes are right.','Wrong surface type or road name.'],['Quantitative attribute accuracy','Numeric attributes are close to true values.','DEM heights, building heights, road widths.']]],
+ ['Temporal quality','Is the time information right?',[['Accuracy of a time measurement','Recorded dates are correct.','Wrong acquisition date in the ortho metadata.'],['Temporal consistency','Events are in the right order.','Demolition date before construction date.'],['Temporal validity','Dates are within valid ranges.','Capture date in the future.']]],
+ ['Usability','Is it fit for a specific use?',[['Usability element','A judgement of fitness for a named purpose.','Cloud cover too high for building extraction, even if all other checks pass.']]]
+];
+const E=E_EN.map(([n,q,subs])=>[t_(n),t_(q),subs.map(s=>s.map(t_))]);
+$('elements').innerHTML=E.map(([n,q,subs])=>`<div class="card"><h3>${n}</h3><p class="small muted">${q}</p>${subs.map(([s,d,ex])=>`<details><summary>${s}</summary><p>${d}</p><p><b>مثال:</b> ${ex}</p></details>`).join('')}</div>`).join('');
+
+/* ============ ISO 2859-1 ============ */
+const LETTERS='ABCDEFGHJKLMNPQR'.split(''), SIZES=[2,3,5,8,13,20,32,50,80,125,200,315,500,800,1250,2000];
+const AQLS=[0.010,0.015,0.025,0.040,0.065,0.10,0.15,0.25,0.40,0.65,1.0,1.5,2.5,4.0,6.5,10];
+const LOTS=[8,15,25,50,90,150,280,500,1200,3200,10000,35000,150000,500000,Infinity];
+const T1={I:'AABCCDEFGHJKLMN',II:'ABCDEFGHJKLMNPQ',III:'BCDEFGHJKLMNPQR'};
+const PLAN={0:[0,1],3:[1,2],4:[2,3],5:[3,4],6:[5,6],7:[7,8],8:[10,11],9:[14,15],10:[21,22]};
+$('aql').innerHTML=AQLS.map((a,i)=>`<option value="${i}" ${a===1.0?'selected':''}>${a}</option>`).join('');
+function plan(lot,lvl,ai){const row=LOTS.findIndex(x=>lot<=x);let li=LETTERS.indexOf(T1[lvl][row]);const code=LETTERS[li];
+ for(let g=0;g<40;g++){const off=li+ai-14;if(PLAN[off])return{code,used:LETTERS[li],n:SIZES[li],ac:PLAN[off][0],re:PLAN[off][1]};
+  if(off<0||off===2){if(li<LETTERS.length-1)li++;else return null;}else{if(li>0)li--;else return null;}}return null;}
+function runAQL(){const lot=Math.max(2,Math.floor(+$('lot').value||0)),lvl=$('lvl').value,ai=+$('aql').value,found=Math.max(0,Math.floor(+$('found').value||0));
+ const p=plan(lot,lvl,ai);if(!p){['o-letter','o-n','o-ac','o-re'].forEach(i=>$(i).textContent='–');return;}
+ const full=p.n>=lot,n=full?lot:p.n;$('o-letter').textContent=p.used;$('o-n').textContent=n.toLocaleString();$('o-ac').textContent=p.ac;$('o-re').textContent=p.re;
+ const ok=found<=p.ac;
+ $('o-verdict').innerHTML=found>n?`<p class="verdict warn">راجع العدد<span>العيوب أكثر من العناصر المفحوصة.</span></p>`:`<p class="verdict ${ok?'ok':'bad'}">${ok?'اقبل الدفعة':'ارفض الدفعة'}<span>${found} معيبة من ${n.toLocaleString()} مفحوصة (اقبل إذا ≤ ${p.ac}).</span></p>`;
+ $('o-explain').innerHTML=`دفعة من ${lot.toLocaleString()} عند المستوى ${lvl} ← الحرف الرمزي <b>${p.code}</b>`+(p.used!==p.code?`؛ وعند AQL ${AQLS[ai]} يشير الجدول إلى الحرف <b>${p.used}</b>.`:'.')+(full?' العينة تبلغ حجم الدفعة: افحص كل عنصر.':'');}
+['lot','lvl','aql','found'].forEach(i=>$(i).addEventListener('input',runAQL));runAQL();
+
+/* ============ positional ============ */
+const EX=`0.8, -1.2, 0.4\n-1.5, 0.6, -0.9\n2.1, 1.4, 1.2\n-0.4, -2.2, -0.3\n1.1, 0.3, 0.8\n-2.0, 1.7, -1.4\n0.2, -0.5, 0.1\n1.6, -1.8, 1.0\n-0.9, 2.4, -0.6\n0.5, 0.9, 0.5\n-1.3, -0.7, -1.1\n2.4, -0.2, 1.6\n-0.6, 1.1, -0.2\n0.9, -2.6, 0.7\n-1.8, -1.0, -1.3\n1.3, 1.9, 0.9\n-0.1, -1.4, 0.0\n0.7, 0.4, 0.6\n-2.3, 0.8, -1.7\n1.9, -0.9, 1.3`;
+const f=x=>isFinite(x)?x.toFixed(2):'–';
+function runPos(){
+ const pts=$('res').value.split('\n').map(l=>l.trim()).filter(Boolean).map(l=>l.split(/[,;\s]+/).map(Number)).filter(a=>a.length>=2&&a.every(isFinite));
+ const n=pts.length,set=(i,v)=>$(i).textContent=v;
+ if(!n){['p-n','p-rx','p-ry','p-ce','p-rz','p-le'].forEach(i=>set(i,'–'));$('p-verdict').innerHTML='';$('p-notes').textContent='أدخل البواقي أو حمّل المثال.';$('plot').innerHTML='';return;}
+ const rms=a=>Math.sqrt(a.reduce((s,x)=>s+x*x,0)/a.length),mean=a=>a.reduce((s,x)=>s+x,0)/a.length;
+ const dx=pts.map(p=>p[0]),dy=pts.map(p=>p[1]),dz=pts.filter(p=>p.length>2).map(p=>p[2]);
+ const rx=rms(dx),ry=rms(dy),rr=Math.hypot(rx,ry),ce=1.5175*rr,rz=dz.length?rms(dz):NaN,le=1.6449*rz;
+ set('p-n',n);set('p-rx',f(rx));set('p-ry',f(ry));set('p-ce',f(ce));set('p-rz',dz.length?f(rz):'–');set('p-le',dz.length?f(le):'–');
+ const tH=+$('tolH').value,tV=+$('tolV').value,hOK=ce<=tH,vOK=!dz.length||le<=tV;
+ $('p-verdict').innerHTML=`<p class="verdict ${hOK&&vOK?'ok':'bad'}">${hOK&&vOK?'ضمن التفاوت المسموح':'خارج التفاوت المسموح'}<span>CE90 ${f(ce)} م مقابل ${tH} م${dz.length?` · LE90 ${f(le)} م مقابل ${tV} م`:''}</span></p>`;
+ const notes=[];if(n<20)notes.push(`${n} نقطة فقط: استخدم 20 على الأقل.`);
+ const ratio=Math.min(rx,ry)/Math.max(rx,ry);if(ratio<0.6)notes.push(`RMSE في x وy مختلفان (النسبة ${ratio.toFixed(2)}): قيمة CE90 تقريبية.`);
+ const mx=mean(dx),my=mean(dy);if(Math.abs(mx)>0.5*rx||Math.abs(my)>0.5*ry)notes.push(`إزاحة منتظمة محتملة (متوسط dx ${f(mx)}، dy ${f(my)} م).`);
+ const out=pts.map((p,i)=>[i+1,Math.hypot(p[0],p[1])]).filter(([,r])=>r>3*rr/Math.SQRT2);if(out.length)notes.push(`قيم شاذة محتملة: النقطة ${out.map(o=>o[0]).join('، ')}.`);
+ $('p-notes').textContent=notes.join(' ')||'لا تحذيرات: النقاط كافية، ولا انحياز أو قيم شاذة واضحة.';
+ const R=Math.max(ce,tH,...pts.map(p=>Math.hypot(p[0],p[1])))*1.15,s=140/R,c=160;
+ const circ=(r,col,d)=>`<circle cx="${c}" cy="${c}" r="${r*s}" fill="none" stroke="${col}" stroke-width="1.5" ${d?'stroke-dasharray="5 4"':''}/>`;
+ $('plot').innerHTML=`<line x1="20" y1="${c}" x2="300" y2="${c}" stroke="var(--line)"/><line x1="${c}" y1="20" x2="${c}" y2="300" stroke="var(--line)"/>`+circ(tH,'var(--muted)',1)+circ(ce,hOK?'var(--ok)':'var(--bad)',0)+pts.map(p=>`<circle cx="${c+p[0]*s}" cy="${c-p[1]*s}" r="3.5" fill="var(--focus)" fill-opacity=".85"/>`).join('')+`<text x="296" y="312" direction="rtl" font-size="11" fill="var(--muted)">المتقطع: التفاوت · المتصل: CE90 · النقاط: البواقي</text>`;
+}
+['res','tolH','tolV'].forEach(i=>$(i).addEventListener('input',runPos));
+$('ex').onclick=()=>{$('res').value=EX;runPos();};$('clr').onclick=()=>{$('res').value='';runPos();};$('res').value=EX;runPos();
+
+/* ============ confusion matrix ============ */
+const CLS=['مبانٍ','أراضٍ زراعية','أشجار','مياه','أرض جرداء'];
+const CMEX=[[46,3,1,0,4],[2,51,5,0,3],[0,4,44,1,0],[1,0,0,52,0],[5,2,0,0,48]];
+function cmTable(){let h='<tr><th>الخريطة ↓ / المرجع ←</th>'+CLS.map(c=>`<th>${c}</th>`).join('')+'</tr>';
+ CLS.forEach((r,i)=>{h+=`<tr><th>${r}</th>`+CLS.map((c,j)=>`<td><input type="number" min="0" data-r="${i}" data-c="${j}" aria-label="الخريطة ${r}، المرجع ${c}" value="${CMEX[i][j]}"></td>`).join('')+'</tr>';});$('cm').innerHTML=h;
+ $('cm').querySelectorAll('input').forEach(i=>i.addEventListener('input',runCM));}
+function runCM(){const k=CLS.length,m=Array.from({length:k},()=>Array(k).fill(0));
+ $('cm').querySelectorAll('input').forEach(i=>m[+i.dataset.r][+i.dataset.c]=Math.max(0,+i.value||0));
+ const N=m.flat().reduce((a,b)=>a+b,0),row=m.map(r=>r.reduce((a,b)=>a+b,0)),col=CLS.map((_,j)=>m.reduce((a,r)=>a+r[j],0)),diag=m.map((r,i)=>r[i]);
+ const po=N?diag.reduce((a,b)=>a+b,0)/N:NaN,pe=N?row.reduce((a,r,i)=>a+r*col[i],0)/(N*N):NaN,kap=(po-pe)/(1-pe);
+ $('m-oa').textContent=N?(po*100).toFixed(1)+'%':'–';$('m-k').textContent=N?kap.toFixed(3):'–';$('m-n').textContent=N;
+ $('m-cls').innerHTML='<thead><tr><th>الفئة</th><th>دقة المستخدم</th><th>دقة المنتج</th></tr></thead><tbody>'+CLS.map((c,i)=>`<tr><td>${c}</td><td>${row[i]?(diag[i]/row[i]*100).toFixed(1)+'%':'–'}</td><td>${col[i]?(diag[i]/col[i]*100).toFixed(1)+'%':'–'}</td></tr>`).join('')+'</tbody>';}
+cmTable();runCM();
+$('cmex').onclick=()=>{cmTable();runCM();};
+$('cmclr').onclick=()=>{$('cm').querySelectorAll('input').forEach(i=>i.value=0);runCM();};
+</script>
+</body>
+</html>

@@ -5,6 +5,9 @@ import LocationOnIcon from '@mui/icons-material/LocationOn';
 import CloseIcon from '@mui/icons-material/Close';
 import { OrgAggregate, OrgTypeAggregate } from '@/utils/threew';
 import { unOrgTypeColors as orgTypeColors, unBlue } from '@/theme/unColors';
+import { clusterLabel, orgTypeLabel } from '@/utils/threewMetric';
+import { useSudanNames } from '@/utils/sudanNamesAr';
+import { useI18n } from '@/i18n';
 
 interface ThreeWDetailPanelProps {
   state: string | null;
@@ -33,36 +36,38 @@ export default function ThreeWDetailPanel({
   onOrgTypeClick,
   onOrgClick,
 }: ThreeWDetailPanelProps) {
+  const { isAr, tr } = useI18n();
+  const names = useSudanNames(isAr);
   return (
     <Paper elevation={2} sx={{ p: 1.5, flexShrink: 0 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <LocationOnIcon color="primary" fontSize="small" />
           <Typography variant="subtitle1" sx={{ fontFamily: 'Roboto, sans-serif' }}>
-            {state ?? 'Response Overview'}
+            {state ? names.state(state) : tr('Response Overview', 'نظرة عامة على الاستجابة')}
           </Typography>
         </Box>
         {state && (
           <Button size="small" startIcon={<CloseIcon fontSize="small" />} onClick={onClear} sx={{ fontSize: '0.7rem' }}>
-            Clear
+            {tr('Clear', 'مسح')}
           </Button>
         )}
       </Box>
 
       {!state && (
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-          Click on a state in the map, or any chip/row/chart below, to filter the whole dashboard.
+          {tr('Click on a state in the map, or any chip/row/chart below, to filter the whole dashboard.', 'انقر ولاية على الخريطة، أو أي شريحة أو صف أو مخطط أدناه، لتصفية اللوحة كلها.')}
         </Typography>
       )}
 
       <Box sx={{ mb: 1.5 }}>
         <Typography variant="caption" sx={{ fontFamily: 'Roboto, sans-serif', fontWeight: 600 }}>
-          Org Type Breakdown
+          {tr('Org Type Breakdown', 'توزيع أنواع المنظمات')}
         </Typography>
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75, mt: 0.5 }}>
           {orgTypeBreakdown.length === 0 && (
             <Typography variant="body2" color="text.secondary">
-              No activity for this selection.
+              {tr('No activity for this selection.', 'لا أنشطة لهذا الاختيار.')}
             </Typography>
           )}
           {orgTypeBreakdown.map((t) => {
@@ -72,7 +77,7 @@ export default function ThreeWDetailPanel({
               <Chip
                 key={t.type}
                 size="small"
-                label={`${t.type}: ${t.orgs}`}
+                label={`${orgTypeLabel(t.type, isAr)}: ${t.orgs}`}
                 onClick={onOrgTypeClick ? () => onOrgTypeClick(isSelected ? '' : t.type) : undefined}
                 sx={{
                   bgcolor: isSelected ? color : `${color}20`,
@@ -89,7 +94,7 @@ export default function ThreeWDetailPanel({
 
       <Box sx={{ mb: 1.5 }}>
         <Typography variant="caption" sx={{ fontFamily: 'Roboto, sans-serif', fontWeight: 600 }}>
-          Clusters Active ({clustersActive.length})
+          {tr('Clusters Active', 'القطاعات النشطة')} ({clustersActive.length})
         </Typography>
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
           {clustersActive.map((c) => {
@@ -97,7 +102,7 @@ export default function ThreeWDetailPanel({
             return (
               <Chip
                 key={c}
-                label={c}
+                label={clusterLabel(c, isAr)}
                 size="small"
                 onClick={onClusterClick ? () => onClusterClick(isSelected ? '' : c) : undefined}
                 sx={{
@@ -116,7 +121,7 @@ export default function ThreeWDetailPanel({
 
       <Box>
         <Typography variant="caption" sx={{ fontFamily: 'Roboto, sans-serif', fontWeight: 600 }}>
-          Top Organizations
+          {tr('Top Organizations', 'أبرز المنظمات')}
         </Typography>
         <Box sx={{ mt: 0.5 }}>
           {topOrgs.map(({ org, activities }) => {
@@ -140,7 +145,7 @@ export default function ThreeWDetailPanel({
                 <Typography variant="body2" sx={{ fontSize: '0.8rem', fontWeight: isSelected ? 700 : 400 }}>
                   {org.acronym}
                   <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
-                    ({org.type})
+                    ({orgTypeLabel(org.type, isAr)})
                   </Typography>
                 </Typography>
                 <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.8rem' }}>

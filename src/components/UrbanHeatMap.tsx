@@ -1,0 +1,294 @@
+'use client';
+
+import { useEffect, useRef, useState } from 'react';
+import { Box, Divider, Typography } from '@mui/material';
+import MapGL, { Source, Layer, Popup, Marker, NavigationControl, ScaleControl, MapLayerMouseEvent, MapRef } from 'react-map-gl/maplibre';
+import type { StyleSpecification } from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
+import {
+  AOI,
+  DEM_SOURCE,
+  DISTRICTS,
+  EQUITY_RAMP,
+  Grid,
+  HEAT_RAMP,
+  HOTSPOT_COLOR,
+  NDVI_LEGEND,
+  NDVI_RAMP,
+  PRIORITY_COLOR,
+  ParkCollection,
+  TreeCollection,
+  gridCorners,
+} from '@/lib/urbanHeat';
+import { MAPLIBRE_WORKER_URL } from '@/lib/maplibre';
+import { COOLING_MAX, COOLING_RAMP, Intervention, KIND_COLOR, Site } from '@/lib/urbanCooling';
+import { useI18n } from '@/i18n';
+
+export interface UrbanLayerVisibility {
+  hillshade: boolean;
+  heat: boolean;
+  hotspots: boolean;
+  vegetation: boolean;
+  canopy: boolean;
+  equity: boolean;
+  priority: boolean;
+  trees: boolean;
+  parks: boolean;
+  cooling: boolean;
+}
+
+export interface CellInfo {
+  lng: number;
+  lat: number;
+  rows: [string, string][];
+}
+
+export type UrbanImages = Partial<Record<'heat' | 'hotspots' | 'vegetation' | 'canopy' | 'equity' | 'priority' | 'cooling', string>>;
+
+interface UrbanHeatMapProps {
+  grid: Grid | null;
+  images: UrbanImages;
+  trees: TreeCollection | null;
+  parks: ParkCollection | null;
+  visible: UrbanLayerVisibility;
+  lstRange: [number, number] | null;
+  focus: { lon: number; lat: number } | null;
+  describeCell: (lng: number, lat: number) => CellInfo | null;
+  placing?: string | null; // colour of the tool being placed, or null
+  onPlace?: (lng: number, lat: number) => void;
+  interventions?: Intervention[];
+  sites?: Site[];
+}
+
+// Circle polygon (64 vertices) around a point, radius in metres.
+function circle(lon: number, lat: number, radius: number): number[][] {
+  const out: number[][] = [];
+  for (let i = 0; i <= 64; i++) {
+    const a = (i / 64) * 2 * Math.PI;
+    out.push([lon + (radius * Math.cos(a)) / (111_320 * Math.cos((lat * Math.PI) / 180)), lat + (radius * Math.sin(a)) / 110_540]);
+  }
+  return out;
+}
+
+// OpenStreetMap standard tiles, desaturated so the analysis layers stand out.
+const BASEMAP: StyleSpecification = {
+  version: 8,
+  sources: {
+    basemap: {
+      type: 'raster',
+      tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+      tileSize: 256,
+      maxzoom: 19,
+      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    },
+  },
+  layers: [{ id: 'basemap', type: 'raster', source: 'basemap', paint: { 'raster-saturation': -0.8, 'raster-opacity': 0.9 } }],
+};
+
+// Image overlays, bottom to top.
+const RASTERS: (keyof UrbanImages)[] = ['heat', 'vegetation', 'canopy', 'equity', 'hotspots', 'priority', 'cooling'];
+
+const rgb = (c: readonly number[]) => `rgb(${c.join(',')})`;
+const gradient = (ramp: number[][]) => `linear-gradient(to right, ${ramp.map(rgb).join(', ')})`;
+const visibility = (on: boolean) => (on ? 'visible' : 'none') as 'visible' | 'none';
+
+function RampLegend({ title, ramp, left, right }: { title: string; ramp: number[][]; left: string; right: string }) {
+  return (
+    <Box sx={{ mb: 0.75 }}>
+      <Typography variant="caption" sx={{ fontWeight: 700, display: 'block' }}>{title}</Typography>
+      <Box sx={{ height: 8, borderRadius: 0.5, background: gradient(ramp), my: 0.25 }} />
+      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+        <Typography variant="caption" sx={{ fontSize: '0.65rem' }}>{left}</Typography>
+        <Typography variant="caption" sx={{ fontSize: '0.65rem' }}>{right}</Typography>
+      </Box>
+    </Box>
+  );
+}
+
+function Swatch({ color, label, round }: { color: string; label: string; round?: boolean }) {
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+      <Box sx={{ width: 12, height: 12, borderRadius: round ? '50%' : 0.5, bgcolor: color, flexShrink: 0 }} />
+      <Typography variant="caption" sx={{ lineHeight: 1.4 }}>{label}</Typography>
+    </Box>
+  );
+}
+
+export default function UrbanHeatMap({ grid, images, trees, parks, visible, lstRange, focus, describeCell, placing, onPlace, interventions = [], sites = [] }: UrbanHeatMapProps) {
+  const [popup, setPopup] = useState<CellInfo | null>(null);
+  const mapRef = useRef<MapRef>(null);
+  const corners = grid ? gridCorners(grid) : null;
+  const { isAr, tr } = useI18n();
+  // Arabic mirrors the map chrome: controls on the left, legend on the right.
+  const side = isAr ? 'left' : 'right';
+
+  useEffect(() => {
+    if (focus) mapRef.current?.flyTo({ center: [focus.lon, focus.lat], zoom: 13.5, duration: 1500 });
+  }, [focus]);
+
+  const onClick = (e: MapLayerMouseEvent) => {
+    if (placing && onPlace) {
+      setPopup(null);
+      onPlace(e.lngLat.lng, e.lngLat.lat);
+      return;
+    }
+    setPopup(describeCell(e.lngLat.lng, e.lngLat.lat));
+  };
+  const ivGeoJson: GeoJSON.FeatureCollection = {
+    type: 'FeatureCollection',
+    features: interventions.map((iv, i) => ({
+      type: 'Feature',
+      properties: { color: KIND_COLOR[iv.kind], n: String(i + 1) },
+      geometry: { type: 'Polygon', coordinates: [circle(iv.lon, iv.lat, iv.radius)] },
+    })),
+  };
+
+  return (
+    <Box sx={{ position: 'relative', width: '100%', height: '100%' }}>
+      <MapGL
+        ref={mapRef}
+        workerUrl={MAPLIBRE_WORKER_URL}
+        initialViewState={{ bounds: [[AOI.minLon, AOI.minLat], [AOI.maxLon, AOI.maxLat]], fitBoundsOptions: { padding: 20 } }}
+        mapStyle={BASEMAP}
+        style={{ width: '100%', height: '100%' }}
+        onClick={onClick}
+        cursor={placing ? 'copy' : 'crosshair'}
+      >
+        <NavigationControl position={`top-${side}`} />
+        <ScaleControl position={`bottom-${side}`} />
+
+        {/* DEM hillshade, rendered by MapLibre (WebGL) from terrain tiles. */}
+        <Source id="dem" type="raster-dem" tiles={[DEM_SOURCE.tiles]} tileSize={DEM_SOURCE.tileSize} encoding={DEM_SOURCE.encoding} maxzoom={DEM_SOURCE.maxzoom}>
+          <Layer id="hillshade" type="hillshade" layout={{ visibility: visibility(visible.hillshade) }} paint={{ 'hillshade-exaggeration': 0.5 }} />
+        </Source>
+
+        {corners && RASTERS.map((key) => images[key] && (
+          <Source key={key} id={key} type="image" url={images[key]} coordinates={corners}>
+            <Layer id={key} type="raster" layout={{ visibility: visibility(visible[key]) }} paint={{ 'raster-resampling': 'nearest', 'raster-fade-duration': 0 }} />
+          </Source>
+        ))}
+
+        {parks && (
+          <Source id="parks" type="geojson" data={parks}>
+            <Layer id="parks-fill" type="fill" layout={{ visibility: visibility(visible.parks) }} paint={{ 'fill-color': '#2e7d32', 'fill-opacity': 0.35 }} />
+            <Layer id="parks-line" type="line" layout={{ visibility: visibility(visible.parks) }} paint={{ 'line-color': '#1b5e20', 'line-width': 1 }} />
+          </Source>
+        )}
+        {trees && (
+          <Source id="trees" type="geojson" data={trees}>
+            <Layer
+              id="trees"
+              type="circle"
+              layout={{ visibility: visibility(visible.trees) }}
+              paint={{
+                'circle-color': '#43a047',
+                'circle-stroke-color': '#1b5e20',
+                'circle-stroke-width': 0.8,
+                'circle-radius': ['interpolate', ['linear'], ['zoom'], 9, 1.5, 15, 5],
+              }}
+            />
+          </Source>
+        )}
+        <Source
+          id="aoi"
+          type="geojson"
+          data={{
+            type: 'Feature',
+            properties: {},
+            geometry: {
+              type: 'LineString',
+              coordinates: [[AOI.minLon, AOI.minLat], [AOI.maxLon, AOI.minLat], [AOI.maxLon, AOI.maxLat], [AOI.minLon, AOI.maxLat], [AOI.minLon, AOI.minLat]],
+            },
+          }}
+        >
+          <Layer id="aoi" type="line" paint={{ 'line-color': '#37474f', 'line-width': 1.2, 'line-dasharray': [3, 2] }} />
+        </Source>
+
+        <Source id="interventions" type="geojson" data={ivGeoJson}>
+          <Layer id="iv-fill" type="fill" paint={{ 'fill-color': ['get', 'color'], 'fill-opacity': 0.12 }} />
+          <Layer id="iv-line" type="line" paint={{ 'line-color': ['get', 'color'], 'line-width': 2.5, 'line-dasharray': [2, 1] }} />
+        </Source>
+
+        {sites.slice(0, 8).map((site, i) => (
+          <Marker key={`site-${i}`} longitude={site.lon} latitude={site.lat} anchor="center">
+            <Box sx={{ width: 22, height: 22, borderRadius: '50%', bgcolor: '#2E7D32', border: '2px solid white', color: 'white', fontSize: '0.7rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 2, pointerEvents: 'none' }}>
+              {i + 1}
+            </Box>
+          </Marker>
+        ))}
+
+        {DISTRICTS.map((d) => (
+          <Marker key={d.name} longitude={d.lon} latitude={d.lat} anchor={d.labelBelow ? 'top' : 'bottom'}>
+            <Box
+              sx={{
+                px: 0.75,
+                py: 0.1,
+                borderRadius: 0.5,
+                bgcolor: 'rgba(33,33,33,0.72)',
+                color: 'white',
+                fontSize: '0.68rem',
+                fontWeight: 600,
+                whiteSpace: 'nowrap',
+                pointerEvents: 'none',
+              }}
+            >
+              {isAr ? d.nameAr : d.name}
+            </Box>
+          </Marker>
+        ))}
+
+        {popup && (
+          <Popup longitude={popup.lng} latitude={popup.lat} onClose={() => setPopup(null)} closeOnClick={false} maxWidth="280px">
+            <Typography variant="caption" color="text.secondary" component="div">
+              <bdi>{popup.lat.toFixed(4)}° N, {popup.lng.toFixed(4)}° E</bdi>
+            </Typography>
+            <Box component="table" sx={{ mt: 0.5, borderCollapse: 'collapse', '& td': { py: 0.2, fontSize: '0.74rem' } }}>
+              <tbody>
+                {popup.rows.map(([label, value]) => (
+                  <tr key={label}>
+                    <td style={{ paddingInlineEnd: 12, color: '#666' }}>{label}</td>
+                    <td style={{ fontWeight: 600 }}>{value}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </Box>
+          </Popup>
+        )}
+      </MapGL>
+
+      {placing && (
+        <Box sx={{ position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)', px: 1.5, py: 0.5, borderRadius: 5, bgcolor: placing, color: 'white', boxShadow: 3, pointerEvents: 'none' }}>
+          <Typography variant="caption" sx={{ fontWeight: 700 }}>{tr('Click the map to place', 'انقر الخريطة للوضع')}</Typography>
+        </Box>
+      )}
+      <Box
+        sx={{
+          position: 'absolute',
+          left: 12,
+          bottom: 12,
+          p: 1.5,
+          width: 190,
+          bgcolor: 'rgba(255,255,255,0.93)',
+          backdropFilter: 'blur(8px)',
+          borderRadius: 1.5,
+          boxShadow: 2,
+        }}
+      >
+        {visible.heat && lstRange && (
+          <RampLegend title={tr('Land surface temp.', 'حرارة سطح الأرض')} ramp={HEAT_RAMP} left={`${Math.round(lstRange[0] - 4)} ${isAr ? '°م' : '°C'}`} right={`${Math.round(lstRange[1] + 4)} ${isAr ? '°م' : '°C'}`} />
+        )}
+        {visible.vegetation && <RampLegend title="NDVI" ramp={NDVI_RAMP} left={String(NDVI_LEGEND[0])} right={String(NDVI_LEGEND[1])} />}
+        {visible.equity && <RampLegend title={tr('Canopy equity', 'عدالة مظلة الأشجار')} ramp={EQUITY_RAMP} left={tr('Deficit', 'عجز')} right={tr('Good access', 'وصول جيد')} />}
+        {visible.cooling && images.cooling && (
+          <RampLegend title={tr('Simulated surface cooling', 'التبريد السطحي المحاكى')} ramp={COOLING_RAMP} left={isAr ? '0.1 °م' : '0.1 °C'} right={isAr ? `${COOLING_MAX}+ °م` : `${COOLING_MAX}+ °C`} />
+        )}
+        {(visible.heat || visible.vegetation || visible.equity || (visible.cooling && images.cooling)) && <Divider sx={{ my: 0.5 }} />}
+        <Swatch color={rgb(PRIORITY_COLOR)} label={tr('Priority planting zone', 'منطقة أولوية للتشجير')} />
+        <Swatch color={rgb(HOTSPOT_COLOR)} label={tr('Heat hotspot (k-means)', 'بؤرة حرارية (k-means)')} />
+        <Swatch color="rgb(0,90,50)" label={tr('Tree canopy', 'مظلة الأشجار')} />
+        <Swatch color="rgba(46,125,50,0.55)" label={tr('Park (OSM)', 'حديقة (OSM)')} />
+        <Swatch color="#43a047" label={tr('Tree (OSM)', 'شجرة (OSM)')} round />
+      </Box>
+    </Box>
+  );
+}

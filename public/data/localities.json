@@ -7,7 +7,9 @@
       "lat": 18.05,
       "lon": 30.95,
       "affected": null,
-      "notes": "All seven localities affected in Northern State"
+      "notes": "All seven localities affected in Northern State",
+      "adm2_pcode": "SD17019",
+      "adm2_name": "Ad Dabbah"
     },
     {
       "name": "Al Burgaig",
@@ -16,7 +18,9 @@
       "lat": 18.8,
       "lon": 30.9,
       "affected": null,
-      "notes": "All seven localities affected in Northern State"
+      "notes": "All seven localities affected in Northern State",
+      "adm2_pcode": "SD17016",
+      "adm2_name": "Al Burgaig"
     },
     {
       "name": "Al Golid",
@@ -25,7 +29,9 @@
       "lat": 18.5,
       "lon": 30.6,
       "affected": null,
-      "notes": "All seven localities affected in Northern State"
+      "notes": "All seven localities affected in Northern State",
+      "adm2_pcode": "SD17018",
+      "adm2_name": "Al Golid"
     },
     {
       "name": "Delgo",
@@ -34,7 +40,9 @@
       "lat": 18.35,
       "lon": 30.55,
       "affected": null,
-      "notes": "All seven localities affected in Northern State"
+      "notes": "All seven localities affected in Northern State",
+      "adm2_pcode": "SD17015",
+      "adm2_name": "Delgo"
     },
     {
       "name": "Dongola",
@@ -43,7 +51,9 @@
       "lat": 19.17,
       "lon": 30.47,
       "affected": null,
-      "notes": "All seven localities affected in Northern State"
+      "notes": "All seven localities affected in Northern State",
+      "adm2_pcode": "SD17017",
+      "adm2_name": "Dongola"
     },
     {
       "name": "Halfa",
@@ -52,7 +62,9 @@
       "lat": 17.6,
       "lon": 33.8,
       "affected": null,
-      "notes": "All seven localities affected in Northern State"
+      "notes": "All seven localities affected in Northern State",
+      "adm2_pcode": "SD17014",
+      "adm2_name": "Halfa"
     },
     {
       "name": "Merowe",
@@ -61,7 +73,9 @@
       "lat": 18.45,
       "lon": 31.85,
       "affected": null,
-      "notes": "All seven localities affected in Northern State"
+      "notes": "All seven localities affected in Northern State",
+      "adm2_pcode": "SD17020",
+      "adm2_name": "Merwoe"
     },
     {
       "name": "Rehaid Albirdi",
@@ -70,7 +84,9 @@
       "lat": 10.8,
       "lon": 24.2,
       "affected": null,
-      "notes": "Most affected locality in South Darfur"
+      "notes": "Most affected locality in South Darfur",
+      "adm2_pcode": "SD03158",
+      "adm2_name": "Rehaid Albirdi"
     },
     {
       "name": "Ed Al Fursan",
@@ -79,7 +95,9 @@
       "lat": 10.95,
       "lon": 24.85,
       "affected": null,
-      "notes": "Most affected locality in South Darfur"
+      "notes": "Most affected locality in South Darfur",
+      "adm2_pcode": "SD03143",
+      "adm2_name": "Ed Al Fursan"
     },
     {
       "name": "Tulus",
@@ -88,7 +106,9 @@
       "lat": 10.7,
       "lon": 24.5,
       "affected": null,
-      "notes": "Also known as Sergaila"
+      "notes": "Also known as Sergaila",
+      "adm2_pcode": "SD03149",
+      "adm2_name": "Tulus"
     },
     {
       "name": "Buram",
@@ -97,7 +117,9 @@
       "lat": 10.4,
       "lon": 24.15,
       "affected": null,
-      "notes": "Most affected locality in South Darfur"
+      "notes": "Most affected locality in South Darfur",
+      "adm2_pcode": "SD03161",
+      "adm2_name": "Buram"
     },
     {
       "name": "Katila",
@@ -106,7 +128,9 @@
       "lat": 11.2,
       "lon": 24.3,
       "affected": null,
-      "notes": "Most affected locality in South Darfur"
+      "notes": "Most affected locality in South Darfur",
+      "adm2_pcode": "SD03159",
+      "adm2_name": "Kateila"
     },
     {
       "name": "As Sunta",
@@ -115,7 +139,9 @@
       "lat": 11.0,
       "lon": 23.9,
       "affected": null,
-      "notes": "Most affected locality in South Darfur"
+      "notes": "Most affected locality in South Darfur",
+      "adm2_pcode": "SD03156",
+      "adm2_name": "As Sunta"
     },
     {
       "name": "Halfa Aj Jadeedah",
@@ -124,7 +150,9 @@
       "lat": 16.0,
       "lon": 35.7,
       "affected": null,
-      "notes": "Affected locality in Kassala"
+      "notes": "Affected locality in Kassala",
+      "adm2_pcode": "SD11052",
+      "adm2_name": "Halfa Aj Jadeedah"
     },
     {
       "name": "Madeinat Kassala",
@@ -133,7 +161,9 @@
       "lat": 15.45,
       "lon": 36.4,
       "affected": null,
-      "notes": "Kassala city area"
+      "notes": "Kassala city area",
+      "adm2_pcode": "SD11053",
+      "adm2_name": "Madeinat Kassala"
     },
     {
       "name": "Reifi Aroma",
@@ -142,7 +172,9 @@
       "lat": 15.9,
       "lon": 36.0,
       "affected": null,
-      "notes": "Aroma locality"
+      "notes": "Aroma locality",
+      "adm2_pcode": "SD11055",
+      "adm2_name": "Reifi Aroma"
     },
     {
       "name": "Reifi Gharb Kassala",
@@ -151,7 +183,9 @@
       "lat": 15.4,
       "lon": 36.3,
       "affected": null,
-      "notes": "West Kassala locality"
+      "notes": "West Kassala locality",
+      "adm2_pcode": "SD11054",
+      "adm2_name": "Reifi Gharb Kassala"
     },
     {
       "name": "Reifi Kassala",
@@ -160,7 +194,9 @@
       "lat": 15.5,
       "lon": 36.4,
       "affected": null,
-      "notes": "Kassala locality"
+      "notes": "Kassala locality",
+      "adm2_pcode": "SD11056",
+      "adm2_name": "Reifi Kassla"
     },
     {
       "name": "Reifi Khashm Elgirba",
@@ -169,16 +205,9 @@
       "lat": 15.1,
       "lon": 36.0,
       "affected": null,
-      "notes": "Khashm Elgirba locality"
-    },
-    {
-      "name": "Aroma",
-      "state": "Kassala",
-      "state_pcode": "SD11",
-      "lat": 15.75,
-      "lon": 35.9,
-      "affected": null,
-      "notes": "Some villages inaccessible"
+      "notes": "Khashm Elgirba locality",
+      "adm2_pcode": "SD11060",
+      "adm2_name": "Reifi Khashm Elgirba"
     },
     {
       "name": "North Delta",
@@ -187,7 +216,9 @@
       "lat": 15.8,
       "lon": 35.6,
       "affected": 9500,
-      "notes": "37 villages affected"
+      "notes": "37 villages affected",
+      "adm2_pcode": "SD11057",
+      "adm2_name": "Reifi Shamal Ad Delta"
     },
     {
       "name": "Kutum",
@@ -196,7 +227,9 @@
       "lat": 14.2,
       "lon": 26.1,
       "affected": 42600,
-      "notes": "Flood affected, 25,800 at risk of famine (IPC 5)"
+      "notes": "Flood affected, 25,800 at risk of famine (IPC 5)",
+      "adm2_pcode": "SD02128",
+      "adm2_name": "Kutum"
     },
     {
       "name": "Tawila",
@@ -205,7 +238,9 @@
       "lat": 13.9,
       "lon": 26.3,
       "affected": 42600,
-      "notes": "Flood affected together with Kutum"
+      "notes": "Flood affected together with Kutum",
+      "adm2_pcode": "SD02170",
+      "adm2_name": "Tawila"
     },
     {
       "name": "Al Fasher",
@@ -214,7 +249,9 @@
       "lat": 13.62,
       "lon": 25.35,
       "affected": 24600,
-      "notes": "Zamzam IDP camp in famine conditions"
+      "notes": "Zamzam IDP camp in famine conditions",
+      "adm2_pcode": "SD02114",
+      "adm2_name": "Al Fasher"
     },
     {
       "name": "Azum",
@@ -223,7 +260,9 @@
       "lat": 12.5,
       "lon": 23.5,
       "affected": null,
-      "notes": "Flood affected locality"
+      "notes": "Flood affected locality",
+      "adm2_pcode": "SD06110",
+      "adm2_name": "Azum"
     },
     {
       "name": "Bendasi",
@@ -232,7 +271,9 @@
       "lat": 12.2,
       "lon": 23.2,
       "affected": null,
-      "notes": "Flood affected locality"
+      "notes": "Flood affected locality",
+      "adm2_pcode": "SD06112",
+      "adm2_name": "Bendasi"
     },
     {
       "name": "Wadi Salih",
@@ -241,7 +282,9 @@
       "lat": 12.1,
       "lon": 23.0,
       "affected": null,
-      "notes": "Flood affected locality"
+      "notes": "Flood affected locality",
+      "adm2_pcode": "SD06137",
+      "adm2_name": "Wadi Salih"
     },
     {
       "name": "Zalingei",
@@ -250,7 +293,9 @@
       "lat": 12.9,
       "lon": 23.5,
       "affected": null,
-      "notes": "Central Darfur capital"
+      "notes": "Central Darfur capital",
+      "adm2_pcode": "SD06138",
+      "adm2_name": "Zalingi"
     },
     {
       "name": "Ag Geneina",
@@ -259,7 +304,9 @@
       "lat": 13.45,
       "lon": 22.4,
       "affected": null,
-      "notes": "Flood affected locality"
+      "notes": "Flood affected locality",
+      "adm2_pcode": "SD04115",
+      "adm2_name": "Ag Geneina"
     },
     {
       "name": "Kereneik",
@@ -268,7 +315,9 @@
       "lat": 13.2,
       "lon": 22.2,
       "affected": null,
-      "notes": "Flood affected locality"
+      "notes": "Flood affected locality",
+      "adm2_pcode": "SD04125",
+      "adm2_name": "Kereneik"
     },
     {
       "name": "Sirba",
@@ -277,7 +326,9 @@
       "lat": 13.1,
       "lon": 22.6,
       "affected": null,
-      "notes": "Flood affected locality"
+      "notes": "Flood affected locality",
+      "adm2_pcode": "SD04134",
+      "adm2_name": "Sirba"
     },
     {
       "name": "Al Wihda",
@@ -286,7 +337,9 @@
       "lat": 10.6,
       "lon": 23.5,
       "affected": 1200,
-      "notes": "Flood affected, 18,700 at risk of famine"
+      "notes": "Flood affected, 18,700 at risk of famine",
+      "adm2_pcode": "SD03150",
+      "adm2_name": "Al Wihda"
     }
   ]
 }

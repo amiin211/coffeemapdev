@@ -1,3 +1,5 @@
+'use client';
+
 import { Box, Typography, Paper } from '@mui/material';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import GroupsIcon from '@mui/icons-material/Groups';
@@ -5,6 +7,8 @@ import CategoryIcon from '@mui/icons-material/Category';
 import PublicIcon from '@mui/icons-material/Public';
 import PlaceIcon from '@mui/icons-material/Place';
 import { unBlue, unCategorical } from '@/theme/unColors';
+import { useI18n } from '@/i18n';
+import { useSudanNames } from '@/utils/sudanNamesAr';
 
 interface StatCardProps {
   title: string;
@@ -94,6 +98,8 @@ export default function ThreeWStatCards({
   selectedState,
 }: ThreeWStatCardsProps) {
   const isStateSelected = !!selectedState;
+  const { isAr, tr } = useI18n();
+  const names = useSudanNames(isAr);
 
   return (
     <Box
@@ -109,28 +115,28 @@ export default function ThreeWStatCards({
       }}
     >
       <StatCard
-        title={isStateSelected ? selectedState! : 'Total Activities'}
+        title={isStateSelected ? names.state(selectedState!) : tr('Total Activities', 'إجمالي الأنشطة')}
         value={activities}
         icon="activities"
         color={unBlue.dark}
       />
       <StatCard
-        title="Organizations"
+        title={tr('Organizations', 'المنظمات')}
         value={orgs}
         icon="orgs"
         color={unBlue.DEFAULT}
       />
       <StatCard
-        title="Clusters Active"
+        title={tr('Clusters Active', 'القطاعات النشطة')}
         value={clusters}
         icon="clusters"
         color={unCategorical[3]}
       />
       {!isStateSelected && (
-        <StatCard title="States Covered" value={states} icon="states" color={unCategorical[5]} />
+        <StatCard title={tr('States Covered', 'الولايات المشمولة')} value={states} icon="states" color={unCategorical[5]} />
       )}
       <StatCard
-        title="Localities Reached"
+        title={tr('Localities Reached', 'المحليات المشمولة')}
         value={localities}
         icon="localities"
         color={unCategorical[4]}

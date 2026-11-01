@@ -2,12 +2,17 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Typography } from '@mui/material';
-import MapGL, { Source, Layer, Marker, Popup, MapLayerMouseEvent } from 'react-map-gl/maplibre';
+import MapGL, { Source, Layer, Marker, Popup, MapLayerMouseEvent, MapRef } from 'react-map-gl/maplibre';
 import type { StyleSpecification, ExpressionSpecification } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { StateAggregate, LocalityAggregate } from '@/utils/threew';
-import { ThreeWMetric, metricLabels } from '@/utils/threewMetric';
+import { ThreeWMetric, metricLabels, metricLabelsAr } from '@/utils/threewMetric';
 import { unBlue, unChoroplethRamp } from '@/theme/unColors';
+import { Admin1Collection, Admin2Collection, collectionBounds } from '@/utils/geo';
+import { MAPLIBRE_WORKER_URL } from '@/lib/maplibre';
+import { useI18n } from '@/i18n';
+import { useSudanNames } from '@/utils/sudanNamesAr';
+import { localityKey } from '@/utils/threewInsights';
 
 interface ThreeWMapProps {
   stateAggregates: StateAggregate[];
@@ -15,6 +20,13 @@ interface ThreeWMapProps {
   selectedState: string | null;
   metric: ThreeWMetric;
   onStateSelect: (state: string | null) => void;
+  /** Response Gap Explorer overlay: locality key (state|name) → fill colour, with its legend. */
+  overlayFill?: Map<string, string> | null;
+  overlayLegend?: { color: string; label: string }[] | null;
+  overlayTitle?: string | null;
+  overlayTooltip?: (key: string) => string | null;
+  selectedLocality?: string | null; // locality key, outlined on the map
+  onLocalityClick?: (key: string) => void;
 }
 
 const STATES_FILL_LAYER = 'states-fill';
@@ -54,28 +66,12 @@ function getRadius(count: number, max: number): number {
   return Math.max(6, Math.min(28, (count / max) * 28));
 }
 
-// Computed once the real boundary data loads, rather than a hand-tuned
-// center/zoom, so the whole country fits regardless of the map's aspect ratio.
-function computeBounds(geojson: any): [[number, number], [number, number]] {
-  let west = Infinity;
-  let south = Infinity;
-  let east = -Infinity;
-  let north = -Infinity;
-
-  const visit = (coords: any): void => {
-    if (typeof coords[0] === 'number') {
-      const [lng, lat] = coords;
-      if (lng < west) west = lng;
-      if (lng > east) east = lng;
-      if (lat < south) south = lat;
-      if (lat > north) north = lat;
-    } else {
-      coords.forEach(visit);
-    }
-  };
-
-  geojson.features.forEach((f: any) => visit(f.geometry.coordinates));
-  return [[west, south], [east, north]];
+// Properties of the enriched state features shown in the hover popup.
+interface HoveredState {
+  adm1_name: string;
+  activities: number;
+  orgs: number;
+  clusters: number;
 }
 
 const floatingPanelSx = {
@@ -91,12 +87,21 @@ export default function ThreeWMap({
   selectedState,
   metric,
   onStateSelect,
+  overlayFill = null,
+  overlayLegend = null,
+  overlayTitle = null,
+  overlayTooltip,
+  selectedLocality = null,
+  onLocalityClick,
 }: ThreeWMapProps) {
-  const [admin1, setAdmin1] = useState<any>(null);
-  const [admin2, setAdmin2] = useState<any>(null);
-  const [hovered, setHovered] = useState<{ lng: number; lat: number; properties: any } | null>(null);
+  const [hoveredLocality, setHoveredLocality] = useState<{ lng: number; lat: number; text: string } | null>(null);
+  const [admin1, setAdmin1] = useState<Admin1Collection | null>(null);
+  const [admin2, setAdmin2] = useState<Admin2Collection | null>(null);
+  const [hovered, setHovered] = useState<{ lng: number; lat: number; properties: HoveredState } | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
-  const mapRef = useRef<any>(null);
+  const mapRef = useRef<MapRef>(null);
+  const { isAr, tr } = useI18n();
+  const names = useSudanNames(isAr);
 
   useEffect(() => {
     fetch('/data/sdn_admin1.geojson')
@@ -107,9 +112,11 @@ export default function ThreeWMap({
       .then(setAdmin2);
   }, []);
 
+  // Fit to the real boundary data once it loads, rather than a hand-tuned
+  // center/zoom, so the whole country fits regardless of the map's aspect ratio.
   useEffect(() => {
     if (mapLoaded && admin1 && mapRef.current) {
-      mapRef.current.fitBounds(computeBounds(admin1), { padding: 30, duration: 0 });
+      mapRef.current.fitBounds(collectionBounds(admin1), { padding: 30, duration: 0 });
     }
   }, [mapLoaded, admin1]);
 
@@ -121,7 +128,7 @@ export default function ThreeWMap({
     if (!admin1) return null;
     return {
       ...admin1,
-      features: admin1.features.map((feature: any) => {
+      features: admin1.features.map((feature) => {
         const agg = byState.get(feature.properties.adm1_name);
         const value = agg?.[metric] ?? 0;
         return {
@@ -147,9 +154,25 @@ export default function ThreeWMap({
     if (!admin2 || !selectedState) return null;
     return {
       ...admin2,
-      features: admin2.features.filter((f: any) => f.properties.adm1_name === selectedState),
+      features: admin2.features.filter((f) => f.properties.adm1_name === selectedState),
     };
   }, [admin2, selectedState]);
+
+  // Localities flagged by the response-gap panel, drawn nationwide.
+  const overlayGeoJson = useMemo(() => {
+    if (!admin2 || !overlayFill || overlayFill.size === 0) return null;
+    const features = admin2.features.flatMap((f) => {
+      const color = overlayFill.get(localityKey(f.properties.adm1_name, f.properties.adm2_name));
+      const key = localityKey(f.properties.adm1_name, f.properties.adm2_name);
+      return color ? [{ ...f, properties: { ...f.properties, color, key } }] : [];
+    });
+    return { ...admin2, features };
+  }, [admin2, overlayFill]);
+  const overlayOn = !!overlayGeoJson && overlayGeoJson.features.length > 0;
+  const selectedGeoJson = useMemo(() => {
+    if (!admin2 || !selectedLocality) return null;
+    return { ...admin2, features: admin2.features.filter((f) => localityKey(f.properties.adm1_name, f.properties.adm2_name) === selectedLocality) };
+  }, [admin2, selectedLocality]);
 
   const fillColorExpression: ExpressionSpecification = [
     'case',
@@ -167,13 +190,23 @@ export default function ThreeWMap({
 
   const handleClick = (event: MapLayerMouseEvent) => {
     const feature = event.features?.[0];
-    if (feature) onStateSelect(feature.properties?.adm1_name ?? null);
+    if (feature?.layer.id === 'gap-overlay-fill' && onLocalityClick) onLocalityClick(feature.properties.key);
+    else if (feature) onStateSelect(feature.properties?.adm1_name ?? null);
   };
 
   const handleMouseMove = (event: MapLayerMouseEvent) => {
     const feature = event.features?.[0];
+    const canvas = mapRef.current?.getCanvas();
+    if (canvas) canvas.style.cursor = feature ? 'pointer' : '';
+    if (feature?.layer.id === 'gap-overlay-fill') {
+      const text = overlayTooltip?.(feature.properties.key) ?? null;
+      setHovered(null);
+      setHoveredLocality(text ? { lng: event.lngLat.lng, lat: event.lngLat.lat, text } : null);
+      return;
+    }
+    setHoveredLocality(null);
     if (feature) {
-      setHovered({ lng: event.lngLat.lng, lat: event.lngLat.lat, properties: feature.properties });
+      setHovered({ lng: event.lngLat.lng, lat: event.lngLat.lat, properties: feature.properties as HoveredState });
     } else {
       setHovered(null);
     }
@@ -196,17 +229,20 @@ export default function ThreeWMap({
     <Box sx={{ height: '100%', position: 'relative' }}>
       <MapGL
         ref={mapRef}
+        workerUrl={MAPLIBRE_WORKER_URL}
         initialViewState={{ longitude: 28, latitude: 16, zoom: 5 }}
         minZoom={4}
         maxZoom={8}
         maxBounds={[15, 5, 45, 26]}
         mapStyle={osmStyle}
-        interactiveLayerIds={enrichedGeoJson ? [STATES_FILL_LAYER] : []}
+        interactiveLayerIds={enrichedGeoJson ? (overlayOn ? ['gap-overlay-fill', STATES_FILL_LAYER] : [STATES_FILL_LAYER]) : []}
         onClick={handleClick}
         onMouseMove={handleMouseMove}
-        onMouseLeave={() => setHovered(null)}
+        onMouseLeave={() => {
+          setHovered(null);
+          setHoveredLocality(null);
+        }}
         onLoad={() => setMapLoaded(true)}
-        reuseMaps
         style={{ width: '100%', height: '100%' }}
       >
         {enrichedGeoJson && (
@@ -216,7 +252,7 @@ export default function ThreeWMap({
               type="fill"
               paint={{
                 'fill-color': fillColorExpression,
-                'fill-opacity': fillOpacityExpression,
+                'fill-opacity': overlayOn ? 0.25 : fillOpacityExpression,
               }}
             />
             <Layer
@@ -245,10 +281,28 @@ export default function ThreeWMap({
           </Source>
         )}
 
+        {overlayOn && (
+          <Source id="gap-overlay" type="geojson" data={overlayGeoJson}>
+            <Layer id="gap-overlay-fill" type="fill" paint={{ 'fill-color': ['get', 'color'], 'fill-opacity': 0.75 }} />
+            <Layer id="gap-overlay-line" type="line" paint={{ 'line-color': '#ffffff', 'line-width': 0.6 }} />
+          </Source>
+        )}
+        {selectedGeoJson && selectedGeoJson.features.length > 0 && (
+          <Source id="selected-locality" type="geojson" data={selectedGeoJson}>
+            <Layer id="selected-locality-casing" type="line" paint={{ 'line-color': '#ffffff', 'line-width': 5 }} />
+            <Layer id="selected-locality-line" type="line" paint={{ 'line-color': '#0D2B52', 'line-width': 2.5 }} />
+          </Source>
+        )}
+        {hoveredLocality && (
+          <Popup longitude={hoveredLocality.lng} latitude={hoveredLocality.lat} closeButton={false} closeOnClick={false} offset={12} maxWidth="260px">
+            <Box sx={{ fontSize: '0.75rem', lineHeight: 1.45, whiteSpace: 'pre-line' }}>{hoveredLocality.text}</Box>
+          </Popup>
+        )}
+
         {visibleLocalities.map((l, idx) => (
           <Marker key={`loc-${idx}`} longitude={l.locality.lon as number} latitude={l.locality.lat as number}>
             <div
-              title={`${l.locality.name}: ${l.activities} activities`}
+              title={tr(`${l.locality.name}: ${l.activities} activities`, `${names.locality(l.locality.name)}: ${l.activities} نشاطًا`)}
               style={{
                 width: getRadius(l.activities, maxLocalityCount) * 2,
                 height: getRadius(l.activities, maxLocalityCount) * 2,
@@ -268,16 +322,19 @@ export default function ThreeWMap({
             closeOnClick={false}
             offset={12}
           >
-            <strong>{hovered.properties.adm1_name}</strong>
+            <strong>{names.state(hovered.properties.adm1_name)}</strong>
             <br />
-            {hovered.properties.activities} activities · {hovered.properties.orgs} orgs · {hovered.properties.clusters} clusters
+            {tr(
+              `${hovered.properties.activities} activities · ${hovered.properties.orgs} orgs · ${hovered.properties.clusters} clusters`,
+              `${hovered.properties.activities} نشاطًا · ${hovered.properties.orgs} منظمة · ${hovered.properties.clusters} قطاعًا`,
+            )}
           </Popup>
         )}
       </MapGL>
 
       <Box sx={{ position: 'absolute', bottom: 20, left: 20, zIndex: 500, p: 1.5, ...floatingPanelSx }}>
         <Typography variant="caption" sx={{ fontWeight: 600, display: 'block', mb: 0.75 }}>
-          {metricLabels[metric]} by State
+          {tr(`${metricLabels[metric]} by State`, `${metricLabelsAr[metric]} حسب الولاية`)}
         </Typography>
         <Box sx={{ display: 'flex' }}>
           {legendBuckets.map((bucket, i) => (
@@ -298,6 +355,23 @@ export default function ThreeWMap({
             </Box>
           ))}
         </Box>
+        {overlayOn && overlayLegend && (
+          <Box sx={{ mt: 1, pt: 1, borderTop: '1px solid rgba(0,0,0,0.08)' }}>
+            {overlayTitle && (
+              <Typography variant="caption" sx={{ fontWeight: 600, display: 'block', mb: 0.25 }}>
+                {overlayTitle}
+              </Typography>
+            )}
+            {overlayLegend.map((item) => (
+              <Box key={item.label} sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mt: 0.25 }}>
+                <Box sx={{ width: 12, height: 12, borderRadius: '2px', bgcolor: item.color, opacity: 0.85, border: '1px solid rgba(0,0,0,0.1)' }} />
+                <Typography variant="caption" sx={{ fontSize: '0.65rem' }}>
+                  {item.label}
+                </Typography>
+              </Box>
+            ))}
+          </Box>
+        )}
       </Box>
     </Box>
   );

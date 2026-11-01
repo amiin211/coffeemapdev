@@ -1,8 +1,13 @@
-import { Box, Typography, Container, Chip } from '@mui/material';
+'use client';
+
+import Link from 'next/link';
+import { Box, Typography, Container, Chip, Button } from '@mui/material';
+import MenuBookIcon from '@mui/icons-material/MenuBook';
 import WaterDropIcon from '@mui/icons-material/WaterDrop';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import PersonIcon from '@mui/icons-material/Person';
 import SourceIcon from '@mui/icons-material/Source';
+import { useI18n } from '@/i18n';
 
 interface DashboardHeaderProps {
   source: string;
@@ -15,6 +20,7 @@ interface DashboardHeaderProps {
   gradientTo?: string;
   borderRadius?: number;
   mb?: number;
+  articleHref?: string; // "Read the article" button when the project has a write-up
 }
 
 export default function DashboardHeader({
@@ -28,7 +34,9 @@ export default function DashboardHeader({
   gradientTo = '#5d2e10',
   borderRadius = 2,
   mb = 3,
+  articleHref,
 }: DashboardHeaderProps) {
+  const { tr, href } = useI18n();
   return (
     <Box
       sx={{
@@ -59,8 +67,31 @@ export default function DashboardHeader({
             </Box>
           </Box>
           
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1 }}>
-            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+          {/* ml: auto keeps this block on the right even when it wraps below the title. */}
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1, ml: 'auto' }}>
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end' }}>
+              {articleHref && (
+                <Button
+                  component={Link}
+                  href={href(articleHref)}
+                  size="small"
+                  variant="contained"
+                  disableElevation
+                  startIcon={<MenuBookIcon sx={{ fontSize: '16px !important' }} />}
+                  sx={{
+                    bgcolor: 'white',
+                    color: gradientTo,
+                    textTransform: 'none',
+                    fontWeight: 700,
+                    fontSize: '0.75rem',
+                    py: 0.25,
+                    borderRadius: 4,
+                    '&:hover': { bgcolor: 'rgba(255,255,255,0.88)' },
+                  }}
+                >
+                  {tr('Read the article', 'اقرأ المقال')}
+                </Button>
+              )}
               <Chip 
                 size="small"
                 icon={<CalendarTodayIcon sx={{ color: 'white !important', fontSize: 16 }} />} 
@@ -75,12 +106,13 @@ export default function DashboardHeader({
               <Chip 
                 size="small"
                 icon={<PersonIcon sx={{ color: 'white !important', fontSize: 16 }} />} 
-                label={author}
+                label={tr(author, author === 'Amin Adnan Gasim' ? 'أمين عدنان قاسم' : author)}
                 sx={{ 
                   bgcolor: 'rgba(255,255,255,0.2)', 
                   color: 'white',
                   fontFamily: 'Roboto, sans-serif',
-                  fontSize: '0.75rem'
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
                 }} 
               />
             </Box>

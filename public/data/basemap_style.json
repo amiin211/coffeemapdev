@@ -1,0 +1,29 @@
+{
+  "version": 8,
+  "name": "CoffeeMap plain basemap (OpenStreetMap, desaturated)",
+  "sources": {
+    "osm": {
+      "type": "raster",
+      "tiles": ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+      "tileSize": 256,
+      "maxzoom": 19,
+      "attribution": "© <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors"
+    }
+  },
+  "layers": [
+    {
+      "id": "background",
+      "type": "background",
+      "paint": { "background-color": "#F4F1EC" }
+    },
+    {
+      "id": "osm",
+      "type": "raster",
+      "source": "osm",
+      "paint": {
+        "raster-saturation": -0.85,
+        "raster-opacity": 0.9
+      }
+    }
+  ]
+}

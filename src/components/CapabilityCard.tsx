@@ -1,33 +1,28 @@
 'use client';
 
 import { Card, CardContent, Box, Typography } from '@mui/material';
-import MapIcon from '@mui/icons-material/Map';
-import PublicIcon from '@mui/icons-material/Public';
-import AnalyticsIcon from '@mui/icons-material/Analytics';
-import ArchitectureIcon from '@mui/icons-material/Architecture';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import { Capability } from '@/data/capabilities';
+import ServiceIcon from '@/components/ServiceIcon';
 import Link from 'next/link';
+import { useI18n } from '@/i18n';
 
 interface CapabilityCardProps {
   capability: Capability;
   isActive?: boolean;
 }
 
-const iconMap: Record<string, React.ReactNode> = {
-  Map: <MapIcon sx={{ fontSize: 48 }} />,
-  Public: <PublicIcon sx={{ fontSize: 48 }} />,
-  Analytics: <AnalyticsIcon sx={{ fontSize: 48 }} />,
-  Architecture: <ArchitectureIcon sx={{ fontSize: 48 }} />,
-};
-
 const CapabilityCard = ({ capability, isActive }: CapabilityCardProps) => {
+  const { isAr, tr, href } = useI18n();
   return (
     <Card
       component={Link}
-      href={`/expertise/${capability.category}`}
+      href={href(`/expertise/${capability.category}`)}
       sx={{
         cursor: 'pointer',
         height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
         backgroundColor: isActive ? 'primary.main' : 'background.paper',
         color: isActive ? 'primary.contrastText' : 'text.primary',
         border: isActive ? 'none' : '1px solid',
@@ -38,14 +33,14 @@ const CapabilityCard = ({ capability, isActive }: CapabilityCardProps) => {
         },
       }}
     >
-      <CardContent sx={{ p: 3 }}>
+      <CardContent sx={{ p: 3, flex: 1, display: 'flex', flexDirection: 'column' }}>
         <Box
           sx={{
             color: isActive ? 'accent.main' : 'secondary.main',
             mb: 2,
           }}
         >
-          {iconMap[capability.icon]}
+          <ServiceIcon name={capability.icon} />
         </Box>
         <Typography
           variant="h6"
@@ -55,7 +50,7 @@ const CapabilityCard = ({ capability, isActive }: CapabilityCardProps) => {
             fontWeight: 600,
           }}
         >
-          {capability.title}
+          {isAr ? capability.titleAr : capability.title}
         </Typography>
         <Typography
           variant="body2"
@@ -64,8 +59,12 @@ const CapabilityCard = ({ capability, isActive }: CapabilityCardProps) => {
             lineHeight: 1.6,
           }}
         >
-          {capability.description}
+          {isAr ? capability.descriptionAr : capability.description}
         </Typography>
+        <Box sx={{ mt: 'auto', pt: 2, display: 'flex', alignItems: 'center', gap: 0.5, color: isActive ? 'accent.main' : 'secondary.main', fontSize: '0.8rem', fontWeight: 600, fontFamily: 'Roboto, sans-serif' }}>
+          {tr(`What I deliver · ${capability.projectIds.length} project${capability.projectIds.length === 1 ? '' : 's'}`, `ما أقدّمه · ${capability.projectIds.length} ${capability.projectIds.length === 1 ? 'مشروع' : capability.projectIds.length === 2 ? 'مشروعان' : 'مشاريع'}`)}
+          <ArrowForwardIcon sx={{ fontSize: 16, transform: isAr ? 'scaleX(-1)' : undefined }} />
+        </Box>
       </CardContent>
     </Card>
   );

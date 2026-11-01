@@ -1,0 +1,19 @@
+name = "coffeemap-ai"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+
+# Sites allowed to call this Worker (comma-separated)
+[vars]
+ALLOWED_ORIGINS = "https://coffeemap.dev,https://www.coffeemap.dev,http://localhost:3000"
+MODEL = "claude-haiku-5-5"
+DAILY_LIMIT = "500"        # total AI requests per day, for the whole site
+PER_IP_DAILY_LIMIT = "40"  # requests per visitor per day
+
+# Counter storage for the limits. Create it with:
+#   npx wrangler kv namespace create USAGE
+# then paste the id it prints below.
+[[kv_namespaces]]
+binding = "USAGE"
+id = "242febfb4d2747ae91213487c6bfdaf9"
+
+# Secret (never in this file):  npx wrangler secret put ANTHROPIC_API_KEY

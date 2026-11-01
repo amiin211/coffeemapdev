@@ -17,12 +17,14 @@ export const filterInsightsByCategory = (
   return insights.filter((insight) => insight.category === category);
 };
 
-export const getCategoryLabel = (category: string): string => {
-  const labels: Record<string, string> = {
-    'enterprise-gis': 'Enterprise GIS',
-    'web-mapping': 'Web Mapping',
-    'geoai': 'GeoAI',
-    'gis-bim': 'GIS-BIM',
-  };
-  return labels[category] || category;
+const CATEGORY_LABELS: Record<string, { en: string; ar: string }> = {
+  'enterprise-gis': { en: 'QA/QC & Data Quality', ar: 'ضبط الجودة' },
+  'web-mapping': { en: 'Web Mapping', ar: 'خرائط الويب' },
+  'geoai': { en: 'GeoAI', ar: 'ذكاء جيومكاني' },
+  'gis-bim': { en: 'BIM & Digital Twins', ar: 'BIM والتوائم الرقمية' },
+  humanitarian: { en: 'Humanitarian', ar: 'العمل الإنساني' },
+  surveying: { en: 'Surveying & Geodesy', ar: 'المساحة والجيوديسيا' },
 };
+
+export const getCategoryLabel = (category: string, locale: 'en' | 'ar' = 'en'): string =>
+  CATEGORY_LABELS[category]?.[locale] ?? category;

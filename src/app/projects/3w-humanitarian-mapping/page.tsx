@@ -25,7 +25,25 @@ import CloseIcon from '@mui/icons-material/Close';
 import AppLayout from '@/components/AppLayout';
 import DashboardHeader from '@/components/DashboardHeader';
 import ThreeWStatCards from '@/components/ThreeWStatCards';
-import { metricLabels, ThreeWMetric } from '@/utils/threewMetric';
+import ThreeWExplorer, { ExplorerMode, matrixCellColor } from '@/components/ThreeWExplorer';
+import {
+  DEFAULT_WEIGHTS,
+  EXIT_COLORS,
+  PRIORITY_BREAKS,
+  PRIORITY_RAMP,
+  Weights,
+  buildProfiles,
+  coverageRows,
+  missingCore,
+  partnerCount,
+  priorityColor,
+  priorityIndex,
+  simulateExit,
+} from '@/utils/threewInsights';
+import type { AcledData } from '@/utils/acled';
+import { clusterLabel, metricLabels, metricLabelsAr, orgTypeLabel, ThreeWMetric } from '@/utils/threewMetric';
+import { formatDate, useI18n } from '@/i18n';
+import { useSudanNames } from '@/utils/sudanNamesAr';
 import { unBlue } from '@/theme/unColors';
 import {
   ThreeWData,
@@ -40,27 +58,27 @@ import {
 
 const ThreeWMap = nextDynamic(() => import('@/components/ThreeWMap'), {
   ssr: false,
-  loading: () => <Paper sx={{ p: 2, height: '100%' }}>Loading map...</Paper>,
+  loading: () => <Paper sx={{ p: 2, height: '100%' }}>…</Paper>,
 });
 const ThreeWDetailPanel = nextDynamic(() => import('@/components/ThreeWDetailPanel'), {
   ssr: false,
-  loading: () => <Paper sx={{ p: 2, height: 300 }}>Loading...</Paper>,
+  loading: () => <Paper sx={{ p: 2, height: 300 }}>…</Paper>,
 });
 const TopOrgsBarChart = nextDynamic(() => import('@/components/ThreeWCharts').then((m) => ({ default: m.TopOrgsBarChart })), {
   ssr: false,
-  loading: () => <Paper sx={{ p: 2, height: 240 }}>Loading...</Paper>,
+  loading: () => <Paper sx={{ p: 2, height: 240 }}>…</Paper>,
 });
 const ClusterBreakdownPieChart = nextDynamic(() => import('@/components/ThreeWCharts').then((m) => ({ default: m.ClusterBreakdownPieChart })), {
   ssr: false,
-  loading: () => <Paper sx={{ p: 2, height: 220 }}>Loading...</Paper>,
+  loading: () => <Paper sx={{ p: 2, height: 220 }}>…</Paper>,
 });
 const OrgTypeDoughnutChart = nextDynamic(() => import('@/components/ThreeWCharts').then((m) => ({ default: m.OrgTypeDoughnutChart })), {
   ssr: false,
-  loading: () => <Paper sx={{ p: 2, height: 200 }}>Loading...</Paper>,
+  loading: () => <Paper sx={{ p: 2, height: 200 }}>…</Paper>,
 });
 const MonthlyTrendChart = nextDynamic(() => import('@/components/ThreeWCharts').then((m) => ({ default: m.MonthlyTrendChart })), {
   ssr: false,
-  loading: () => <Paper sx={{ p: 2, height: 200 }}>Loading...</Paper>,
+  loading: () => <Paper sx={{ p: 2, height: 200 }}>…</Paper>,
 });
 
 function monthLabel(month: string) {
@@ -85,15 +103,28 @@ function DashboardContent() {
   const [selectedOrgType, setSelectedOrgType] = useState<string | null>(null);
   const [metric, setMetric] = useState<ThreeWMetric>('activities');
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [acled, setAcled] = useState<AcledData | null>(null);
+  const [mode, setMode] = useState<ExplorerMode>('priority');
+  const [showOnMap, setShowOnMap] = useState(true);
+  const [weights, setWeights] = useState<Weights>(DEFAULT_WEIGHTS);
+  const [exitOrg, setExitOrg] = useState<number | null>(null);
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
 
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
+  const { locale, isAr, tr } = useI18n();
+  const names = useSudanNames(isAr);
 
   useEffect(() => {
     fetch('/data/threew_data.json')
       .then((res) => res.json())
       .then(setData)
       .catch((err) => console.error('Error loading 3W data:', err));
+    // Conflict events for the response-gap analysis (optional: the dashboard works without it).
+    fetch('/data/acled_data.json')
+      .then((res) => res.json())
+      .then(setAcled)
+      .catch((err) => console.error('Error loading ACLED data:', err));
   }, []);
 
   const filters = useMemo(
@@ -120,6 +151,31 @@ function DashboardContent() {
   );
   const totalStatesCovered = stateAggregates.filter((s) => s.activities > 0).length;
 
+  // Response Gap Explorer: locality profiles (3W + ACLED), then each tool.
+  const profileSet = useMemo(() => (data ? buildProfiles(data, acled, filters) : null), [data, acled, filters]);
+  const priority = useMemo(() => (profileSet ? priorityIndex(profileSet, weights, selectedState) : []), [profileSet, weights, selectedState]);
+  const priorityByKey = useMemo(() => new Map(priority.map((p) => [p.profile.key, p])), [priority]);
+  // Default the exit simulator to the organization reporting the most activities.
+  const defaultExitOrg = useMemo(() => {
+    if (!data) return null;
+    const counts = new Map<number, number>();
+    for (const row of data.rows) counts.set(row[4], (counts.get(row[4]) ?? 0) + 1);
+    return Array.from(counts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+  }, [data]);
+  const activeExitOrg = exitOrg ?? defaultExitOrg;
+  const exit = useMemo(
+    () => (profileSet && activeExitOrg !== null ? simulateExit(profileSet, activeExitOrg, selectedState) : []),
+    [profileSet, activeExitOrg, selectedState],
+  );
+  const matrix = useMemo(() => (profileSet ? coverageRows(profileSet, selectedState) : []), [profileSet, selectedState]);
+  const overlayFill = useMemo(() => {
+    if (!showOnMap) return null;
+    if (mode === 'priority') return new Map(priority.map((p) => [p.profile.key, priorityColor(p.score)]));
+    if (mode === 'exit') return new Map(exit.map((e) => [e.profile.key, EXIT_COLORS[e.impact]]));
+    return new Map(matrix.map((r) => [r.profile.key, matrixCellColor(Math.min(...r.cells))]));
+  }, [showOnMap, mode, priority, exit, matrix]);
+  const selectedProfile = (selectedKey && profileSet?.profiles.get(selectedKey)) || null;
+
   const handleClusterClick = (cluster: string) => setSelectedCluster(cluster || null);
   const handleOrgTypeClick = (type: string) => setSelectedOrgType(type || null);
   const handleOrgClick = (acronym: string) => setSelectedOrg(acronym || null);
@@ -145,37 +201,37 @@ function DashboardContent() {
   const filtersNode = (
     <>
       <FormControl size="small" sx={{ minWidth: 130, ...compactSelectSx }}>
-        <InputLabel>Month</InputLabel>
-        <Select label="Month" value={selectedMonth ?? ''} onChange={(e) => setSelectedMonth(e.target.value || null)}>
-          <MenuItem value="">All Months</MenuItem>
+        <InputLabel>{tr('Month', 'الشهر')}</InputLabel>
+        <Select label={tr('Month', 'الشهر')} value={selectedMonth ?? ''} onChange={(e) => setSelectedMonth(e.target.value || null)}>
+          <MenuItem value="">{tr('All Months', 'كل الأشهر')}</MenuItem>
           {data.months.map((m) => (
             <MenuItem key={m} value={m}>
-              {monthLabel(m)} 2026
+              {isAr ? formatDate(`${m}-01`, locale, { month: 'long', year: 'numeric' }) : `${monthLabel(m)} 2026`}
             </MenuItem>
           ))}
         </Select>
       </FormControl>
 
       <FormControl size="small" sx={{ minWidth: 170, ...compactSelectSx }}>
-        <InputLabel>Cluster</InputLabel>
-        <Select label="Cluster" value={selectedCluster ?? ''} onChange={(e) => setSelectedCluster(e.target.value || null)}>
-          <MenuItem value="">All Clusters</MenuItem>
+        <InputLabel>{tr('Cluster', 'القطاع')}</InputLabel>
+        <Select label={tr('Cluster', 'القطاع')} value={selectedCluster ?? ''} onChange={(e) => setSelectedCluster(e.target.value || null)}>
+          <MenuItem value="">{tr('All Clusters', 'كل القطاعات')}</MenuItem>
           {data.clusters.map((c) => (
             <MenuItem key={c} value={c}>
-              {c}
+              {clusterLabel(c, isAr)}
             </MenuItem>
           ))}
         </Select>
       </FormControl>
 
       {selectedState && (
-        <Chip label={`State: ${selectedState}`} size="small" onDelete={() => setSelectedState(null)} sx={{ bgcolor: `${unBlue.DEFAULT}20` }} />
+        <Chip label={`${tr('State', 'الولاية')}: ${names.state(selectedState)}`} size="small" onDelete={() => setSelectedState(null)} sx={{ bgcolor: `${unBlue.DEFAULT}20` }} />
       )}
       {selectedOrg && (
-        <Chip label={`Org: ${selectedOrg}`} size="small" onDelete={() => setSelectedOrg(null)} sx={{ bgcolor: `${unBlue.DEFAULT}20` }} />
+        <Chip label={`${tr('Org', 'المنظمة')}: ${selectedOrg}`} size="small" onDelete={() => setSelectedOrg(null)} sx={{ bgcolor: `${unBlue.DEFAULT}20` }} />
       )}
       {selectedOrgType && (
-        <Chip label={`Type: ${selectedOrgType}`} size="small" onDelete={() => setSelectedOrgType(null)} sx={{ bgcolor: `${unBlue.DEFAULT}20` }} />
+        <Chip label={`${tr('Type', 'النوع')}: ${orgTypeLabel(selectedOrgType, isAr)}`} size="small" onDelete={() => setSelectedOrgType(null)} sx={{ bgcolor: `${unBlue.DEFAULT}20` }} />
       )}
     </>
   );
@@ -199,7 +255,7 @@ function DashboardContent() {
             '&.Mui-selected': { bgcolor: unBlue.DEFAULT, color: 'white', '&:hover': { bgcolor: unBlue.dark } },
           }}
         >
-          {metricLabels[m]}
+          {isAr ? metricLabelsAr[m] : metricLabels[m]}
         </ToggleButton>
       ))}
     </ToggleButtonGroup>
@@ -270,11 +326,101 @@ function DashboardContent() {
       selectedState={selectedState}
       metric={metric}
       onStateSelect={setSelectedState}
+      overlayFill={overlayFill}
+      overlayTitle={
+        mode === 'priority'
+          ? tr('Priority index (your weights)', 'مؤشر الأولوية (أوزانك)')
+          : mode === 'exit'
+            ? tr(`If ${activeExitOrg !== null ? data.orgs[activeExitOrg].acronym || data.orgs[activeExitOrg].name : ''} left`, `لو غادرت ${activeExitOrg !== null ? data.orgs[activeExitOrg].acronym || data.orgs[activeExitOrg].name : ''}`)
+            : tr('Weakest core cluster', 'أضعف قطاع أساسي')
+      }
+      overlayLegend={
+        mode === 'priority'
+          ? PRIORITY_RAMP.map((color, i) => ({
+              color,
+              label: i === 0 ? `< ${PRIORITY_BREAKS[0] * 100}` : i === PRIORITY_RAMP.length - 1 ? `${PRIORITY_BREAKS[i - 1] * 100}+` : `${PRIORITY_BREAKS[i - 1] * 100}–${PRIORITY_BREAKS[i] * 100}`,
+            })).reverse()
+          : mode === 'exit'
+            ? [
+                { color: EXIT_COLORS.uncovered, label: tr('No partner left', 'لا شريك متبقٍ') },
+                { color: EXIT_COLORS['cluster-lost'], label: tr('Loses a core cluster', 'تفقد قطاعًا أساسيًا') },
+                { color: EXIT_COLORS.reduced, label: tr('Other partners remain', 'يبقى شركاء آخرون') },
+              ]
+            : [
+                { color: matrixCellColor(0), label: tr('A core cluster has no partner', 'قطاع أساسي بلا شريك') },
+                { color: matrixCellColor(1), label: tr('Only one partner', 'شريك واحد فقط') },
+                { color: matrixCellColor(2), label: tr('Two partners', 'شريكان') },
+                { color: matrixCellColor(3), label: tr('Three or more', 'ثلاثة أو أكثر') },
+              ]
+      }
+      overlayTooltip={(key) => {
+        const p = profileSet?.profiles.get(key);
+        if (!p) return null;
+        const rank = priorityByKey.get(key);
+        const missing = missingCore(p);
+        return [
+          `${names.locality(p.name)} · ${names.state(p.state)}`,
+          tr(`${p.events} conflict events · ${partnerCount(p)} partners · ${p.activities} activities`, `${p.events} حدث نزاع · ${partnerCount(p)} شريك · ${p.activities} نشاط`),
+          rank ? tr(`Priority #${rank.rank} (score ${Math.round(rank.score * 100)})`, `الأولوية رقم ${rank.rank} (الدرجة ${Math.round(rank.score * 100)})`) : '',
+          missing.length ? tr(`Missing: ${missing.join(', ')}`, `غائب: ${missing.map((c) => clusterLabel(c, true)).join('، ')}`) : '',
+          tr('Click for the full profile', 'انقر لعرض الملف كاملًا'),
+        ]
+          .filter(Boolean)
+          .join('\n');
+      }}
+      selectedLocality={selectedKey}
+      onLocalityClick={(key) => setSelectedKey((k) => (k === key ? null : key))}
+    />
+  );
+
+  const filterNote = [
+    selectedCluster && clusterLabel(selectedCluster, isAr),
+    selectedOrgType && orgTypeLabel(selectedOrgType, isAr),
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
+  const insightsNode = profileSet && acled && (
+    <ThreeWExplorer
+      data={data}
+      months={data.months}
+      mode={mode}
+      onModeChange={setMode}
+      showOnMap={showOnMap}
+      onShowOnMapChange={setShowOnMap}
+      weights={weights}
+      onWeightsChange={setWeights}
+      priority={priority}
+      exitOrg={activeExitOrg}
+      onExitOrgChange={setExitOrg}
+      exit={exit}
+      matrix={matrix}
+      selected={selectedProfile}
+      selectedRank={selectedKey ? priorityByKey.get(selectedKey) ?? null : null}
+      onSelect={setSelectedKey}
+      onStateSelect={(state) => setSelectedState(state)}
+      filterNote={filterNote || null}
     />
   );
 
   const aboutContent = (
     <>
+      {isAr ? (
+        <>
+          <Typography variant="body2" sx={{ mb: 1.5, lineHeight: 1.9 }}>
+            خرائط 3W (من يفعل ماذا وأين) هي الطريقة التي تتابع بها هيئات التنسيق الإنساني أي المنظمات تنفّذ أي الأنشطة وفي أي المواقع، وهي عماد
+            رصد الاستجابة وتحليل الفجوات في أزمة بحجم أزمة السودان. تحوّل هذه اللوحة ستة أشهر من تقارير 3W الموحّدة في 19 ولاية و188 محلية إلى
+            خريطة قابلة للاستكشاف: صفِّ حسب الشهر أو القطاع أو المنظمة أو نوع المنظمة، وانقر ولاية أو عنصرًا في مخطط أو شريحة في أي مكان من
+            الصفحة لتتبعك بقية اللوحة.
+          </Typography>
+          <Typography variant="body2" sx={{ lineHeight: 1.9 }}>
+            بنيتُ هذه اللوحة على <strong>CoffeeMap.dev</strong> لأوضح كيف يمكن لبيانات الأنشطة التي يبلّغ عنها الشركاء، وهي عادة مدفونة في جداول
+            تُتبادل في اجتماعات التنسيق، أن تصبح أداة مكانية تفاعلية قابلة للتصفية. تجمع اللوحة 7,517 نشاطًا مُبلَّغًا عنه من 165 منظمة في 13 قطاعًا،
+            مطابقة مع الحدود الإدارية الرسمية للسودان.
+          </Typography>
+        </>
+      ) : (
+        <>
       <Typography variant="body2" sx={{ mb: 1.5, lineHeight: 1.7 }}>
         3W (Who, What, Where) mapping is how humanitarian coordination bodies track which
         organizations are running which activities, in which locations — the backbone of
@@ -291,6 +437,8 @@ function DashboardContent() {
         reported activities from 165 organizations across 13 clusters, matched against
         official Sudan administrative boundaries.
       </Typography>
+        </>
+      )}
     </>
   );
 
@@ -307,12 +455,13 @@ function DashboardContent() {
         <Box sx={{ px: 2, pt: 1.5, flexShrink: 0 }}>
           <Box sx={{ position: 'relative' }}>
             <DashboardHeader
-              title="3W Humanitarian Mapping"
-              subtitle="Who, What, Where — Sudan Response Monitoring"
+              articleHref="/insights/3w-response-gap-explorer"
+              title={tr('3W Humanitarian Mapping', 'خرائط العمل الإنساني (3W)')}
+              subtitle={tr('Who, What, Where — Sudan Response Monitoring', 'من يفعل ماذا وأين — رصد الاستجابة في السودان')}
               icon={<GroupsIcon sx={{ fontSize: 28 }} />}
-              source="OCHA Sudan – 2026 HRP Response Monitoring, Consolidated 3W Data (Jan–Jun 2026)"
+              source={tr('OCHA Sudan – 2026 HRP Response Monitoring, Consolidated 3W Data (Jan–Jun 2026)', 'أوتشا السودان – رصد الاستجابة لخطة الاستجابة الإنسانية 2026، بيانات 3W الموحّدة (يناير–يونيو 2026)')}
               author="Amin Adnan Gasim"
-              date="Jan–Jun 2026"
+              date={tr('Jan–Jun 2026', 'يناير–يونيو 2026')}
               gradientFrom={unBlue.DEFAULT}
               gradientTo={unBlue.dark}
               mb={isDesktop ? 1.5 : 3}
@@ -320,7 +469,7 @@ function DashboardContent() {
             <IconButton
               onClick={() => setAboutOpen((v) => !v)}
               sx={{ position: 'absolute', top: 12, right: 12, color: 'white' }}
-              aria-label="About this dashboard"
+              aria-label={tr('About this dashboard', 'حول لوحة المعلومات')}
             >
               <InfoOutlinedIcon />
             </IconButton>
@@ -390,9 +539,9 @@ function DashboardContent() {
                   >
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
                       <Typography variant="h6" sx={{ fontFamily: 'Roboto, sans-serif', fontWeight: 700, color: unBlue.dark }}>
-                        About this dashboard
+                        {tr('About this dashboard', 'حول لوحة المعلومات')}
                       </Typography>
-                      <IconButton onClick={() => setAboutOpen(false)} size="small" aria-label="Close">
+                      <IconButton onClick={() => setAboutOpen(false)} size="small" aria-label={tr('Close', 'إغلاق')}>
                         <CloseIcon fontSize="small" />
                       </IconButton>
                     </Box>
@@ -406,9 +555,11 @@ function DashboardContent() {
               </Box>
             </Box>
 
+            {insightsNode && <Paper elevation={2} sx={{ mx: 2, mb: 1.25, p: 1.5, flexShrink: 0 }}>{insightsNode}</Paper>}
+
             <Paper elevation={2} sx={{ mx: 2, mb: 1.5, p: 1.25, flexShrink: 0 }}>
               <Typography variant="subtitle2" sx={{ fontFamily: 'Roboto, sans-serif', mb: 0.5 }}>
-                Monthly Trend (Jan–Jun 2026)
+                {tr('Monthly Trend (Jan–Jun 2026)', 'الاتجاه الشهري (يناير–يونيو 2026)')}
               </Typography>
               {trendNode}
             </Paper>
@@ -425,19 +576,20 @@ function DashboardContent() {
               <Paper elevation={2} sx={{ p: 2.5, mb: 2 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
                   <Typography variant="h6" sx={{ fontFamily: 'Roboto, sans-serif', fontWeight: 700, color: unBlue.dark }}>
-                    About this dashboard
+                    {tr('About this dashboard', 'حول لوحة المعلومات')}
                   </Typography>
-                  <IconButton onClick={() => setAboutOpen(false)} size="small" aria-label="Close">
+                  <IconButton onClick={() => setAboutOpen(false)} size="small" aria-label={tr('Close', 'إغلاق')}>
                     <CloseIcon fontSize="small" />
                   </IconButton>
                 </Box>
                 {aboutContent}
               </Paper>
             )}
+            {insightsNode && <Paper elevation={2} sx={{ p: 2, mb: 2 }}>{insightsNode}</Paper>}
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>{sidebarNode}</Box>
             <Paper elevation={2} sx={{ p: 2, mt: 2 }}>
               <Typography variant="subtitle2" sx={{ fontFamily: 'Roboto, sans-serif', mb: 1 }}>
-                Monthly Trend (Jan–Jun 2026)
+                {tr('Monthly Trend (Jan–Jun 2026)', 'الاتجاه الشهري (يناير–يونيو 2026)')}
               </Typography>
               {trendNode}
             </Paper>
@@ -447,8 +599,6 @@ function DashboardContent() {
     </AppLayout>
   );
 }
-
-export const revalidate = 0;
 
 export default function ThreeWHumanitarianMapping() {
   return <DashboardContent />;
