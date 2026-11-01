@@ -87,7 +87,7 @@ function DashboardContent() {
   const [dateIndex, setDateIndex] = useState(0);
   const [sliderIndex, setSliderIndex] = useState(0); // follows the thumb; dateIndex commits on release
   const [index, setIndex] = useState<CropIndex>('ndvi');
-  const [showIndexLayer, setShowIndexLayer] = useState(true);
+  const [showIndexLayer, setShowIndexLayer] = useState(false);
   const [cropFilter, setCropFilter] = useState<string | null>(null);
   const [selectedField, setSelectedField] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -295,7 +295,7 @@ function DashboardContent() {
       onReset={() => {
         commitDate(dates.length - 1);
         setIndex('ndvi');
-        setShowIndexLayer(true);
+        setShowIndexLayer(false);
         setCropFilter(null);
         setSelectedField(null);
         setHealthFilter(null);

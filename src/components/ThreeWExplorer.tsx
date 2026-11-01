@@ -217,6 +217,12 @@ export default function ThreeWExplorer(props: ThreeWExplorerProps) {
   const uncoveredEvents = exit.filter((e) => e.impact === 'uncovered').reduce((s, e) => s + e.profile.events, 0);
   const exitTab = (
     <Box>
+      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+        {tr(
+          'Pick an organization to see what would happen where it works if it left: places left with no partner at all, places that lose their only partner for a core service (health, water, food, protection, nutrition), and places where others remain.',
+          'اختر منظمة لترى ماذا سيحدث حيث تعمل لو غادرت: أماكن تبقى بلا أي شريك، وأماكن تفقد شريكها الوحيد في خدمة أساسية (الصحة، المياه، الغذاء، الحماية، التغذية)، وأماكن يبقى فيها آخرون.',
+        )}
+      </Typography>
       <Autocomplete
         size="small"
         options={orgOptions}

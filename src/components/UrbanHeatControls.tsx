@@ -1,6 +1,7 @@
 'use client';
 
-import { Box, Button, Divider, FormControlLabel, Slider, Switch, TextField, Typography } from '@mui/material';
+import { Box, Button, Divider, FormControlLabel, Slider, Switch, TextField, Tooltip, Typography } from '@mui/material';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
 import type { Weights } from '@/lib/urbanHeat';
@@ -37,6 +38,26 @@ const LAYERS: [keyof UrbanLayerVisibility, Bi][] = [
   ['parks', { en: 'Parks (OSM)', ar: 'الحدائق (OSM)' }],
   ['hillshade', { en: 'Hillshade', ar: 'تظليل التضاريس' }],
 ];
+
+// Hover help for each layer switch: what it shows and how to read it.
+const LAYER_HELP: Record<keyof UrbanLayerVisibility, Bi> = {
+  heat: { en: 'How hot the ground surface was in the summer imagery (Landsat), yellow to dark red. It is the surface, not the air, so it reads hotter than the weather forecast.', ar: 'مدى سخونة سطح الأرض في صور الصيف (Landsat)، من الأصفر إلى الأحمر الداكن. إنه السطح لا الهواء، لذا يبدو أسخن من نشرة الطقس.' },
+  hotspots: { en: 'The hottest group of built-up areas, found by clustering surface temperature into four groups (k-means).', ar: 'أشد مجموعات المناطق المبنية حرارة، محددة بتجميع حرارة السطح في أربع مجموعات (k-means).' },
+  vegetation: { en: 'How green the ground is (NDVI from Sentinel-2): brown is bare or built, green is planted.', ar: 'مدى خضرة الأرض (NDVI من Sentinel-2): البني أرض جرداء أو مبنية، والأخضر مزروع.' },
+  canopy: { en: 'Estimated tree cover in each ~70 m block, from satellite greenness, land-cover maps and mapped trees. Darker green means more shade.', ar: 'الغطاء الشجري المقدّر في كل قطعة بنحو 70 م، من خضرة الأقمار الصناعية وخرائط الغطاء الأرضي والأشجار المرسومة. الأخضر الأغمق يعني ظلًا أكثر.' },
+  equity: { en: 'Greenery residents can reach minus the heat they face. Red blocks are hot with little shade or park nearby; green blocks are cool and well served.', ar: 'الخضرة التي يصل إليها السكان ناقص الحرارة التي يواجهونها. القطع الحمراء حارة بلا ظل أو حديقة قريبة؛ والخضراء باردة ومخدومة جيدًا.' },
+  priority: { en: 'The 15% of built-up blocks that most need trees: highest heat risk and least access to greenery. Start planting here.', ar: 'أعلى 15% من القطع المبنية حاجة إلى الأشجار: أعلى مخاطر حرارة وأقل وصول إلى الخضرة. ابدأ التشجير هنا.' },
+  cooling: { en: 'Where your greening plan cools the ground, in blue. Appears after you set a tree budget or place an intervention in the Greening simulator.', ar: 'أين تبرّد خطة التشجير الأرض، باللون الأزرق. تظهر بعد تحديد ميزانية أشجار أو وضع تدخل في محاكي التشجير.' },
+  trees: { en: 'Individual trees mapped by volunteers in OpenStreetMap. Far from complete, so canopy uses satellite data as well.', ar: 'أشجار مفردة رسمها متطوعون في OpenStreetMap. غير مكتملة، لذا تعتمد المظلة على بيانات الأقمار الصناعية أيضًا.' },
+  parks: { en: 'Parks mapped in OpenStreetMap, used to measure how far each block is from a park.', ar: 'الحدائق المرسومة في OpenStreetMap، وتُستخدم لقياس بُعد كل قطعة عن حديقة.' },
+  hillshade: { en: 'Terrain shading from the elevation model, to show valleys such as Wadi Hanifa.', ar: 'تظليل التضاريس من نموذج الارتفاع، لإظهار الأودية مثل وادي حنيفة.' },
+};
+
+const WEIGHT_HELP: Record<keyof Weights, Bi> = {
+  heat: { en: 'How much surface heat counts in the heat-risk score.', ar: 'وزن حرارة السطح في درجة مخاطر الحرارة.' },
+  density: { en: 'How much dense building counts: packed blocks trap more heat.', ar: 'وزن كثافة المباني: القطع المكتظة تحتبس حرارة أكثر.' },
+  vegetation: { en: 'How much missing greenery counts in the heat-risk score.', ar: 'وزن نقص الخضرة في درجة مخاطر الحرارة.' },
+};
 
 const WEIGHTS: [keyof Weights, string, Bi][] = [
   ['heat', 'w1', { en: 'Land surface temperature', ar: 'حرارة سطح الأرض' }],
@@ -106,7 +127,14 @@ export default function UrbanHeatControls(props: UrbanHeatControlsProps) {
             sx={{ display: 'flex', ml: 0, mr: 0, justifyContent: 'space-between' }}
             labelPlacement="start"
             control={<Switch size="small" checked={visible[key]} onChange={(e) => props.onVisibleChange({ ...visible, [key]: e.target.checked })} />}
-            label={<Typography variant="body2">{pick(label)}</Typography>}
+            label={
+              <Tooltip title={pick(LAYER_HELP[key])} placement="right" arrow enterDelay={150}>
+                <Typography variant="body2" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, cursor: 'help' }}>
+                  {pick(label)}
+                  <InfoOutlinedIcon sx={{ fontSize: 14, color: 'text.disabled' }} />
+                </Typography>
+              </Tooltip>
+            }
           />
         ))}
       </Section>
@@ -116,7 +144,9 @@ export default function UrbanHeatControls(props: UrbanHeatControlsProps) {
         {WEIGHTS.map(([key, w, label]) => (
           <Box key={key} sx={{ px: 0.5 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-              <Typography variant="caption">{w} · {pick(label)}</Typography>
+              <Tooltip title={pick(WEIGHT_HELP[key])} placement="right" arrow enterDelay={150}>
+                <Typography variant="caption" sx={{ cursor: 'help' }}>{w} · {pick(label)}</Typography>
+              </Tooltip>
               <Typography variant="caption" sx={{ fontWeight: 700 }}>{weights[key]}</Typography>
             </Box>
             <Slider

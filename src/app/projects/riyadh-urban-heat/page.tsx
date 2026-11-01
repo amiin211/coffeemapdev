@@ -132,7 +132,7 @@ export default function RiyadhUrbanHeat() {
   const [backend, setBackend] = useState('');
   const [win, setWin] = useState(DEFAULT_WINDOW);
   const [visible, setVisible] = useState<UrbanLayerVisibility>({
-    hillshade: false, heat: true, hotspots: false, vegetation: false, canopy: false, equity: false, priority: true, trees: true, parks: true, cooling: true,
+    hillshade: false, heat: false, hotspots: false, vegetation: false, canopy: false, equity: false, priority: true, trees: true, parks: true, cooling: true,
   });
   const [weights, setWeights] = useState<Weights>(DEFAULT_WEIGHTS);
   const [focus, setFocus] = useState<{ lon: number; lat: number } | null>(null);

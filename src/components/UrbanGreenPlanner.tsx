@@ -122,7 +122,7 @@ export default function UrbanGreenPlanner(p: PlannerProps) {
         <Box>
           <Typography variant="subtitle2" sx={{ mb: 0.25 }}>{tr('What cools Riyadh? (fitted model)', 'ما الذي يبرّد الرياض؟ (نموذج مُدرَّب)')}</Typography>
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, lineHeight: 1.4 }}>
-            {tr('Least squares on every other built-up cell: surface temperature against canopy, neighbourhood canopy, building density and elevation.', 'المربعات الصغرى على كل خلية مبنية ثانية: حرارة السطح مقابل مظلة الخلية ومظلة الجوار وكثافة المباني والارتفاع.')}
+            {tr('Learned from this city\'s own satellite data: how much hotter or cooler the ground is as each factor goes from none to full. Blue bars cool the city, red bars heat it. The simulator uses the tree-cover values.', 'مُتعلَّم من بيانات الأقمار الصناعية للمدينة نفسها: كم تسخن الأرض أو تبرد حين ينتقل كل عامل من لا شيء إلى الحد الأقصى. الأشرطة الزرقاء تبرّد المدينة، والحمراء تسخّنها. ويستخدم المحاكي قيم الغطاء الشجري.')}
           </Typography>
           {([
             [tr('Tree canopy in the cell (0→1)', 'مظلة الأشجار في الخلية (0←1)'), p.model.coef.canopy],
@@ -153,6 +153,7 @@ export default function UrbanGreenPlanner(p: PlannerProps) {
           ))}
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
             <bdi>R² {p.model.r2.toFixed(2)} · RMSE {p.model.rmse.toFixed(1)}{degC} · n {p.model.n.toLocaleString('en-US')}</bdi>
+            {tr(' · R² is the share of the temperature pattern the model explains (0 to 1).', ' · ‏R² هي نسبة نمط الحرارة التي يفسّرها النموذج (من 0 إلى 1).')}
             {p.model.fallback && tr(' · no canopy cooling found: simulator uses −0.4 °C per +10% canopy', ' · لم يُرصد تبريد من المظلة: يستخدم المحاكي −0.4 °م لكل +10% مظلة')}
           </Typography>
         </Box>
@@ -166,10 +167,19 @@ export default function UrbanGreenPlanner(p: PlannerProps) {
 
   const plan = (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
+      <Typography variant="body2" sx={{ lineHeight: 1.5, p: 1, borderRadius: 1, bgcolor: '#f1f8e9' }}>
+        {tr(
+          'Test a greening plan for Riyadh. Use step 1, step 2 or both together; step 3 shows what the plan would change.',
+          'اختبر خطة تشجير للرياض. استخدم الخطوة 1 أو الخطوة 2 أو كلتيهما معًا؛ وتُظهر الخطوة 3 ما ستغيّره الخطة.',
+        )}
+      </Typography>
       <Box>
         <Typography variant="subtitle2">{tr('1 · Auto-site a tree budget', '1 · توزيع آلي لميزانية الأشجار')}</Typography>
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.4 }}>
-          {tr('Trees go where heat risk × lack of access is highest, bringing each cell to 35% canopy.', 'تُزرع الأشجار حيث يكون حاصل مخاطر الحرارة × نقص الوصول أعلى، لترفع كل خلية إلى مظلة 35%.')}
+<Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.45, mt: 0.25, mb: 0.5 }}>
+          {tr(
+            'Choose how many trees to plant and let the model decide where. It ranks every built-up block by how hot it is and how far its residents are from shade and parks, then plants the neediest blocks first, each up to about a third of the ground under tree cover (35%), and moves down the list until the trees run out.',
+            'اختر عدد الأشجار ودع النموذج يقرر أين تُزرع. يرتّب كل قطعة مبنية حسب شدة حرارتها وبُعد سكانها عن الظل والحدائق، ثم يزرع القطع الأشد حاجة أولًا، كلًّا منها حتى يغطي الشجر نحو ثلث أرضها (35%)، وينتقل إلى التالية حتى تنفد الأشجار.',
+          )}
         </Typography>
         <Box sx={{ px: 1 }}>
           <Slider
@@ -196,6 +206,12 @@ export default function UrbanGreenPlanner(p: PlannerProps) {
       <Divider />
       <Box>
         <Typography variant="subtitle2">{tr('2 · Place your own interventions', '2 · ضع تدخلاتك بنفسك')}</Typography>
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.45, mt: 0.25, mb: 0.5 }}>
+          {tr(
+            'Test a specific idea in a specific place. Choose a tool, set its size, press "Place on the map" and click where it should go. Add as many as you like; remove one with its ×.',
+            'اختبر فكرة محددة في مكان محدد. اختر أداة، وحدد حجمها، واضغط «ضع على الخريطة» ثم انقر حيث تريدها. أضف ما شئت، واحذف أيًّا منها بعلامة ×.',
+          )}
+        </Typography>
         <ToggleButtonGroup
           size="small"
           exclusive
@@ -208,6 +224,13 @@ export default function UrbanGreenPlanner(p: PlannerProps) {
           <ToggleButton value="park"><ParkIcon sx={{ fontSize: 16, color: KIND_COLOR.park }} />{tr('Pocket park', 'حديقة صغيرة')}</ToggleButton>
           <ToggleButton value="coolroof"><RoofingIcon sx={{ fontSize: 16, color: KIND_COLOR.coolroof }} />{tr('Cool roofs', 'أسطح باردة')}</ToggleButton>
         </ToggleButtonGroup>
+        <Typography variant="caption" sx={{ display: 'block', lineHeight: 1.45, mb: 0.5, color: KIND_COLOR[p.tool] }}>
+          {p.tool === 'trees'
+            ? tr('Street trees: adds shade trees along the streets of the built-up blocks inside the circle.', 'أشجار الشوارع: تضيف أشجار ظل على امتداد شوارع القطع المبنية داخل الدائرة.')
+            : p.tool === 'park'
+              ? tr('Pocket park: turns the circle into a planted park, so nearby residents also get closer to a park.', 'حديقة صغيرة: تحوّل الدائرة إلى حديقة مزروعة، فيقترب السكان حولها من حديقة أيضًا.')
+              : tr('Cool roofs: light-coloured, reflective roofs and pavements that absorb less sun. No trees or water needed.', 'أسطح باردة: أسطح وأرصفة فاتحة عاكسة تمتص شمسًا أقل. لا تحتاج إلى أشجار ولا مياه.')}
+        </Typography>
         <Box sx={{ px: 0.5 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
             <Typography variant="caption">{tr('Radius', 'نصف القطر')}</Typography>
@@ -217,7 +240,7 @@ export default function UrbanGreenPlanner(p: PlannerProps) {
           {p.tool !== 'park' && (
             <>
               <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Typography variant="caption">{p.tool === 'trees' ? tr('Canopy added', 'المظلة المضافة') : tr('Roofs & pavements treated', 'الأسطح والأرصفة المعالجة')}</Typography>
+                <Typography variant="caption">{p.tool === 'trees' ? tr('Extra tree cover', 'غطاء شجري إضافي') : tr('Share of roofs & pavements treated', 'نسبة الأسطح والأرصفة المعالجة')}</Typography>
                 <Typography variant="caption" sx={{ fontWeight: 700 }}>+{Math.round(p.boost * 100)}%</Typography>
               </Box>
               <Slider size="small" value={p.boost} min={0.05} max={p.tool === 'trees' ? 0.4 : 1} step={0.05} onChange={(_, v) => p.onBoost(v as number)} sx={{ py: 1 }} />
@@ -258,6 +281,12 @@ export default function UrbanGreenPlanner(p: PlannerProps) {
         <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           {tr('3 · Simulated outcome', '3 · النتيجة المحاكاة')}
           {p.simulating && <LinearProgress sx={{ flex: 1 }} />}
+        </Typography>
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.45, mt: 0.25, mb: 0.5 }}>
+          {tr(
+            'What the plan would change: how many trees it needs, how much cooler the ground gets, how much of the city cools noticeably, and the water and cost involved. The blue map layer shows where it cools.',
+            'ما ستغيّره الخطة: كم شجرة تحتاج، وكم تبرد الأرض، وكم من المدينة يبرد بشكل ملحوظ، والمياه والتكلفة المطلوبة. وتُظهر الطبقة الزرقاء على الخريطة أين يحدث التبريد.',
+          )}
         </Typography>
         {!hasPlan || !s ? (
           <Typography variant="caption" color="text.secondary">{tr('Set a tree budget or place an intervention to see the cooling.', 'حدد ميزانية أشجار أو ضع تدخلًا لرؤية أثر التبريد.')}</Typography>
@@ -302,7 +331,10 @@ export default function UrbanGreenPlanner(p: PlannerProps) {
 
       {p.sites.length > 0 && (
         <Box>
-          <Typography variant="subtitle2" sx={{ mb: 0.5 }}>{tr('Top planting sites', 'أهم مواقع التشجير')}</Typography>
+          <Typography variant="subtitle2">{tr('Top planting sites', 'أهم مواقع التشجير')}</Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.45, mt: 0.25, mb: 0.5 }}>
+            {tr('Where step 1 placed the most trees, numbered on the map. Click one to zoom to it.', 'المواقع التي وضعت فيها الخطوة 1 أكبر عدد من الأشجار، مرقّمة على الخريطة. انقر أحدها للانتقال إليه.')}
+          </Typography>
           {p.sites.slice(0, 8).map((site, i) => (
             <Box
               key={i}

@@ -206,7 +206,21 @@ export function CropFilters({
         </ToggleButtonGroup>
         <FormControlLabel
           control={<Switch size="small" checked={showIndexLayer} onChange={(e) => onShowIndexLayerChange(e.target.checked)} />}
-          label={<Typography variant="caption">{tr(`Show ${INDEX_LABEL[index]} imagery (off: per-field means)`, `عرض صور ${INDEX_LABEL[index]} (عند الإيقاف: متوسط كل حقل)`)}</Typography>}
+          label={
+            <Tooltip
+              arrow
+              placement="right"
+              enterDelay={150}
+              title={tr(
+                `On: the full ${INDEX_LABEL[index]} satellite image for the selected date, pixel by pixel, so you can see patterns inside each field. Off: each field is filled with one colour, its average ${INDEX_LABEL[index]}, which is faster and easier to compare.`,
+                `تشغيل: صورة ${INDEX_LABEL[index]} الكاملة من القمر الصناعي للتاريخ المختار، بكسلًا بكسلًا، لرؤية الأنماط داخل كل حقل. إيقاف: يُملأ كل حقل بلون واحد هو متوسط ${INDEX_LABEL[index]} فيه، وهو أسرع وأسهل للمقارنة.`,
+              )}
+            >
+              <Typography variant="caption" sx={{ cursor: 'help' }}>
+                {tr(`Show ${INDEX_LABEL[index]} imagery (off: per-field means)`, `عرض صور ${INDEX_LABEL[index]} (عند الإيقاف: متوسط كل حقل)`)} ⓘ
+              </Typography>
+            </Tooltip>
+          }
           sx={{ mt: 0.5, ml: 0 }}
         />
       </Box>

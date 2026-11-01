@@ -42,6 +42,15 @@ const MODES: [CropMapMode, string, string][] = [
   ['crop', 'Crop', 'المحصول'],
 ];
 
+// One plain-language line under the mode buttons, for the selected mode.
+const MODE_HELP: Record<CropMapMode, [string, string]> = {
+  index: ['Satellite image of plant greenness on the selected date: red is bare ground, green is a dense crop. Press play to watch the season.', 'صورة قمر صناعي لخضرة النبات في التاريخ المختار: الأحمر أرض جرداء، والأخضر محصول كثيف. اضغط تشغيل لمشاهدة الموسم.'],
+  health: ['Each field compared with fields growing the same crop on this date: dark green is ahead, yellow and red are falling behind, brown was just harvested or cut.', 'كل حقل مقارنة بالحقول التي تزرع المحصول نفسه في هذا التاريخ: الأخضر الداكن متقدم، والأصفر والأحمر متأخران، والبني حُصد أو حُشّ للتو.'],
+  change: ['How much greener (teal) or browner (brown) each field became since the earlier date you choose next to the buttons.', 'كم صار كل حقل أكثر خضرة (أزرق مخضر) أو أكثر جفافًا (بني) منذ التاريخ السابق الذي تختاره بجانب الأزرار.'],
+  water: ['Estimated irrigation water each field used over the last 12 months, per hectare: darker blue means thirstier. Modelled from greenness and weather, not metered.', 'تقدير مياه الري التي استهلكها كل حقل خلال آخر 12 شهرًا لكل هكتار: الأزرق الأغمق أكثر عطشًا. مقدّر من الخضرة والطقس، لا من عدادات.'],
+  crop: ['The crop type the model assigned to each field for this season.', 'نوع المحصول الذي أسنده النموذج لكل حقل في هذا الموسم.'],
+};
+
 const panelSx = { bgcolor: 'rgba(255,255,255,0.94)', backdropFilter: 'blur(8px)', borderRadius: 1.5, boxShadow: 2 };
 
 // ------------------------------------------------------------------ mode bar --
@@ -62,7 +71,8 @@ export function MapModeBar({
 }) {
   const { isAr, tr } = useI18n();
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, p: 0.5, flexWrap: 'wrap', ...panelSx }}>
+    <Box sx={{ p: 0.5, maxWidth: 520, ...panelSx }}>
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap' }}>
       <Tooltip title={playing ? tr('Pause', 'إيقاف مؤقت') : tr('Play the season scene by scene', 'تشغيل الموسم مشهدًا بمشهد')}>
         <IconButton size="small" onClick={onPlay} sx={{ bgcolor: agriGreen.DEFAULT, color: 'white', '&:hover': { bgcolor: agriGreen.dark } }} aria-label={tr('Play timeline', 'تشغيل الخط الزمني')}>
           {playing ? <PauseIcon fontSize="small" /> : <PlayArrowIcon fontSize="small" sx={{ transform: isAr ? 'scaleX(-1)' : undefined }} />}
@@ -84,6 +94,10 @@ export function MapModeBar({
           ))}
         </Select>
       )}
+    </Box>
+    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', px: 0.75, pt: 0.5, lineHeight: 1.4 }}>
+      {tr(MODE_HELP[mode][0], MODE_HELP[mode][1])}
+    </Typography>
     </Box>
   );
 }
@@ -274,14 +288,17 @@ export function FieldIntel(p: FieldIntelProps) {
             <TrendIcon sx={{ fontSize: 18, color: trendColor }} />
           </Box>
           <Row label={tr(`NDVI vs ${cropLabel(h.crop, false).toLowerCase()} peers`, `NDVI مقارنة بنظراء ${cropLabel(h.crop, true)}`)} value={h.value !== null && h.peerMedian !== null ? `${h.value.toFixed(2)} / ${h.peerMedian.toFixed(2)} (${Math.round((h.ratio ?? 0) * 100)}%)` : '—'} />
-          <Row label={tr('Robust z-score', 'الدرجة المعيارية المتينة')} value={h.z !== null ? h.z.toFixed(1) : '—'} color={h.z !== null && h.z < -1.5 ? '#D50000' : undefined} />
+          <Row label={tr('How unusual vs peers (z; below −1.5 is a concern)', 'مدى الاختلاف عن النظراء (z؛ أقل من −1.5 مقلق)')} value={h.z !== null ? h.z.toFixed(1) : '—'} color={h.z !== null && h.z < -1.5 ? '#D50000' : undefined} />
           <Row label={tr('Trend, last 30 days', 'الاتجاه، آخر 30 يومًا')} value={h.trend !== null ? `${h.trend > 0 ? '+' : ''}${h.trend.toFixed(3)} ${tr('/ 10 days', '/ 10 أيام')}` : '—'} color={trendColor} />
           {h.harvestedOn && <Row label={tr('Harvest / cut detected', 'رُصد حصاد / حش')} value={d(h.harvestedOn)} color="#6D4C41" />}
         </Box>
       )}
 
       <Box>
-        <Typography variant="caption" sx={{ fontWeight: 700, display: 'block', mb: 0.25 }}>{tr('Phenology by season (model)', 'الفينولوجيا حسب الموسم (نموذج)')}</Typography>
+        <Typography variant="caption" sx={{ fontWeight: 700, display: 'block' }}>{tr('Phenology by season (model)', 'الفينولوجيا حسب الموسم (نموذج)')}</Typography>
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.25, fontSize: '0.66rem', lineHeight: 1.4 }}>
+          {tr('When the crop greened up, peaked and dried down each season. Vigour ranks this field against the same crop: P100 is the best field, P0 the weakest.', 'متى اخضرّ المحصول وبلغ ذروته وجفّ في كل موسم. وترتّب القوة هذا الحقل مقابل المحصول نفسه: P100 أفضل حقل، وP0 أضعفها.')}
+        </Typography>
         <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse', '& td, & th': { fontFamily: 'inherit', fontSize: '0.68rem', py: 0.3, px: 0.4, textAlign: 'center', borderBottom: '1px solid #eee' }, '& th': { color: 'text.secondary', fontWeight: 600 } }}>
           <thead>
             <tr>
@@ -318,6 +335,9 @@ export function FieldIntel(p: FieldIntelProps) {
           <WaterDropOutlinedIcon sx={{ fontSize: 15, color: '#1565C0' }} />
           <Typography variant="caption" sx={{ fontWeight: 700 }}>{tr('Irrigation demand, last 12 months', 'الطلب على الري، آخر 12 شهرًا')}</Typography>
         </Box>
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.25, fontSize: '0.66rem', lineHeight: 1.4 }}>
+          {tr('How much water the crop used (ETc) and how much the pivot had to apply to deliver it. Estimated from greenness and daily weather, not from meters.', 'كم استهلك المحصول من الماء (ETc) وكم كان على المحور أن يضخ ليوصله. تقدير من الخضرة والطقس اليومي، لا من العدادات.')}
+        </Typography>
         <Row label={tr('Crop evapotranspiration (ETc)', 'التبخر-نتح للمحصول (ETc)')} value={`${p.water.etcMm.toLocaleString()} mm`} />
         <Row label={tr('Gross irrigation (85% efficiency)', 'الري الإجمالي (كفاءة 85%)')} value={`${Math.round(p.water.grossM3).toLocaleString()} m³`} color="#1565C0" />
         <Row

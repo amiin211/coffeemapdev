@@ -128,6 +128,9 @@ export default function AcledInsights({ data, insights, overlay, onOverlayChange
             }}
           />
         </Box>
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.4, mb: 0.5 }}>
+          {hint}
+        </Typography>
         <Box component="ul" sx={{ m: 0, p: 0 }}>
           {items.length ? (
             items
@@ -207,7 +210,7 @@ export default function AcledInsights({ data, insights, overlay, onOverlayChange
           'surges',
           <TrendingUpIcon fontSize="small" />,
           tr('Surging localities', 'محليات تشهد تصاعدًا'),
-          tr('Well above their own recent baseline', 'أعلى بكثير من خط الأساس الخاص بها'),
+          tr('Violence in the last 3 months is far above what is normal for that locality (its previous 6 months).', 'العنف في آخر 3 أشهر أعلى بكثير من المعتاد في تلك المحلية (أشهرها الستة السابقة).'),
           insights.surges.length,
           insights.surges.slice(0, MAX_ITEMS).map((c) => row(c.locality.pcode, c.locality, changeDetail(c), OVERLAY_COLORS.surges)),
           tr('No locality is significantly above its baseline.', 'لا توجد محلية أعلى من خط الأساس بشكل ملحوظ.'),
@@ -216,7 +219,7 @@ export default function AcledInsights({ data, insights, overlay, onOverlayChange
           'new',
           <FiberNewOutlinedIcon fontSize="small" />,
           tr('Newly affected', 'متأثرة حديثًا'),
-          tr('Quiet through the baseline, now reporting', 'هادئة طوال فترة الأساس، وتشهد أحداثًا الآن'),
+          tr('No events in the previous 6 months, but events in the last 3: violence spreading to new places.', 'لا أحداث في الأشهر الستة السابقة، لكن أحداث في آخر 3 أشهر: عنف يمتد إلى أماكن جديدة.'),
           insights.newlyAffected.length,
           insights.newlyAffected.slice(0, MAX_ITEMS).map((c) =>
             row(
@@ -232,7 +235,7 @@ export default function AcledInsights({ data, insights, overlay, onOverlayChange
           'hotspots',
           <WhatshotOutlinedIcon fontSize="small" />,
           tr('Hotspot clusters (Gi*)', 'تجمعات البؤر الساخنة (Gi*)'),
-          tr('Localities whose neighbourhood is significantly above the national level over the selected period', 'محليات يرتفع محيطها بشكل ملحوظ عن المستوى الوطني خلال الفترة المحددة'),
+          tr('Areas where a locality and its neighbours within 150 km are all high: a regional cluster of conflict, not one isolated spot.', 'مناطق ترتفع فيها المحلية وجيرانها ضمن 150 كم معًا: تجمع إقليمي للنزاع، لا بقعة معزولة.'),
           insights.hotspots.length,
           insights.hotspots.slice(0, MAX_ITEMS).map((h) =>
             row(
