@@ -27,31 +27,38 @@ The site is built by **Amin Adnan Gasim**, a Sudanese geospatial engineer based 
 
 | Route | Page |
 |---|---|
-| `/` | Home: introduction, expertise (capabilities), featured projects, insights and contact |
-| `/about` | About CoffeeMap.dev and its author |
-| `/expertise/[category]` | Projects and insights for one expertise area |
+| `/` | Home: introduction, services, featured projects, insights and contact |
+| `/about` | About me, CoffeeMap.dev and consulting availability |
+| `/expertise/[category]` | One service: what I deliver, who it is for, and the projects and articles that prove it |
 | `/projects/[category]` | Project listing filtered by category |
 | `/projects/sudan-flood-dashboard` | Sudan Flood Dashboard |
 | `/projects/3w-humanitarian-mapping` | 3W Humanitarian Mapping |
 | `/projects/acled-conflict-dashboard` | Sudan Conflicts (ACLED) |
 | `/projects/geoai-crop-monitoring` | GeoAI Crop Monitoring |
-| `/projects/blue-nile-flood-risk` | Blue Nile Flood Risk |
 | `/projects/riyadh-urban-heat` | Riyadh Urban Heat & Tree Canopy Equity |
-| `/projects/3d-mosque-viewer` | 3D Mosque Viewer |
+| `/projects/3d-mosque-viewer` | 3D Mosque Viewer & 4D BIM |
 | `/projects/serverless-geoai-architecture` | Serverless GeoAI Architecture |
 | `/projects/geospatial-qaqc-workbench` | Geospatial QA/QC Workbench |
 | `/insights/[slug]` | Insight articles |
 
-The navigation bar links to Home, About, Expertise (`/#capabilities`) and Contact (`/#contact`).
+The navigation bar links to Home, About, Services (`/#capabilities`) and Contact (`/#contact`).
 
 ---
 
-## Expertise areas
+## Services
 
-Projects and insights are grouped into four categories (`src/data/capabilities.ts`):
+The services I offer are defined in `src/data/capabilities.ts`. Each one has a page at `/expertise/<category>` with an introduction, deliverables, audience and tools, and links to the projects (`projectIds`) and articles (`insightIds`) that prove it:
 
-| Category id | Area | Focus | Typical tools |
-|---|---|---|---|
+| Category id | Service |
+|---|---|
+| `geoai` | **Satellite Analytics & GeoAI** — crop and water monitoring, urban heat and greening plans, change detection |
+| `humanitarian` | **Humanitarian Information Management** — conflict analysis, 3W and response-gap mapping, situation dashboards |
+| `web-mapping` | **WebGIS Dashboards & Apps** — bilingual dashboards on static hosting |
+| `surveying` | **Surveying, Geodesy & Mapping** — control networks, GNSS and total station, drone photogrammetry, DTMs |
+| `enterprise-gis` | **Geospatial QA/QC & Data Quality** — ISO 19157 quality control, sampling plans, training |
+| `gis-bim` | **3D, BIM & Digital Twins** — 3D/4D site models with BIM data, schedules and costs |
+
+---|---|---|---|
 | `enterprise-gis` | **Enterprise GIS** | Scalable geospatial infrastructure for mission-critical operations | ArcGIS, ArcGIS Online, ArcGIS Dashboards, QGIS, PostGIS, Power BI |
 | `web-mapping` | **Web Mapping** | Interactive web mapping platforms and data visualization | Leaflet, Mapbox / MapLibre, Cesium, Three.js, D3.js, React |
 | `geoai` | **GeoAI & Remote Sensing** | Machine learning and satellite analysis for actionable intelligence | Google Earth Engine, Python, Planetary Computer, Pix4D |
@@ -87,24 +94,9 @@ Conflict monitoring that maps ACLED political violence events and fatalities acr
 #### GeoAI Crop Monitoring — *GeoAI*
 `/projects/geoai-crop-monitoring`
 
-Sentinel‑2 crop monitoring for irrigated farms in Al Jouf, Saudi Arabia. Centre‑pivot fields are detected automatically; NDVI / EVI time series, a rule‑based crop classification and anomaly alerts are computed per field, with index layers streamed from Microsoft Planetary Computer.
+Sentinel‑2 crop monitoring for 181 irrigated fields in Al Jouf, Saudi Arabia. Centre‑pivot fields are detected automatically; NDVI / EVI time series, a rule‑based crop classification and anomaly alerts are computed per field offline, with index layers streamed from Microsoft Planetary Computer. In the browser (`src/lib/cropInsights.ts`) each date adds field health against same-crop peers (robust z-score), harvest and cutting detection, season phenology and vigour ranks, irrigation demand (Kc from NDVI × ET₀ from NASA POWER, Hargreaves), look-alike fields by NDVI correlation, map modes for health / change / water / crop, timeline playback and a written farm brief.
 
 *Python · OpenCV · Rasterio · NumPy · STAC API · Planetary Computer · Sentinel‑2 · Next.js · MapLibre GL JS · Chart.js*
-
-#### Blue Nile Flood Risk — *GeoAI*
-`/projects/blue-nile-flood-risk`
-
-A fully client‑side GeoAI flood risk model for the Blue Nile in Sennar and Gezira, Sudan (32–35° E, 12–15° N). With no backend, the browser:
-
-- decodes elevation from terrain tiles and derives slope and height above the nearest river;
-- fetches Sentinel‑1 VV/VH radar for a pre‑flood and a flood date (keyless from Planetary Computer, or Sentinel Hub / Copernicus Data Space with a token) and detects new flood water by thresholding with change detection;
-- sums recent rainfall from Open‑Meteo;
-- fetches the OpenStreetMap river network from Overpass and runs an exact distance transform;
-- combines everything in a transparent weighted risk model (Low / Medium / High / Very High).
-
-Users can change the dates, radar thresholds and model weights, recompute the map, and click any cell to inspect its values. It defaults to the record flood of September 2020.
-
-*Sentinel‑1 SAR · MapLibre GL JS · Planetary Computer · Sentinel Hub · Open‑Meteo · Overpass API · Next.js · TypeScript*
 
 #### Riyadh Urban Heat & Tree Canopy Equity — *GeoAI*
 `/projects/riyadh-urban-heat`
@@ -115,11 +107,13 @@ A fully client-side urban heat island and tree canopy equity analysis for Riyadh
 - builds a tree canopy raster from NDVI, WorldCover and OSM trees, and measures distance to canopy and parks with exact distance transforms;
 - scores **tree canopy equity = vegetation access − heat exposure** for every built-up cell;
 - runs a TensorFlow.js heat-risk model (land surface temperature, building density, lack of vegetation) with adjustable weights, and flags the top 15% of cells as priority planting zones;
-- summarizes focus districts (Ishbiliyah, Al-Malaz, Al-Murabba, Ad-Diriyah, Wadi Hanifa, eastern districts).
+- summarizes focus districts (Ishbiliyah, Al-Malaz, Al-Murabba, Ad-Diriyah, Wadi Hanifa, eastern districts);
+- fits a least-squares cooling model to the loaded city (surface temperature against cell canopy, canopy within 300 m, building density and elevation) and writes a city brief;
+- runs a greening simulator (`src/lib/urbanCooling.ts`): auto-sites a tree budget on the highest heat-risk × lack-of-access cells, or places street trees, pocket parks and cool roofs by clicking the map, then reports cooling, canopy, priority zones, equity, water, indicative cost and progress toward Green Riyadh targets.
 
 *Landsat 8/9 · Sentinel-2 · TensorFlow.js · MapLibre GL JS · Planetary Computer · ESA WorldCover · NASA POWER · Overpass API · Next.js · TypeScript*
 
-#### 3D Mosque Viewer — *BIM & Infrastructure*
+#### 3D Mosque Viewer & 4D BIM — *BIM & Infrastructure*
 `/projects/3d-mosque-viewer`
 
 An interactive 3D environment of a mosque site in Aseer, Saudi Arabia. The mosque model is colored per mesh; the ground switches between grass and a 0.5 m DTM draped with the site orthophoto. Trees, palms, site traffic and parked cars fill the scene, and it switches between a daytime HDRI sky and night lighting (pole lights and floodlights). It opens in terrain mode at night.
@@ -145,9 +139,12 @@ A hands-on guide to checking delivered geospatial data against its specification
 Articles listed on the home page (`src/data/insights.ts`), written in Markdown in `content/articles/` and rendered to static pages at `/insights/<slug>`:
 
 - Serverless GeoAI: The Architecture Behind CoffeeMap.dev
-- Flood Risk Mapping on the Blue Nile, Entirely in the Browser
 - Where Riyadh Needs Trees Most
 - Crop Monitoring for Al Jouf Without a Server
+- A Practical QA/QC Workbench for Geospatial Data
+- Reading Sudan's Conflict Data: Surges, Hotspots and Trends in the Browser
+- Finding the Gaps in Sudan's Humanitarian Response
+- From Drone Survey to Handover: a 4D BIM Mosque in the Browser
 
 ---
 
@@ -159,13 +156,10 @@ Articles listed on the home page (`src/data/insights.ts`), written in Markdown i
 | ACLED Sudan political violence export | Sudan Conflicts | Prebuilt `public/data/acled_data.json` |
 | Sudan COD administrative boundaries (admin 1–2) | Sudan dashboards | `public/data/sdn_admin*.geojson` |
 | Sentinel‑2 L2A (ESA Copernicus) via Microsoft Planetary Computer | GeoAI Crop Monitoring | Prebuilt field data + live index tiles |
-| Sentinel‑1 RTC via Microsoft Planetary Computer | Blue Nile Flood Risk | Live, keyless mosaic tiles |
-| Sentinel Hub / Copernicus Data Space Process API | Blue Nile Flood Risk (optional) | Live, user‑supplied token |
-| AWS Terrain Tiles (Terrarium) / MapTiler Terrain‑RGB | Blue Nile Flood Risk, Riyadh Urban Heat | Live tiles |
+| AWS Terrain Tiles (Terrarium) / MapTiler Terrain‑RGB | Riyadh Urban Heat | Live tiles |
 | Landsat 8/9 C2 L2 surface temperature, Sentinel‑2 L2A, ESA WorldCover via Planetary Computer | Riyadh Urban Heat | Live, keyless mosaic tiles |
-| NASA POWER daily point API | Riyadh Urban Heat | Live, keyless |
-| Open‑Meteo historical weather API | Blue Nile Flood Risk | Live, keyless |
-| OpenStreetMap via Overpass API | Blue Nile Flood Risk, Riyadh Urban Heat | Live, with bundled snapshot fallbacks |
+| NASA POWER daily point API | Riyadh Urban Heat, GeoAI Crop Monitoring | Live, keyless (crop falls back to an Al Jouf ET₀ climatology) |
+| OpenStreetMap via Overpass API | Riyadh Urban Heat | Live, with bundled snapshot fallbacks |
 | Aseer mosque model, DTM and orthophoto | 3D Mosque Viewer | Static assets in `public/data/3d/` |
 | OpenStreetMap / MapLibre demotiles basemaps | All maps | Live tiles |
 
@@ -175,7 +169,7 @@ Articles listed on the home page (`src/data/insights.ts`), written in Markdown i
 
 **Framework:** Next.js 16 (App Router), React 19, TypeScript
 
-**UI:** Material UI (MUI) 5 with Emotion; Roboto typography; per‑dashboard color themes (UN blue, agricultural green, water blue)
+**UI:** Material UI (MUI) 5 with Emotion; Roboto typography; per‑dashboard color themes (UN blue, agricultural green, and others)
 
 **Mapping & 3D:** MapLibre GL JS through `react-map-gl` for every map, Three.js for 3D; label glyphs self-hosted in `public/fonts/`, and the MapLibre web worker copied into `public/maplibre/` before dev and build (`scripts/copy-maplibre-worker.mjs`)
 
@@ -197,7 +191,6 @@ Articles listed on the home page (`src/data/insights.ts`), written in Markdown i
 │   ├── data/                 # Prebuilt datasets and static assets per project
 │   │   ├── 3d/               # Mosque GLB, BIM data, DTM heightmap, orthophoto, models, HDRI
 │   │   ├── crop/             # Crop fields GeoJSON and index time series
-│   │   ├── flood-risk/       # OSM rivers snapshot for Blue Nile Flood Risk
 │   │   ├── urban-heat/       # OSM trees and parks snapshots for Riyadh Urban Heat
 │   │   └── *.json / *.geojson
 │   └── images/               # Project card thumbnails
@@ -206,7 +199,7 @@ Articles listed on the home page (`src/data/insights.ts`), written in Markdown i
 │   ├── app/                  # Next.js routes (home, about, expertise, projects/*)
 │   ├── components/           # Shared layout, cards, and per-dashboard maps / charts / panels
 │   ├── data/                 # Site content: projects, capabilities, insights, tech stack
-│   ├── lib/                  # Client-side engines (geoRaster.ts shared raster tools, floodRisk.ts, urbanHeat.ts, mosqueEnvironment.ts, mosqueBim.ts)
+│   ├── lib/                  # Client-side engines (geoRaster.ts shared raster tools, urbanHeat.ts, urbanCooling.ts, cropInsights.ts, mosqueEnvironment.ts, mosqueBim.ts)
 │   ├── theme/                # MUI theme, fonts and dashboard color palettes
 │   └── utils/                # Data helpers per dashboard and category filters
 ├── README.md
@@ -244,7 +237,8 @@ Optional environment variable:
 
 | Variable | Effect |
 |---|---|
-| `NEXT_PUBLIC_MAPTILER_KEY` | Blue Nile Flood Risk uses MapTiler Terrain‑RGB instead of AWS Terrain Tiles |
+| `NEXT_PUBLIC_MAPTILER_KEY` | Riyadh Urban Heat uses MapTiler Terrain‑RGB instead of AWS Terrain Tiles |
+| `NEXT_PUBLIC_AI_URL` | Enables the optional AI assistant on Sudan Conflicts (Cloudflare Worker in `workers/ai-gateway/`) |
 
 ---
 

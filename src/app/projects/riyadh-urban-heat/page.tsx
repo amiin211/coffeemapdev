@@ -45,6 +45,23 @@ import {
   summarize,
 } from '@/lib/urbanHeat';
 import { shiftDate } from '@/lib/geoRaster';
+import UrbanGreenPlanner, { BUDGETS } from '@/components/UrbanGreenPlanner';
+import {
+  CityBriefItem,
+  CoolingModel,
+  Intervention,
+  InterventionKind,
+  KIND_COLOR,
+  Simulation,
+  Site,
+  autoPlan,
+  cityBrief,
+  fitCoolingModel,
+  mergePlans,
+  planFromInterventions,
+  renderCooling,
+  simulate,
+} from '@/lib/urbanCooling';
 import { formatMonthYear } from '@/utils/crop';
 import { formatDate, useI18n } from '@/i18n';
 import { progressAr } from '@/i18n/progress';
@@ -75,6 +92,8 @@ interface Data {
   parks: ParkCollection;
   layers: Layers | null;
   results: Results | null;
+  model?: CoolingModel | null;
+  dLst?: Float32Array | null;
 }
 
 type Stats = ReturnType<typeof summarize>;
@@ -113,7 +132,7 @@ export default function RiyadhUrbanHeat() {
   const [backend, setBackend] = useState('');
   const [win, setWin] = useState(DEFAULT_WINDOW);
   const [visible, setVisible] = useState<UrbanLayerVisibility>({
-    hillshade: false, heat: true, hotspots: false, vegetation: false, canopy: false, equity: false, priority: true, trees: true, parks: true,
+    hillshade: false, heat: true, hotspots: false, vegetation: false, canopy: false, equity: false, priority: true, trees: true, parks: true, cooling: true,
   });
   const [weights, setWeights] = useState<Weights>(DEFAULT_WEIGHTS);
   const [focus, setFocus] = useState<{ lon: number; lat: number } | null>(null);
@@ -123,6 +142,21 @@ export default function RiyadhUrbanHeat() {
   const [errors, setErrors] = useState<string[]>([]);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [equityHelpOpen, setEquityHelpOpen] = useState(false);
+  // Insights + greening simulator (src/lib/urbanCooling.ts)
+  const [model, setModel] = useState<CoolingModel | null>(null);
+  const [brief, setBrief] = useState<CityBriefItem[]>([]);
+  const [plannerTab, setPlannerTab] = useState<'insights' | 'plan'>('insights');
+  const [tool, setTool] = useState<InterventionKind>('trees');
+  const [radius, setRadius] = useState(500);
+  const [boost, setBoost] = useState(0.2);
+  const [placing, setPlacing] = useState(false);
+  const [interventions, setInterventions] = useState<Intervention[]>([]);
+  const [budgetIndex, setBudgetIndex] = useState(0);
+  const [sites, setSites] = useState<Site[]>([]);
+  const [sim, setSim] = useState<Simulation | null>(null);
+  const [simulating, setSimulating] = useState(false);
+  const [resultsVersion, setResultsVersion] = useState(0);
+  const nextId = useRef(1);
 
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
@@ -145,8 +179,16 @@ export default function RiyadhUrbanHeat() {
     d.results = results;
     setBackend(results.backend);
     setImages((prev) => ({ ...prev, hotspots: renderHotspots(g, results), equity: renderEquity(g, results), priority: renderPriority(g, results) }));
-    setStats(summarize(g, d.layers, results));
-    setDistricts(districtSummaries(g, d.layers, results));
+    const summary = summarize(g, d.layers, results);
+    const dist = districtSummaries(g, d.layers, results);
+    setStats(summary);
+    setDistricts(dist);
+    // Cooling model learned from the loaded city, and the city brief.
+    const m = fitCoolingModel(d.layers);
+    d.model = m;
+    setModel(m);
+    setBrief(cityBrief(summary, dist, m));
+    setResultsVersion((v) => v + 1);
     setStatus('');
   }, [say]);
 
@@ -235,6 +277,38 @@ export default function RiyadhUrbanHeat() {
     };
   }, [loadWindow, derive, progress, say]);
 
+  // Re-simulate when the plan or the underlying results change (debounced).
+  useEffect(() => {
+    const d = data.current, g = gridRef.current;
+    if (!d?.layers || !d.results || !d.model || !g) return;
+    const budget = BUDGETS[budgetIndex];
+    const empty = !budget && !interventions.length;
+    const flag = setTimeout(() => setSimulating(!empty), 0);
+    const timer = setTimeout(() => {
+      if (empty) {
+        d.dLst = null;
+        setSim(null);
+        setSites([]);
+        setImages((prev) => ({ ...prev, cooling: undefined }));
+        return;
+      }
+      const L = d.layers!, R = d.results!;
+      const auto = budget ? autoPlan(g, L, R, budget) : null;
+      const manual = planFromInterventions(g, L, interventions);
+      const plan = auto ? mergePlans(auto.plan, manual, L) : manual;
+      const result = simulate(g, L, R, weightsRef.current, d.model!, plan, d.parks);
+      d.dLst = result.dLst;
+      setSites(auto?.sites ?? []);
+      setSim(result);
+      setImages((prev) => ({ ...prev, cooling: renderCooling(g, result.dLst) }));
+      setSimulating(false);
+    }, empty ? 0 : 250);
+    return () => {
+      clearTimeout(flag);
+      clearTimeout(timer);
+    };
+  }, [interventions, budgetIndex, resultsVersion]);
+
   const describeCell = useCallback((lng: number, lat: number): CellInfo | null => {
     const d = data.current, g = gridRef.current;
     const L = d?.layers, R = d?.results;
@@ -265,6 +339,7 @@ export default function RiyadhUrbanHeat() {
     } else {
       rows.push([tr('Equity', 'العدالة'), tr('Not assessed (outside the built-up city)', 'غير مُقيَّمة (خارج المنطقة المبنية)')]);
     }
+    if (d.dLst && d.dLst[k] < -0.05) rows.push([tr('Simulated cooling', 'التبريد المحاكى'), fmt(d.dLst[k], 2, degC)]);
     return { lng, lat, rows };
   }, [tr, isAr, degC]);
 
@@ -331,6 +406,13 @@ export default function RiyadhUrbanHeat() {
         lstRange={lstRange}
         focus={focus}
         describeCell={describeCell}
+        placing={placing ? KIND_COLOR[tool] : null}
+        onPlace={(lon, lat) => {
+          setInterventions((list) => [...list, { id: nextId.current++, kind: tool, lon, lat, radius, boost: tool === 'park' ? 1 : boost }]);
+          setPlannerTab('plan');
+        }}
+        interventions={interventions}
+        sites={sites}
       />
       {(status || errors.length > 0) && (
         <Box sx={{ position: 'absolute', top: 12, left: 12, right: 60, display: 'flex', flexDirection: 'column', gap: 1, pointerEvents: 'none' }}>
@@ -348,6 +430,37 @@ export default function RiyadhUrbanHeat() {
         </Box>
       )}
     </Box>
+  );
+
+  const plannerNode = (
+    <UrbanGreenPlanner
+      tab={plannerTab}
+      onTab={setPlannerTab}
+      brief={brief}
+      model={model}
+      onFocus={setFocus}
+      tool={tool}
+      onTool={(t) => {
+        setTool(t);
+        setRadius(t === 'park' ? 150 : 500);
+        setBoost(t === 'coolroof' ? 0.5 : 0.2);
+      }}
+      radius={radius}
+      onRadius={setRadius}
+      boost={boost}
+      onBoost={setBoost}
+      placing={placing}
+      onPlacing={setPlacing}
+      interventions={interventions}
+      onRemove={(id) => setInterventions((list) => list.filter((iv) => iv.id !== id))}
+      onClear={() => setInterventions([])}
+      budgetIndex={budgetIndex}
+      onBudgetIndex={setBudgetIndex}
+      sites={sites}
+      sim={sim}
+      simulating={simulating}
+      ready={!!model && !busy}
+    />
   );
 
   const districtsNode = (
@@ -537,6 +650,7 @@ export default function RiyadhUrbanHeat() {
                   </Paper>
                 )}
               </Box>
+              <Paper elevation={2} sx={{ width: 360, flexShrink: 0, height: 700, p: 1.5, pt: 0.5, overflow: 'hidden' }}>{plannerNode}</Paper>
             </Box>
             <Box sx={{ px: 2, pb: 1.5 }}>{districtsNode}</Box>
           </>
@@ -545,6 +659,7 @@ export default function RiyadhUrbanHeat() {
             <Box sx={{ mb: 2 }}>{statsNode}</Box>
             {aboutOpen && <Paper elevation={2} sx={{ p: 2.5, mb: 2 }}>{aboutNode}</Paper>}
             <Paper elevation={2} sx={{ height: 480, mb: 2, overflow: 'hidden' }}>{mapNode}</Paper>
+            <Paper elevation={2} sx={{ p: 1.5, pt: 0.5, mb: 2, height: 620 }}>{plannerNode}</Paper>
             <Box sx={{ mb: 2 }}>{districtsNode}</Box>
             <Paper elevation={2} sx={{ p: 2 }}>{controlsNode}</Paper>
           </Box>

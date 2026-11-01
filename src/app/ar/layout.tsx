@@ -5,8 +5,8 @@ import ArProviders from '@/i18n/ArProviders';
 const cairo = Cairo({ subsets: ['arabic', 'latin'], weight: ['400', '500', '600', '700', '800'], display: 'swap' });
 
 export const metadata: Metadata = {
-  title: 'CoffeeMap.dev - منصة الهندسة الجيومكانية',
-  description: 'نحوّل البيانات إلى رؤى جيومكانية قابلة للتنفيذ',
+  title: 'CoffeeMap.dev - أمين عدنان قاسم، مهندس جيوماتكس وذكاء جيومكاني',
+  description: 'أحوّل البيانات إلى رؤى جيومكانية قابلة للتنفيذ',
 };
 
 // Components hard-code 'Roboto', which has no Arabic glyphs; everything

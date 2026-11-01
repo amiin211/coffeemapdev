@@ -20,18 +20,21 @@ function FilterContent() {
   const selectedTech = searchParams.get('tech');
   const { isAr, tr, href } = useI18n();
 
+  // A service shows the projects and articles listed as its proof; otherwise filter by category.
+  const selectedCap = capabilities.find((c) => c.category === selectedCategory);
   const filteredProjects = projects.filter((p) => {
-    if (selectedCategory && p.category !== selectedCategory) return false;
+    if (selectedCap && !selectedCap.projectIds.includes(p.id)) return false;
+    if (!selectedCap && selectedCategory && p.category !== selectedCategory) return false;
     if (selectedTech && !p.tags.includes(selectedTech)) return false;
     return true;
   });
 
   const filteredInsights = insights.filter((i) => {
-    if (selectedCategory && i.category !== selectedCategory) return false;
+    if (selectedCap && !selectedCap.insightIds.includes(i.id)) return false;
+    if (!selectedCap && selectedCategory && i.category !== selectedCategory) return false;
     return true;
   });
 
-  const selectedCap = capabilities.find((c) => c.category === selectedCategory);
   const selectedTechCategory = techCategories.find((tc) => 
     tc.technologies.includes(selectedTech || '')
   );

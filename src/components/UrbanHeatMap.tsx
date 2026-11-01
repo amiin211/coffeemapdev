@@ -21,6 +21,7 @@ import {
   gridCorners,
 } from '@/lib/urbanHeat';
 import { MAPLIBRE_WORKER_URL } from '@/lib/maplibre';
+import { COOLING_MAX, COOLING_RAMP, Intervention, KIND_COLOR, Site } from '@/lib/urbanCooling';
 import { useI18n } from '@/i18n';
 
 export interface UrbanLayerVisibility {
@@ -33,6 +34,7 @@ export interface UrbanLayerVisibility {
   priority: boolean;
   trees: boolean;
   parks: boolean;
+  cooling: boolean;
 }
 
 export interface CellInfo {
@@ -41,7 +43,7 @@ export interface CellInfo {
   rows: [string, string][];
 }
 
-export type UrbanImages = Partial<Record<'heat' | 'hotspots' | 'vegetation' | 'canopy' | 'equity' | 'priority', string>>;
+export type UrbanImages = Partial<Record<'heat' | 'hotspots' | 'vegetation' | 'canopy' | 'equity' | 'priority' | 'cooling', string>>;
 
 interface UrbanHeatMapProps {
   grid: Grid | null;
@@ -52,6 +54,20 @@ interface UrbanHeatMapProps {
   lstRange: [number, number] | null;
   focus: { lon: number; lat: number } | null;
   describeCell: (lng: number, lat: number) => CellInfo | null;
+  placing?: string | null; // colour of the tool being placed, or null
+  onPlace?: (lng: number, lat: number) => void;
+  interventions?: Intervention[];
+  sites?: Site[];
+}
+
+// Circle polygon (64 vertices) around a point, radius in metres.
+function circle(lon: number, lat: number, radius: number): number[][] {
+  const out: number[][] = [];
+  for (let i = 0; i <= 64; i++) {
+    const a = (i / 64) * 2 * Math.PI;
+    out.push([lon + (radius * Math.cos(a)) / (111_320 * Math.cos((lat * Math.PI) / 180)), lat + (radius * Math.sin(a)) / 110_540]);
+  }
+  return out;
 }
 
 // OpenStreetMap standard tiles, desaturated so the analysis layers stand out.
@@ -70,7 +86,7 @@ const BASEMAP: StyleSpecification = {
 };
 
 // Image overlays, bottom to top.
-const RASTERS: (keyof UrbanImages)[] = ['heat', 'vegetation', 'canopy', 'equity', 'hotspots', 'priority'];
+const RASTERS: (keyof UrbanImages)[] = ['heat', 'vegetation', 'canopy', 'equity', 'hotspots', 'priority', 'cooling'];
 
 const rgb = (c: readonly number[]) => `rgb(${c.join(',')})`;
 const gradient = (ramp: number[][]) => `linear-gradient(to right, ${ramp.map(rgb).join(', ')})`;
@@ -98,7 +114,7 @@ function Swatch({ color, label, round }: { color: string; label: string; round?:
   );
 }
 
-export default function UrbanHeatMap({ grid, images, trees, parks, visible, lstRange, focus, describeCell }: UrbanHeatMapProps) {
+export default function UrbanHeatMap({ grid, images, trees, parks, visible, lstRange, focus, describeCell, placing, onPlace, interventions = [], sites = [] }: UrbanHeatMapProps) {
   const [popup, setPopup] = useState<CellInfo | null>(null);
   const mapRef = useRef<MapRef>(null);
   const corners = grid ? gridCorners(grid) : null;
@@ -110,7 +126,22 @@ export default function UrbanHeatMap({ grid, images, trees, parks, visible, lstR
     if (focus) mapRef.current?.flyTo({ center: [focus.lon, focus.lat], zoom: 13.5, duration: 1500 });
   }, [focus]);
 
-  const onClick = (e: MapLayerMouseEvent) => setPopup(describeCell(e.lngLat.lng, e.lngLat.lat));
+  const onClick = (e: MapLayerMouseEvent) => {
+    if (placing && onPlace) {
+      setPopup(null);
+      onPlace(e.lngLat.lng, e.lngLat.lat);
+      return;
+    }
+    setPopup(describeCell(e.lngLat.lng, e.lngLat.lat));
+  };
+  const ivGeoJson: GeoJSON.FeatureCollection = {
+    type: 'FeatureCollection',
+    features: interventions.map((iv, i) => ({
+      type: 'Feature',
+      properties: { color: KIND_COLOR[iv.kind], n: String(i + 1) },
+      geometry: { type: 'Polygon', coordinates: [circle(iv.lon, iv.lat, iv.radius)] },
+    })),
+  };
 
   return (
     <Box sx={{ position: 'relative', width: '100%', height: '100%' }}>
@@ -121,7 +152,7 @@ export default function UrbanHeatMap({ grid, images, trees, parks, visible, lstR
         mapStyle={BASEMAP}
         style={{ width: '100%', height: '100%' }}
         onClick={onClick}
-        cursor="crosshair"
+        cursor={placing ? 'copy' : 'crosshair'}
       >
         <NavigationControl position={`top-${side}`} />
         <ScaleControl position={`bottom-${side}`} />
@@ -173,6 +204,19 @@ export default function UrbanHeatMap({ grid, images, trees, parks, visible, lstR
           <Layer id="aoi" type="line" paint={{ 'line-color': '#37474f', 'line-width': 1.2, 'line-dasharray': [3, 2] }} />
         </Source>
 
+        <Source id="interventions" type="geojson" data={ivGeoJson}>
+          <Layer id="iv-fill" type="fill" paint={{ 'fill-color': ['get', 'color'], 'fill-opacity': 0.12 }} />
+          <Layer id="iv-line" type="line" paint={{ 'line-color': ['get', 'color'], 'line-width': 2.5, 'line-dasharray': [2, 1] }} />
+        </Source>
+
+        {sites.slice(0, 8).map((site, i) => (
+          <Marker key={`site-${i}`} longitude={site.lon} latitude={site.lat} anchor="center">
+            <Box sx={{ width: 22, height: 22, borderRadius: '50%', bgcolor: '#2E7D32', border: '2px solid white', color: 'white', fontSize: '0.7rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 2, pointerEvents: 'none' }}>
+              {i + 1}
+            </Box>
+          </Marker>
+        ))}
+
         {DISTRICTS.map((d) => (
           <Marker key={d.name} longitude={d.lon} latitude={d.lat} anchor={d.labelBelow ? 'top' : 'bottom'}>
             <Box
@@ -212,6 +256,11 @@ export default function UrbanHeatMap({ grid, images, trees, parks, visible, lstR
         )}
       </MapGL>
 
+      {placing && (
+        <Box sx={{ position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)', px: 1.5, py: 0.5, borderRadius: 5, bgcolor: placing, color: 'white', boxShadow: 3, pointerEvents: 'none' }}>
+          <Typography variant="caption" sx={{ fontWeight: 700 }}>{tr('Click the map to place', 'انقر الخريطة للوضع')}</Typography>
+        </Box>
+      )}
       <Box
         sx={{
           position: 'absolute',
@@ -230,7 +279,10 @@ export default function UrbanHeatMap({ grid, images, trees, parks, visible, lstR
         )}
         {visible.vegetation && <RampLegend title="NDVI" ramp={NDVI_RAMP} left={String(NDVI_LEGEND[0])} right={String(NDVI_LEGEND[1])} />}
         {visible.equity && <RampLegend title={tr('Canopy equity', 'عدالة مظلة الأشجار')} ramp={EQUITY_RAMP} left={tr('Deficit', 'عجز')} right={tr('Good access', 'وصول جيد')} />}
-        {(visible.heat || visible.vegetation || visible.equity) && <Divider sx={{ my: 0.5 }} />}
+        {visible.cooling && images.cooling && (
+          <RampLegend title={tr('Simulated surface cooling', 'التبريد السطحي المحاكى')} ramp={COOLING_RAMP} left={isAr ? '0.1 °م' : '0.1 °C'} right={isAr ? `${COOLING_MAX}+ °م` : `${COOLING_MAX}+ °C`} />
+        )}
+        {(visible.heat || visible.vegetation || visible.equity || (visible.cooling && images.cooling)) && <Divider sx={{ my: 0.5 }} />}
         <Swatch color={rgb(PRIORITY_COLOR)} label={tr('Priority planting zone', 'منطقة أولوية للتشجير')} />
         <Swatch color={rgb(HOTSPOT_COLOR)} label={tr('Heat hotspot (k-means)', 'بؤرة حرارية (k-means)')} />
         <Swatch color="rgb(0,90,50)" label={tr('Tree canopy', 'مظلة الأشجار')} />

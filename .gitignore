@@ -5,7 +5,11 @@ next-env.d.ts
 out
 dist
 build
-.env*.local
+.env*
+!.env.example
+workers/**/.dev.vars
+workers/**/.wrangler/
+~$*
 .vercel
 *.log
 .DS_Store

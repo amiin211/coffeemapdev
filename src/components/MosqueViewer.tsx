@@ -13,21 +13,30 @@ import PaletteIcon from '@mui/icons-material/Palette';
 import CategoryIcon from '@mui/icons-material/Category';
 import FlightIcon from '@mui/icons-material/Flight';
 import ReplayIcon from '@mui/icons-material/Replay';
+import ConstructionIcon from '@mui/icons-material/Construction';
+import FullscreenIcon from '@mui/icons-material/Fullscreen';
+import FullscreenExitIcon from '@mui/icons-material/FullscreenExit';
+import MosqueTimeline, { SAND } from '@/components/MosqueTimeline';
+import { Schedule, dayToIso } from '@/lib/mosqueSchedule';
+import { COST_UNIT_LABEL, WorkPackage } from '@/lib/mosqueSiteWorks';
 import { CONFIG, MosqueEnvironment } from '@/lib/mosqueEnvironment';
 import { SurveyLayers, SurveyStatus } from '@/lib/surveyDrone';
 import { BimData, BimSelection, CATEGORY_COLORS, ColorMode, UNCATEGORISED_COLOR, UNIT_LABEL, formatSAR, quantityLabel, scheduleCsv } from '@/lib/mosqueBim';
 import { CATEGORIES_AR, DISCLAIMER_AR, QUANTITY_LABELS_AR, TYPES_AR, UNIT_LABEL_AR, formatSARAr, standardAr, wordAr, zoneAr } from '@/lib/mosqueBimAr';
 import { useI18n } from '@/i18n';
 
+// Light, warm sand panels (instead of dark ones) so the controls sit
+// naturally over the daylight scene.
 const buttonSx = {
   minWidth: 140,
-  color: '#fff',
-  bgcolor: 'rgba(20, 28, 40, 0.75)',
+  color: '#3f2d1d',
+  bgcolor: 'rgba(250, 245, 236, 0.92)',
+  border: '1px solid #dcc9a6',
   backdropFilter: 'blur(4px)',
   fontFamily: 'Roboto, sans-serif',
   fontWeight: 600,
   textTransform: 'none',
-  '&:hover': { bgcolor: 'rgba(20, 28, 40, 0.9)' },
+  '&:hover': { bgcolor: '#f3e6cf' },
 } as const;
 
 function Section({ title, rows }: { title: string; rows: [string, React.ReactNode][] }) {
@@ -78,7 +87,7 @@ function PropertiesPanel({ selection, disclaimer, onClose }: { selection: BimSel
         overflow: 'hidden',
       }}
     >
-      <Box sx={{ p: 2, pb: 1.5, bgcolor: '#23384d', color: 'white' }}>
+      <Box sx={{ p: 2, pb: 1.5, bgcolor: '#8a5a2f', color: 'white' }}>
         <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Typography variant="subtitle1" sx={{ fontWeight: 700, lineHeight: 1.25 }}>{isAr ? t.nameAr : t.name}</Typography>
@@ -146,8 +155,9 @@ function PropertiesPanel({ selection, disclaimer, onClose }: { selection: BimSel
 }
 
 const floatingDarkSx = {
-  color: 'white',
-  bgcolor: 'rgba(20, 28, 40, 0.75)',
+  color: '#3f2d1d',
+  bgcolor: 'rgba(250, 245, 236, 0.92)',
+  border: '1px solid #dcc9a6',
   backdropFilter: 'blur(4px)',
   borderRadius: 1,
 } as const;
@@ -175,7 +185,10 @@ function CategoryLegend({ bim }: { bim: BimData }) {
 }
 
 // Light switch track so the off state reads on the dark panel.
-const switchSx = { '& .MuiSwitch-switchBase:not(.Mui-checked) + .MuiSwitch-track': { bgcolor: 'rgba(255,255,255,0.45)' } } as const;
+const switchSx = {
+  '& .MuiSwitch-switchBase.Mui-checked': { color: '#b5652b' },
+  '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: '#e9b97a' },
+} as const;
 
 // Survey drone toggles and flight read-out.
 function SurveyPanel({ layers, status, onLayers, onRestart }: {
@@ -198,7 +211,7 @@ function SurveyPanel({ layers, status, onLayers, onRestart }: {
       disabled={disabled}
       label={<Typography variant="caption" sx={{ fontWeight: 500 }}>{label}</Typography>}
       control={<Switch size="small" sx={switchSx} checked={layers[key]} onChange={(e) => onLayers({ [key]: e.target.checked })} />}
-      sx={{ m: 0, gap: 0.5, '& .MuiFormControlLabel-label.Mui-disabled': { color: 'rgba(255,255,255,0.4)' } }}
+      sx={{ m: 0, gap: 0.5, '& .MuiFormControlLabel-label.Mui-disabled': { color: 'rgba(63,45,29,0.4)' } }}
     />
   );
   return (
@@ -232,7 +245,7 @@ function SurveyPanel({ layers, status, onLayers, onRestart }: {
               )}
             </Typography>
             <Tooltip title={tr('Restart survey', 'إعادة المسح')}>
-              <IconButton size="small" onClick={onRestart} sx={{ color: 'white' }} aria-label={tr('Restart survey', 'إعادة المسح')}>
+              <IconButton size="small" onClick={onRestart} sx={{ color: '#3f2d1d' }} aria-label={tr('Restart survey', 'إعادة المسح')}>
                 <ReplayIcon fontSize="small" />
               </IconButton>
             </Tooltip>
@@ -255,7 +268,33 @@ export default function MosqueViewer() {
   const [colorMode, setColorMode] = useState<ColorMode>(CONFIG.START_COLOR_MODE);
   const [surveyLayers, setSurveyLayers] = useState<SurveyLayers>({ drone: CONFIG.START_SURVEY, beam: true, footprints: true });
   const [surveyStatus, setSurveyStatus] = useState<SurveyStatus | null>(null);
+  const [buildDay, setBuildDay] = useState<number | null>(null); // 4D view: day of the programme, null = as built
+  const [showPlanned, setShowPlanned] = useState(true);
+  const [schedule, setSchedule] = useState<Schedule | null>(null);
+  const [siteWorks, setSiteWorks] = useState<WorkPackage[]>([]);
+  const [fullscreen, setFullscreen] = useState(false);
   const { tr } = useI18n();
+
+  useEffect(() => {
+    const onChange = () => setFullscreen(document.fullscreenElement === containerRef.current);
+    document.addEventListener('fullscreenchange', onChange);
+    return () => document.removeEventListener('fullscreenchange', onChange);
+  }, []);
+  const toggleFullscreen = () => {
+    if (document.fullscreenElement) document.exitFullscreen?.();
+    else containerRef.current?.requestFullscreen?.().catch(() => {});
+  };
+
+  const changeBuildDay = (day: number | null) => {
+    worldRef.current?.setBuildDay(day);
+    setBuildDay(day);
+  };
+  const toggle4d = () => changeBuildDay(buildDay === null ? 0 : null);
+  const changeShowPlanned = (on: boolean) => {
+    worldRef.current?.setShowPlanned(on);
+    setShowPlanned(on);
+  };
+
 
   useEffect(() => {
     const container = containerRef.current;
@@ -272,6 +311,8 @@ export default function MosqueViewer() {
         worldRef.current = world;
         world.start();
         setBim(world.bim ?? null);
+        setSchedule(world.schedule);
+        setSiteWorks(world.siteWorks);
         setStatus('ready');
       })
       .catch((err) => {
@@ -307,7 +348,21 @@ export default function MosqueViewer() {
   const clearSelection = () => worldRef.current?.select(null);
   const downloadSchedule = () => {
     if (!bim) return;
-    const url = URL.createObjectURL(new Blob([scheduleCsv(bim)], { type: 'text/csv;charset=utf-8' }));
+    const extra = siteWorks.flatMap((p) =>
+      p.items.map((i) => ({
+        tag: `ASR-MSQ-${i.code}`,
+        category: 'Site works',
+        type: i.name,
+        typeAr: i.nameAr,
+        zone: p.name,
+        quantity: i.quantity,
+        unit: COST_UNIT_LABEL[i.unit][0],
+        cost: i.cost,
+        construction: `${p.code} ${p.name}`,
+        date: dayToIso(p.end),
+      })),
+    );
+    const url = URL.createObjectURL(new Blob([scheduleCsv(bim, extra)], { type: 'text/csv;charset=utf-8' }));
     const a = document.createElement('a');
     a.href = url;
     a.download = 'aseer-mosque-bim-schedule.csv';
@@ -349,6 +404,22 @@ export default function MosqueViewer() {
               {colorMode === 'category' ? tr('Realistic colours', 'ألوان واقعية') : tr('Category colours', 'ألوان الفئات')}
             </Button>
           )}
+          <Tooltip title={fullscreen ? tr('Exit full screen', 'الخروج من ملء الشاشة') : tr('Full screen', 'ملء الشاشة')}>
+            <Button variant="contained" disableElevation onClick={toggleFullscreen} sx={{ ...buttonSx, minWidth: 0, px: 1.25 }} aria-label={tr('Full screen', 'ملء الشاشة')}>
+              {fullscreen ? <FullscreenExitIcon /> : <FullscreenIcon />}
+            </Button>
+          </Tooltip>
+          {bim && (
+            <Button
+              variant="contained"
+              disableElevation
+              startIcon={<ConstructionIcon />}
+              onClick={toggle4d}
+              sx={{ ...buttonSx, ...(buildDay !== null ? { bgcolor: SAND.accent, color: 'white', borderColor: SAND.accent, '&:hover': { bgcolor: '#9a5322' } } : {}) }}
+            >
+              {buildDay !== null ? tr('Show as built', 'عرض المبنى مكتملًا') : tr('4D construction', 'مراحل الإنشاء 4D')}
+            </Button>
+          )}
           {bim && (
             <Button variant="contained" disableElevation startIcon={<DownloadIcon />} onClick={downloadSchedule} sx={buttonSx}>
               {tr('BIM schedule (CSV)', 'جدول BIM (CSV)')}
@@ -357,7 +428,22 @@ export default function MosqueViewer() {
         </Stack>
       )}
 
-      {status === 'ready' && bim && (
+      {status === 'ready' && bim && schedule && buildDay !== null && (
+        <Box sx={{ position: 'absolute', left: 16, right: selection ? { xs: 16, md: 392 } : 16, bottom: 16 }}>
+          <MosqueTimeline
+            bim={bim}
+            schedule={schedule}
+            siteWorks={siteWorks}
+            day={buildDay}
+            onDayChange={changeBuildDay}
+            showPlanned={showPlanned}
+            onShowPlannedChange={changeShowPlanned}
+            onClose={() => changeBuildDay(null)}
+          />
+        </Box>
+      )}
+
+      {status === 'ready' && bim && buildDay === null && (
         <Stack spacing={1} sx={{ position: 'absolute', left: 16, bottom: 16, alignItems: 'flex-start' }}>
           {colorMode === 'category' && <CategoryLegend bim={bim} />}
           {!selection && (
@@ -371,7 +457,7 @@ export default function MosqueViewer() {
         </Stack>
       )}
 
-      {status === 'ready' && (
+      {status === 'ready' && buildDay === null && (
         <Box sx={{ position: 'absolute', bottom: 16, right: selection ? 392 : 16, display: selection ? { xs: 'none', md: 'block' } : 'block' }}>
           <SurveyPanel layers={surveyLayers} status={surveyStatus} onLayers={changeSurveyLayers} onRestart={restartSurvey} />
         </Box>

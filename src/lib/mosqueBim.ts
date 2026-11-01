@@ -100,8 +100,23 @@ const QUANTITY_LABELS: Record<string, string> = {
 };
 export const quantityLabel = (key: string) => QUANTITY_LABELS[key] ?? key;
 
-// Element schedule as CSV (UTF-8 with BOM so Excel shows the Arabic names).
-export function scheduleCsv(data: BimData): string {
+/** A non-BIM cost line (site works) for the schedule export. */
+export interface ExtraScheduleRow {
+  tag: string;
+  category: string;
+  type: string;
+  typeAr: string;
+  zone: string;
+  quantity: number;
+  unit: string;
+  cost: [number, number];
+  construction: string;
+  date: string;
+}
+
+// Element schedule as CSV (UTF-8 with BOM so Excel shows the Arabic names),
+// with any site-works cost lines appended.
+export function scheduleCsv(data: BimData, extra: ExtraScheduleRow[] = []): string {
   const header = [
     'Asset tag', 'Revit element ID', 'Category', 'IFC class', 'UniFormat', 'Type', 'Type (Arabic)', 'Level', 'Zone',
     'Quantity', 'Unit', 'Cost low (SAR)', 'Cost high (SAR)', 'Construction', 'Fire resistance', 'U-value (W/m²K)',
@@ -123,5 +138,9 @@ export function scheduleCsv(data: BimData): string {
         e.condition, e.status,
       ];
     });
-  return '﻿' + [header, ...rows].map((r) => r.map(cell).join(',')).join('\r\n');
+  const extraRows = extra.map((x) => [
+    x.tag, '', x.category, '', '', x.type, x.typeAr, 'Site (±0.00)', x.zone, x.quantity, x.unit, x.cost[0], x.cost[1], x.construction,
+    '', '', '', x.date, '', '', '', '', '', 'Indicative estimate',
+  ]);
+  return '﻿' + [header, ...rows, ...extraRows].map((r) => r.map(cell).join(',')).join('\r\n');
 }

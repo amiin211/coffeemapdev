@@ -1,5 +1,5 @@
-// Shared client-side raster toolkit for the GeoAI dashboards (Blue Nile Flood
-// Risk, Riyadh Urban Heat).
+// Shared client-side raster toolkit for the GeoAI dashboards (Riyadh Urban
+// Heat).
 //
 // Analyses run on a Grid: the Web Mercator pixel grid of one zoom level
 // clipped to an area of interest. Every map-tile pixel at that zoom lands on
@@ -194,7 +194,9 @@ export async function registerMosaic(search: object): Promise<string> {
     body: JSON.stringify(search),
   });
   if (!res.ok) throw new Error(`Planetary Computer: ${res.status} ${await res.text()}`);
-  return (await res.json()).searchid;
+  // Planetary Computer now answers with `id`; older responses used `searchid`.
+  const body = await res.json();
+  return body.id ?? body.searchid;
 }
 
 // Acquisition dates of the items a search matches (for display).

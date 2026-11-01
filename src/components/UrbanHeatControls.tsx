@@ -32,6 +32,7 @@ const LAYERS: [keyof UrbanLayerVisibility, Bi][] = [
   ['canopy', { en: 'Tree canopy', ar: 'مظلة الأشجار' }],
   ['equity', { en: 'Canopy equity', ar: 'عدالة مظلة الأشجار' }],
   ['priority', { en: 'Priority zones', ar: 'مناطق الأولوية' }],
+  ['cooling', { en: 'Simulated cooling', ar: 'التبريد المحاكى' }],
   ['trees', { en: 'Trees (OSM)', ar: 'الأشجار (OSM)' }],
   ['parks', { en: 'Parks (OSM)', ar: 'الحدائق (OSM)' }],
   ['hillshade', { en: 'Hillshade', ar: 'تظليل التضاريس' }],

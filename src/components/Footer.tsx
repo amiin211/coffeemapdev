@@ -57,7 +57,7 @@ const Footer = () => {
                   color: 'text.secondary',
                 }}
               >
-                {tr('Brewing Data into Actionable Geospatial Insights', 'نحوّل البيانات إلى رؤى جيومكانية قابلة للتنفيذ')}
+                {tr('Brewing Data into Actionable Geospatial Insights', 'أحوّل البيانات إلى رؤى جيومكانية قابلة للتنفيذ')}
               </Typography>
               <Typography
                 sx={{

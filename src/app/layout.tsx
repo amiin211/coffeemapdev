@@ -3,7 +3,7 @@ import { AppRouterCacheProvider } from '@mui/material-nextjs/v16-appRouter';
 import { roboto } from '@/theme/fonts';
 
 export const metadata: Metadata = {
-  title: 'CoffeeMap.dev - Geospatial Engineering Platform',
+  title: 'CoffeeMap.dev - Amin Adnan Gasim, Geomatics & GeoAI Engineer',
   description: 'Brewing Data into Actionable Geospatial Insights',
   icons: { icon: '/logo-icon.svg' },
 };

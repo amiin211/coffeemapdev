@@ -53,8 +53,8 @@ export default function About() {
                   }}
                 >
                   {tr(
-                    'CoffeeMap.dev is a simple space for experimenting with geospatial engineering. It brings together web technologies and GIS to create clear, interactive tools from complex spatial data. It also collects ideas, notes, and small demos showing how geospatial systems can run directly in the browser.',
-                    'CoffeeMap.dev مساحة بسيطة للتجريب في الهندسة الجيومكانية. تجمع بين تقنيات الويب ونظم المعلومات الجغرافية لصنع أدوات واضحة وتفاعلية من البيانات المكانية المعقدة. وتضم أيضًا أفكارًا وملاحظات وعروضًا صغيرة تُظهر كيف يمكن للأنظمة الجيومكانية أن تعمل مباشرة في المتصفح.',
+                    'CoffeeMap.dev is my workshop. It is where I build working examples of what I offer clients: satellite analytics, humanitarian dashboards, data-quality workflows and 3D site models, all running directly in the browser on simple static hosting. Each project comes with an article on the question, the data, the method and its limits.',
+                    'CoffeeMap.dev ورشتي. فيه أبني أمثلة عاملة لما أقدّمه للعملاء: تحليلات الأقمار الصناعية، ولوحات العمل الإنساني، وسير عمل جودة البيانات، ونماذج المواقع ثلاثية الأبعاد، وكلها تعمل مباشرة في المتصفح على استضافة ثابتة بسيطة. ولكل مشروع مقال عن السؤال والبيانات والمنهج وحدوده.',
                   )}
                 </Typography>
               </Box>
@@ -148,7 +148,7 @@ export default function About() {
                     mb: 3,
                   }}
                 >
-                  {tr('Creator', 'المؤسس')}
+                  {tr('About me', 'نبذة عني')}
                 </Typography>
                 <Typography
                   variant="body1"
@@ -161,17 +161,18 @@ export default function About() {
                 >
                   {isAr ? (
                     <>
-                      بنى CoffeeMap.dev <strong>أمين عدنان قاسم</strong>، مهندس جيومكاني سوداني مقيم في المملكة العربية السعودية، يملك أكثر من
-                      10 سنوات من الخبرة في نظم المعلومات الجغرافية والاستشعار عن بعد وأنظمة البيانات المكانية، وعمل مع منظمات مثل برنامج الأمم
-                      المتحدة للبيئة (UNEP) وموئل الأمم المتحدة (UN‑Habitat) ومكتب الأمم المتحدة لخدمات المشاريع (UNOPS) في مشاريع البنية التحتية
-                      والرصد البيئي والاستجابة للطوارئ.
+                      أنا <strong>أمين عدنان قاسم</strong>، مهندس جيوماتكس سوداني مقيم في الرياض، مرخّص من الهيئة السعودية للمهندسين، وأحمل
+                      الماجستير والبكالوريوس في هندسة الجيوماتكس/المساحة من جامعة الخرطوم. بدأت مساحًا ومهندسًا جيوديسيًا ومهندس موقع، ثم عملت
+                      أكثر من 10 سنوات في نظم المعلومات الجغرافية والاستشعار عن بعد والخرائط الإنسانية، منها مشاريع مع برنامج الأمم المتحدة للبيئة
+                      (UNEP) وموئل الأمم المتحدة (UN‑Habitat) ومكتب الأمم المتحدة لخدمات المشاريع (UNOPS) في الرصد البيئي والبنية التحتية والاستجابة
+                      للطوارئ.
                     </>
                   ) : (
                     <>
-                      CoffeeMap.dev is built by <strong>Amin Adnan Gasim</strong>, a Sudanese geospatial engineer based in
-                      Saudi Arabia. He has over 10 years of experience in GIS, remote sensing, and spatial
-                      data systems, working with organizations such as UNEP, UN‑Habitat, and UNOPS on
-                      projects related to infrastructure, environmental monitoring, and emergency response.
+                      I&apos;m <strong>Amin Adnan Gasim</strong>, a Sudanese geomatics engineer based in Riyadh, licensed with the Saudi Council of
+                      Engineers, with an MSc and BSc in Geomatics/Surveying Engineering from the University of Khartoum. I started as a surveyor,
+                      geodetic engineer and site engineer, and have since spent more than 10 years in GIS, remote sensing and humanitarian mapping,
+                      including projects with UNEP, UN‑Habitat and UNOPS on environmental monitoring, infrastructure and emergency response.
                     </>
                   )}
                 </Typography>
@@ -181,10 +182,33 @@ export default function About() {
                     color: 'text.secondary',
                     lineHeight: 1.8,
                     fontSize: '1rem',
+                    mb: 2,
                   }}
                 >
-                  {tr('His work focuses on practical, data‑driven geospatial solutions.', 'يركّز عمله على حلول جيومكانية عملية قائمة على البيانات.')}
+                  {tr(
+                    'My recent work is quality control of large-scale mapping data: inspection workflows, sampling plans and accuracy assessment against ISO 19157. Alongside it I build GeoAI and WebGIS tools that turn open satellite and humanitarian data into answers people can act on. I work in Arabic and English.',
+                    'يتركّز عملي في الفترة الأخيرة على ضبط جودة بيانات الخرائط الواسعة النطاق: سير عمل الفحص، وخطط العينات، وتقييم الدقة وفق ISO 19157. وإلى جانب ذلك أبني أدوات للذكاء الجيومكاني ونظم المعلومات الجغرافية على الويب تحوّل بيانات الأقمار الصناعية والبيانات الإنسانية المفتوحة إلى إجابات يمكن العمل بها. وأعمل بالعربية والإنجليزية.',
+                  )}
                 </Typography>
+                <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'rgba(74, 55, 40, 0.05)', borderInlineStart: '4px solid', borderColor: 'secondary.main' }}>
+                  <Typography variant="subtitle1" sx={{ fontFamily: 'Roboto, sans-serif', fontWeight: 700, color: 'primary.main', mb: 0.5 }}>
+                    {tr('Available for consulting', 'متاح للاستشارات')}
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.7 }}>
+                    {tr(
+                      'I take on consulting work and short-term contracts, remotely or on site: satellite analytics, humanitarian information management, WebGIS dashboards, surveying and geodesy, geospatial QA/QC and training, and 3D/BIM site models.',
+                      'أقبل أعمال الاستشارات والعقود القصيرة، عن بُعد أو في الموقع: تحليلات الأقمار الصناعية، وإدارة المعلومات الإنسانية، ولوحات نظم المعلومات الجغرافية على الويب، والمساحة والجيوديسيا، وضبط جودة البيانات الجيومكانية والتدريب، ونماذج المواقع ثلاثية الأبعاد وBIM.',
+                    )}
+                  </Typography>
+                  <Button
+                    size="small"
+                    href={href('/#capabilities')}
+                    endIcon={<ArrowForwardIcon sx={{ transform: isAr ? 'scaleX(-1)' : undefined }} />}
+                    sx={{ mt: 1, px: 0, fontFamily: 'Roboto, sans-serif', textTransform: 'none', color: 'secondary.main', fontWeight: 600 }}
+                  >
+                    {tr('See my services', 'اطّلع على خدماتي')}
+                  </Button>
+                </Box>
               </Grid>
             </Grid>
           </Box>
@@ -225,7 +249,7 @@ export default function About() {
                   fontFamily: 'Roboto, sans-serif',
                 }}
               >
-                {tr('Get in Touch', 'تواصل معنا')}
+                {tr('Get in Touch', 'تواصل معي')}
               </Button>
             </Stack>
           </Box>

@@ -40,7 +40,7 @@ const Contact = () => {
               mb: 2,
             }}
           >
-            {tr('Get in Touch', 'تواصل معنا')}
+            {tr('Get in Touch', 'تواصل معي')}
           </Typography>
           <Typography
             variant="body1"
@@ -52,7 +52,7 @@ const Contact = () => {
               lineHeight: 1.7,
             }}
           >
-            {tr('Have a project in mind? Let’s discuss how we can help with your geospatial needs.', 'لديك مشروع في ذهنك؟ لنتحدث عن كيف يمكننا مساعدتك في احتياجاتك الجيومكانية.')}
+            {tr('Have a project in mind? I am available for consulting and short-term contracts, remotely or on site. Tell me what you need.', 'لديك مشروع في ذهنك؟ أنا متاح للاستشارات والعقود القصيرة، عن بُعد أو في الموقع. أخبرني بما تحتاجه.')}
           </Typography>
         </Box>
 
@@ -137,7 +137,7 @@ const Contact = () => {
                   mb: 3,
                 }}
               >
-                {tr('Connect With Us', 'تابعنا')}
+                {tr('Connect With Me', 'تابعني')}
               </Typography>
 
               <Stack spacing={2}>

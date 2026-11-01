@@ -39,13 +39,14 @@ interface AcledMapProps {
   onStateSelect: (state: string | null) => void;
   onLocalitySelect: (locality: string | null, state: string) => void;
   onHover: (area: AreaRef | null) => void;
+  /** Smart-insights overlay: pcode → fill colour (2D only), with its legend. */
+  overlayFill?: Map<string, string> | null;
+  overlayLegend?: { color: string; label: string }[] | null;
 }
 
-// MapLibre's demotiles basemap (https://demotiles.maplibre.org/style.json),
-// served locally with only its sea, land fills and country labels: its own
-// border/coastline/graticule lines don't align with the COD boundaries and
-// read as doubled borders, and the demo server rate-limits style requests —
-// a local style keeps the admin layers rendering even when tiles are throttled.
+// Desaturated OpenStreetMap raster basemap, shared with the other dashboards.
+// It keeps the COD admin layers as the only borders on the map and avoids the
+// third-party demotiles service (and its rate limits) entirely.
 const BASEMAP = '/data/basemap_style.json';
 const CIRCLE_COLOR = '#D32F2F';
 const HIGHLIGHT_COLOR = '#F2A900';
@@ -117,6 +118,8 @@ export default function AcledMap({
   onStateSelect,
   onLocalitySelect,
   onHover,
+  overlayFill = null,
+  overlayLegend = null,
 }: AcledMapProps) {
   const [popup, setPopup] = useState<PopupInfo | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
@@ -222,11 +225,21 @@ export default function AcledMap({
   const isHlState: ExpressionSpecification = ['all', ['==', ['get', 'adm1_name'], hl?.state ?? ''], hl?.pcode == null];
   const isHlLocality: ExpressionSpecification = ['==', ['get', 'adm2_pcode'], hl?.pcode ?? ''];
 
-  const statesOpacity: ExpressionSpecification | number = selectedState
+  // With an insights overlay on, the choropleth and circles step back so the
+  // flagged localities read first.
+  const overlayOn = !is3d && !!overlayFill && overlayFill.size > 0;
+  const overlayColor = useMemo<ExpressionSpecification | string>(() => {
+    if (!overlayFill || overlayFill.size === 0) return 'rgba(0,0,0,0)';
+    return ['match', ['get', 'adm2_pcode'], ...Array.from(overlayFill).flat(), 'rgba(0,0,0,0)'] as unknown as ExpressionSpecification;
+  }, [overlayFill]);
+  const isOverlaid: ExpressionSpecification = ['in', ['get', 'adm2_pcode'], ['literal', overlayFill ? Array.from(overlayFill.keys()) : []]];
+
+  const baseStatesOpacity: ExpressionSpecification | number = selectedState
     ? ['case', isSelectedState, 0, 0.15]
     : hl
       ? ['case', ['==', ['get', 'adm1_name'], hl.state], 0.95, 0.45]
       : 0.8;
+  const statesOpacity: ExpressionSpecification | number = overlayOn ? (selectedState ? ['case', isSelectedState, 0, 0.12] : 0.3) : baseStatesOpacity;
 
   // A hovered locality turns amber; a hovered (or selected) state keeps its
   // colours and mutes the others, so the heights stay readable.
@@ -256,7 +269,7 @@ export default function AcledMap({
     if (!feature) return null;
     const p = feature.properties;
     if (feature.layer.id === 'locality-circles') return { state: p.state, pcode: p.pcode };
-    if (feature.layer.id === 'localities-fill' || feature.layer.id === 'localities-3d') return { state: p.adm1_name, pcode: p.adm2_pcode };
+    if (feature.layer.id === 'localities-fill' || feature.layer.id === 'localities-3d' || feature.layer.id === 'insights-fill') return { state: p.adm1_name, pcode: p.adm2_pcode };
     return { state: p.adm1_name, pcode: null };
   };
 
@@ -267,7 +280,7 @@ export default function AcledMap({
     if (feature.layer.id === 'locality-circles') {
       const [lng, lat] = (feature.geometry as GeoJSON.Point).coordinates;
       setPopup({ view, lng, lat, pcode: p.pcode, name: p.name, state: p.state });
-    } else if (feature.layer.id === 'localities-fill' || feature.layer.id === 'localities-3d') {
+    } else if (feature.layer.id === 'localities-fill' || feature.layer.id === 'localities-3d' || feature.layer.id === 'insights-fill') {
       onLocalitySelect(p.adm2_name === selectedLocality ? null : p.adm2_name, p.adm1_name);
     } else if (feature.layer.id === 'states-fill' && p.adm1_name !== selectedState) {
       onStateSelect(p.adm1_name);
@@ -310,7 +323,7 @@ export default function AcledMap({
         maxZoom={10}
         maxPitch={70}
         mapStyle={BASEMAP}
-        interactiveLayerIds={is3d ? ['localities-3d'] : ['locality-circles', 'localities-fill', 'states-fill']}
+        interactiveLayerIds={is3d ? ['localities-3d'] : overlayOn ? ['locality-circles', 'insights-fill', 'localities-fill', 'states-fill'] : ['locality-circles', 'localities-fill', 'states-fill']}
         onClick={handleClick}
         onMouseMove={handleMove}
         onMouseLeave={handleLeave}
@@ -339,7 +352,14 @@ export default function AcledMap({
             type="fill"
             filter={isSelectedState}
             layout={visibility(!is3d && !!selectedState)}
-            paint={{ 'fill-color': rampColor(fs('r')), 'fill-opacity': 0.85 }}
+            paint={{ 'fill-color': rampColor(fs('r')), 'fill-opacity': overlayOn ? 0.25 : 0.85 }}
+          />
+          <Layer
+            id="insights-fill"
+            type="fill"
+            filter={isOverlaid}
+            layout={visibility(overlayOn)}
+            paint={{ 'fill-color': overlayColor, 'fill-opacity': 0.8 }}
           />
           <Layer
             id="admin2-outline"
@@ -381,6 +401,13 @@ export default function AcledMap({
             filter={['all', isSelectedState, ['==', ['get', 'adm2_name'], selectedLocality ?? '']]}
             paint={{ 'line-color': unBlue.dark, 'line-width': 3 }}
           />
+          <Layer
+            id="insights-outline"
+            type="line"
+            filter={isOverlaid}
+            layout={visibility(overlayOn)}
+            paint={{ 'line-color': overlayColor, 'line-width': 1.5 }}
+          />
           <Layer id="localities-highlight" type="line" filter={isHlLocality} layout={visibility(!is3d)} paint={{ 'line-color': HIGHLIGHT_COLOR, 'line-width': 3 }} />
         </Source>
 
@@ -391,11 +418,11 @@ export default function AcledMap({
             layout={visibility(!is3d)}
             paint={{
               'circle-color': CIRCLE_COLOR,
-              'circle-opacity': ['*', 0.55, fs('v')],
+              'circle-opacity': ['*', overlayOn ? 0.2 : 0.55, fs('v')],
               'circle-radius': circleRadius,
               'circle-stroke-width': ['case', isHlPoint, 3, 1],
               'circle-stroke-color': ['case', isHlPoint, HIGHLIGHT_COLOR, '#ffffff'],
-              'circle-stroke-opacity': fs('v'),
+              'circle-stroke-opacity': ['*', overlayOn ? 0.4 : 1, fs('v')],
             }}
           />
         </Source>
@@ -446,7 +473,19 @@ export default function AcledMap({
             {tr('Same scale for every month of the range', 'مقياس واحد لكل أشهر الفترة')}
           </Typography>
         )}
-        {!is3d && (
+        {overlayOn && overlayLegend && (
+          <Box sx={{ mt: 1, pt: 1, borderTop: '1px solid rgba(0,0,0,0.08)' }}>
+            {overlayLegend.map((item) => (
+              <Box key={item.label} sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mt: 0.25 }}>
+                <Box sx={{ width: 12, height: 12, borderRadius: '2px', bgcolor: item.color, opacity: 0.85 }} />
+                <Typography variant="caption" sx={{ fontSize: '0.65rem' }}>
+                  {item.label}
+                </Typography>
+              </Box>
+            ))}
+          </Box>
+        )}
+        {!is3d && !overlayOn && (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mt: 1 }}>
             <Box sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: `${CIRCLE_COLOR}8c`, border: '1px solid white' }} />
             <Typography variant="caption" sx={{ fontSize: '0.65rem' }}>

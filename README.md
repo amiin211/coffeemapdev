@@ -82,27 +82,6 @@ src/
 └── utils/            # Utility functions
 ```
 
-## Blue Nile Flood Risk
-
-`/projects/blue-nile-flood-risk` is a client-side GeoAI flood risk model for the Blue Nile
-in Sennar and Gezira, Sudan (32–35° E, 12–15° N). There is no backend: everything is
-fetched from public APIs and processed in the browser (`src/lib/floodRisk.ts`) on a ~300 m
-Web Mercator grid (zoom 9), so results overlay the map with no resampling.
-
-- **DEM:** AWS Terrain Tiles (Terrarium), or MapTiler Terrain-RGB when `NEXT_PUBLIC_MAPTILER_KEY`
-  is set. RGB is decoded to elevation, then slope is derived; MapLibre draws the hillshade.
-- **SAR:** Sentinel-1 VV/VH gamma0 for a pre-flood and a flood date, keyless from Microsoft
-  Planetary Computer (RTC mosaic tiles), or the Sentinel Hub / Copernicus Data Space Process
-  API with a token or client credentials entered in the page (never stored). Read at ~150 m;
-  water = VV and VH below the thresholds, flood = water that was not water before.
-- **Rainfall:** Open-Meteo historical daily precipitation on a 7 × 7 lattice, interpolated.
-- **Rivers:** OpenStreetMap `waterway=river` via Overpass (mirrors tried in turn). The page
-  starts from `public/data/flood-risk/rivers-osm.geojson` and swaps in the live result.
-  Distance to river uses an exact Euclidean distance transform.
-- **Risk:** weighted mean of low height above river, flat slope, river proximity, relative
-  rainfall and the SAR water share, binned into Low / Medium / High / Very High. Thresholds
-  and weights are adjustable; **Recompute Risk** reruns the model.
-
 ## Riyadh Urban Heat & Tree Canopy Equity
 
 `/projects/riyadh-urban-heat` maps urban heat and tree canopy equity for Riyadh

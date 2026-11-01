@@ -101,6 +101,6 @@ Tolerances in the workbench are marked as examples; real values always come from
 
 Like every tool on this site, the workbench is a single static page. No server, no login, no data leaves your browser. It's free to use for training, onboarding new QC staff, or as a checklist on your next delivery.
 
-If you run QA/QC for mapping, surveying or remote sensing projects and want to adapt this workflow for your team, get in touch at [info@coffeemap.dev](mailto:info@coffeemap.dev).
+If you run QA/QC for mapping, surveying or remote sensing projects and want to adapt this workflow for your team, I am available for consulting and training: [info@coffeemap.dev](mailto:info@coffeemap.dev).
 
 [Open the QA/QC Workbench →](/projects/geospatial-qaqc-workbench)

@@ -45,7 +45,7 @@ const Hero = () => {
                 lineHeight: 1.2,
               }}
             >
-              {tr('Brewing Data into', 'نحوّل البيانات إلى')}
+              {tr('Brewing Data into', 'أحوّل البيانات إلى')}
               <Box
                 component="span"
                 sx={{
@@ -67,10 +67,10 @@ const Hero = () => {
                 lineHeight: 1.7,
               }}
             >
-              {tr('CoffeeMap.dev, created by ', 'CoffeeMap.dev، من إعداد ')}<b>{tr('Amin Adnan Gasim', 'أمين عدنان قاسم')}</b>
+              {tr("I'm ", 'أنا ')}<b>{tr('Amin Adnan Gasim', 'أمين عدنان قاسم')}</b>
               {tr(
-                ', is a geospatial engineering platform focused on enterprise GIS, web mapping, GeoAI, and BIM integration—transforming complex spatial data into clear, actionable intelligence for infrastructure and environmental applications.',
-                '، منصة للهندسة الجيومكانية تركّز على نظم المعلومات الجغرافية المؤسسية، والخرائط التفاعلية على الويب، والذكاء الجيومكاني (GeoAI)، والتكامل مع نمذجة معلومات البناء (BIM)، وتحوّل البيانات المكانية المعقدة إلى معلومات واضحة قابلة للتنفيذ لتطبيقات البنية التحتية والبيئة.',
+                ', a licensed geomatics engineer with over 10 years in surveying, GIS, remote sensing and humanitarian mapping. CoffeeMap.dev is where I build what I offer clients: satellite analytics, humanitarian dashboards, data-quality workflows and 3D/BIM site models that run in any browser.',
+                '، مهندس جيوماتكس مرخّص بخبرة تتجاوز 10 سنوات في المساحة ونظم المعلومات الجغرافية والاستشعار عن بعد والخرائط الإنسانية. وCoffeeMap.dev هو المكان الذي أبني فيه ما أقدّمه لعملائي: تحليلات الأقمار الصناعية، ولوحات العمل الإنساني، وسير عمل جودة البيانات، ونماذج المواقع ثلاثية الأبعاد وBIM التي تعمل في أي متصفح.',
               )}
             </Typography>
 
@@ -119,7 +119,7 @@ const Hero = () => {
                   },
                 }}
               >
-                {tr('Get in Touch', 'تواصل معنا')}
+                {tr('Get in Touch', 'تواصل معي')}
               </Button>
             </Stack>
           </Box>

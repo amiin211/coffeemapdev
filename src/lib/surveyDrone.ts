@@ -351,16 +351,20 @@ export class SurveyMission {
       return light;
     });
     this.strobeMaterial = material('strobe');
-    this.strobeLight = new THREE.PointLight(0xffffff, 0, 40, 2);
+    this.strobeLight = new THREE.PointLight(0xffffff, 0, 18, 2);
     this.strobeLight.position.set(0, 0.2, -0.4);
     this.drone.add(this.strobeLight);
 
-    // Live camera beam: a four-sided pyramid from the lens to the footprint corners.
+    // Live camera beam: a four-sided pyramid from the lens to the footprint
+    // corners. It fades from the lens down to the ground (per-vertex alpha) and
+    // blends normally, not additively: an additive, uniformly bright pyramid
+    // stacked its faces into a glare that washed out the dark ground at night.
     const beamGeo = new THREE.BufferGeometry();
     beamGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(5 * 3), 3));
+    beamGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(5 * 4), 4));
     beamGeo.setIndex([0, 1, 2, 0, 2, 3, 0, 3, 4, 0, 4, 1]);
     this.beam = new THREE.Mesh(beamGeo, new THREE.MeshBasicMaterial({
-      color: 0x4fd1ff, transparent: true, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending,
+      color: 0x4fd1ff, vertexColors: true, transparent: true, side: THREE.DoubleSide, depthWrite: false, toneMapped: false,
     }));
     const edgeGeo = new THREE.BufferGeometry();
     edgeGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(8 * 3), 3));
@@ -428,15 +432,22 @@ export class SurveyMission {
 
   setNight(night: boolean) {
     this.night = night;
-    (this.beam.material as THREE.MeshBasicMaterial).opacity = night ? 0.22 : 0.1;
-    (this.beamEdges.material as THREE.LineBasicMaterial).opacity = night ? 0.85 : 0.55;
-    (this.foot.fill.material as THREE.MeshBasicMaterial).opacity = night ? 0.3 : 0.2;
-    (this.foot.lines.material as THREE.LineBasicMaterial).opacity = night ? 1 : 0.8;
-    // Overlapping stamps stack their opacity, so well-covered ground shows densest.
-    (this.stamps.fill.material as THREE.MeshBasicMaterial).opacity = night ? 0.09 : 0.07;
-    (this.stamps.lines.material as THREE.LineBasicMaterial).opacity = night ? 0.45 : 0.3;
+    // Lens end brighter than the ground end; dimmer at night, when the dark
+    // background makes every translucent layer stand out.
+    const [lensAlpha, groundAlpha] = night ? [0.3, 0.03] : [0.22, 0.04];
+    const colors = this.beam.geometry.attributes.color as THREE.BufferAttribute;
+    for (let v = 0; v < 5; v++) colors.setXYZW(v, 1, 1, 1, v === 0 ? lensAlpha : groundAlpha);
+    colors.needsUpdate = true;
+    (this.beamEdges.material as THREE.LineBasicMaterial).opacity = night ? 0.45 : 0.55;
+    (this.foot.fill.material as THREE.MeshBasicMaterial).opacity = night ? 0.12 : 0.2;
+    (this.foot.lines.material as THREE.LineBasicMaterial).opacity = night ? 0.75 : 0.8;
+    // Overlapping stamps stack their opacity, so well-covered ground shows
+    // densest; kept faint at night so the coverage doesn't turn into a mottle.
+    (this.stamps.fill.material as THREE.MeshBasicMaterial).opacity = night ? 0.035 : 0.07;
+    (this.stamps.lines.material as THREE.LineBasicMaterial).opacity = night ? 0.22 : 0.3;
     for (const m of this.navMaterials) m.emissiveIntensity = night ? 6 : 1.5;
-    for (const light of this.navLights) light.intensity = night ? 25 : 0;
+    // Nav lights glow on the airframe but only faintly light the ground.
+    for (const light of this.navLights) light.intensity = night ? 4 : 0;
   }
 
   // Re-drapes the footprints and the survey box over the current ground (after a terrain toggle).
@@ -555,7 +566,9 @@ export class SurveyMission {
     const c = this.clock % 1.2;
     const flash = c < 0.06 || (c > 0.18 && c < 0.24);
     this.strobeMaterial.emissiveIntensity = flash ? (this.night ? 12 : 6) : 0.2;
-    this.strobeLight.intensity = flash && this.night ? 150 : 0;
+    // The bulb flashes brightly; the light it casts on the ground stays soft,
+    // so the dark terrain doesn't pulse every 1.2 s.
+    this.strobeLight.intensity = flash && this.night ? 18 : 0;
   }
 
   private trigger(leg: Leg, t: number) {

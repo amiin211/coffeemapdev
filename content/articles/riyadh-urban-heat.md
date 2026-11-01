@@ -1,18 +1,18 @@
 ---
 title: "Where Riyadh Needs Trees Most: Urban Heat and Canopy Equity, Computed in the Browser"
-date: 2026-09-28
+date: 2026-10-31
 author: Amin Adnan Gasim
 category: GeoAI
-readingTime: 7 min
-description: "Landsat heat, Sentinel-2 vegetation, ESA WorldCover and OpenStreetMap combined on a 1.6-million-cell grid, entirely client-side, to rank the Riyadh blocks where one more tree matters most."
-tags: [urban heat, Riyadh, Landsat, Sentinel-2, TensorFlow.js, MapLibre, serverless GeoAI]
+readingTime: 10 min
+description: "Landsat heat, Sentinel-2 vegetation, ESA WorldCover and OpenStreetMap on a 1.6-million-cell grid, entirely client-side: ranking the Riyadh blocks where one more tree matters most, learning how much canopy cools the city, and simulating greening plans against Green Riyadh targets."
+tags: [urban heat, Riyadh, Green Riyadh, Landsat, Sentinel-2, regression, scenario simulation, TensorFlow.js, MapLibre, serverless GeoAI]
 ---
 
 # Where Riyadh Needs Trees Most
 
 *Urban heat and tree canopy equity, computed in the browser*
 
-**In summer 2025, Riyadh's built-up surface averaged 49.2 °C and only about 5% of it had tree canopy. Ranking every 70 m block by heat risk and access to greenery points to 216 km² where new trees would do the most good, and the whole analysis runs on the visitor's device.**
+**In summer 2025, Riyadh's built-up surface averaged 49.2 °C and only about 5% of it had tree canopy. Ranking every 70 m block by heat risk and access to greenery points to 216 km² where new trees would do the most good. The dashboard then learns, from the city's own pixels, how much cooler a block gets with more canopy, and lets you test a greening plan: a tree budget, pocket parks or cool roofs, with the cooling, water, cost and progress toward Green Riyadh's targets. The whole analysis runs on the visitor's device.**
 
 [Open the Riyadh Urban Heat dashboard →](/projects/riyadh-urban-heat)
 
@@ -24,7 +24,7 @@ Riyadh is one of the hottest large cities in the world. That heat is not shared 
 
 The city is also in the middle of one of the largest urban greening efforts anywhere. The [Green Riyadh Program](https://www.rcrc.gov.sa/en/projects/green-riyadh-project/) aims to plant more than 7.5 million trees by 2030 and raise green space from 1.5% to 9% of the city. With that many trees to place, *where* they go matters as much as how many.
 
-So the dashboard asks one question for every block of the city: **how much greenery can residents reach, compared with how much heat they face?**
+So the dashboard asks two questions. For every block of the city: **how much greenery can residents reach, compared with how much heat they face?** And for any planting plan: **how much cooler would the city be, and what would it take?**
 
 ## What it found
 
@@ -59,10 +59,11 @@ The site is static files: no VPS, no database, no Python at runtime. Satellite d
 
 | Layer | Library / service | Role |
 | --- | --- | --- |
-| Framework | Next.js 14, React 18, TypeScript | Static page, state, UI |
+| Framework | Next.js 16, React 19, TypeScript | Static page, state, UI |
 | UI | Material UI 5 | Sidebar, sliders, district table |
-| Map | MapLibre GL JS 5 via react-map-gl 8 | WebGL map, raster overlays, OSM trees and parks |
+| Map | MapLibre GL JS 6 via react-map-gl 8 | WebGL map, raster overlays, OSM trees and parks, plan circles |
 | GPU compute | TensorFlow.js 4 (WebGL and CPU backends) | Heat-risk scoring across 1.6 million cells |
+| Statistics | Plain TypeScript | Least-squares cooling model, greening simulator |
 | Heat | Landsat 8/9 Collection 2 Level-2, Planetary Computer | Land surface temperature |
 | Vegetation | Sentinel-2 L2A, Planetary Computer | NDVI |
 | Land cover | ESA WorldCover 2021, Planetary Computer | Built-up, tree cover, urban mask |
@@ -114,6 +115,48 @@ A **heat-risk index** then weighs land surface temperature (w1), building densit
 
 **Priority planting zones** are the top 15% of built-up cells by risk × (1 − access). My first version used fixed thresholds, and it flagged 60–90% of every district: when almost the whole city is hot and bare, thresholds cannot prioritise. Ranking can, and it is how planners actually allocate a budget.
 
+## Learning how much a tree cools Riyadh
+
+Ranking tells a planner *where* to plant. The next question is *how much difference it would make*, and I didn't want to answer it with a number from a paper about a different city.
+
+So once the layers are built, the browser fits an ordinary least-squares regression to the city itself, over every second built-up cell:
+
+```
+surface temperature ≈ b0 + b1 · canopy in the cell
+                         + b2 · canopy within 300 m
+                         + b3 · building density
+                         + b4 · elevation
+```
+
+It is solved directly from the normal equations (a 5 × 5 system), so it takes a fraction of a second even over hundreds of thousands of cells. The dashboard shows each coefficient as a bar, with the fit's R², its error and the number of cells, and turns the result into one plain sentence: *+10% tree canopy ≈ x °C at the surface*.
+
+Two safeguards keep it honest. The simulator only ever uses the *cooling* part of the canopy terms, so a noisy fit can never make trees warm the city. And if the loaded imagery shows no clear cooling at all, the page says so and falls back to a stated assumption instead of pretending.
+
+## The greening simulator
+
+The second panel turns the analysis into a planning tool. There are two ways to build a plan, and they can be combined.
+
+**Auto-site a tree budget.** Pick a number of trees, from 25,000 to 2 million. The browser ranks built-up cells by heat risk × (1 − vegetation access), the same score behind the priority zones, and brings the neediest cells up to 35% canopy until the budget runs out (one tree ≈ 50 m² of mature crown). The chosen cells are grouped into sites, and the eight largest are numbered on the map and listed by district.
+
+**Place your own interventions.** Choose a tool, set its radius, and click the map:
+
+| Tool | What it changes |
+| --- | --- |
+| Street trees | Adds canopy (5–40 points) in built-up cells within the circle, up to 60% |
+| Pocket park | Sets canopy to 80% and adds a new park, so distance-to-park drops around it |
+| Cool roofs and pavements | Lowers the surface temperature of built-up surfaces in proportion to building density |
+
+Every change re-scores the city in under a second. The new canopy is blurred over 300 m to get the neighbourhood change, a distance transform finds the new distance to shade, the fitted model gives the cooling, and heat exposure, access, risk, equity and priority are recomputed for every cell.
+
+The outcome panel reports:
+
+- the number of trees, the peak cooling and the area cooled by at least 0.5 °C;
+- before → after for mean urban surface temperature, urban canopy, priority zones and mean equity;
+- indicative irrigation water (25–75 litres per tree per day on drip) and cost (SAR 600–1,500 per planted tree, plus rates for parks and cool roofs);
+- progress against Green Riyadh: the plan's share of the 7.5 million-tree target, and urban canopy against the 9% green-cover goal.
+
+A blue cooling layer shows where the plan works, and clicking any cell adds its simulated cooling to the values behind it.
+
 ## Limitations
 
 This is a screening tool for planning conversations, not a replacement for field surveys. Read the results with these limits in mind:
@@ -125,6 +168,9 @@ This is a screening tool for planning conversations, not a replacement for field
 - **Land cover is from 2021.** Planting under Green Riyadh since 2022 is only partly visible, through Sentinel-2 NDVI.
 - **Mapped trees are not all trees.** OSM has only 874 mapped trees in the whole area, so distances use all canopy, not just OSM points.
 - **People are not yet counted.** Equity is measured per block of land, not per resident.
+- **The cooling model is an association, not an experiment.** It learns how surface temperature varies with canopy across today's city. Places that are green today may differ in other ways (irrigation, materials, wind), so simulated cooling is a screening estimate.
+- **Surface cooling is not air cooling.** A block can be several degrees cooler at the surface and only a fraction of that cooler in the air at head height.
+- **Planning figures are indicative.** Crown size, water use and costs are typical values for drip-irrigated native species in Riyadh, not quotes. Species, spacing and irrigation design change them.
 
 ## What I learned
 
@@ -132,14 +178,16 @@ This is a screening tool for planning conversations, not a replacement for field
 - **The tile grid is a free analysis grid.** Typed arrays handle millions of cells without a GIS library.
 - **TensorFlow.js is a practical GPU compute engine** for raster work, not only for neural networks.
 - **Rank, don't threshold,** when the whole area is at risk.
+- **Fit the model to the place.** A regression learned from the city's own pixels is more convincing to a local planner than a coefficient borrowed from somewhere else, and it is cheap enough to refit every time the imagery changes.
+- **Simulation turns a map into a conversation.** "What if we planted 250,000 trees here?" is a question people actually ask; answering it in a second changes how the tool is used.
 
 ## What's next
 
 - **Weight by population.** Add WorldPop so priority zones favour blocks where more people live.
-- **Learn instead of assume.** Train a small model that predicts surface temperature from canopy, building density and distance to parks, validated on held-out districts. The dashboard could then answer the planner's real question: *how much cooler would this block be with 10% more canopy?*
+- **Validate the cooling model.** Test it on held-out districts, compare a gradient-boosted model with the linear one, and check simulated cooling against blocks that were actually planted since 2022.
 - **Track Green Riyadh over time.** Repeat the analysis each summer to see whether new planting reaches the hottest blocks.
 
-If you work on urban greening, heat resilience or Green Riyadh projects and want to explore the data for your district, get in touch at [info@coffeemap.dev](mailto:info@coffeemap.dev).
+If you work on urban greening, heat resilience or Green Riyadh projects and want this analysis for your district or programme, I am available for consulting: [info@coffeemap.dev](mailto:info@coffeemap.dev).
 
 [Open the Riyadh Urban Heat dashboard →](/projects/riyadh-urban-heat)
 

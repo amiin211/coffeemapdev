@@ -25,6 +25,22 @@ import CloseIcon from '@mui/icons-material/Close';
 import AppLayout from '@/components/AppLayout';
 import DashboardHeader from '@/components/DashboardHeader';
 import ThreeWStatCards from '@/components/ThreeWStatCards';
+import ThreeWExplorer, { ExplorerMode, matrixCellColor } from '@/components/ThreeWExplorer';
+import {
+  DEFAULT_WEIGHTS,
+  EXIT_COLORS,
+  PRIORITY_BREAKS,
+  PRIORITY_RAMP,
+  Weights,
+  buildProfiles,
+  coverageRows,
+  missingCore,
+  partnerCount,
+  priorityColor,
+  priorityIndex,
+  simulateExit,
+} from '@/utils/threewInsights';
+import type { AcledData } from '@/utils/acled';
 import { clusterLabel, metricLabels, metricLabelsAr, orgTypeLabel, ThreeWMetric } from '@/utils/threewMetric';
 import { formatDate, useI18n } from '@/i18n';
 import { useSudanNames } from '@/utils/sudanNamesAr';
@@ -87,6 +103,12 @@ function DashboardContent() {
   const [selectedOrgType, setSelectedOrgType] = useState<string | null>(null);
   const [metric, setMetric] = useState<ThreeWMetric>('activities');
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [acled, setAcled] = useState<AcledData | null>(null);
+  const [mode, setMode] = useState<ExplorerMode>('priority');
+  const [showOnMap, setShowOnMap] = useState(true);
+  const [weights, setWeights] = useState<Weights>(DEFAULT_WEIGHTS);
+  const [exitOrg, setExitOrg] = useState<number | null>(null);
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
 
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
@@ -98,6 +120,11 @@ function DashboardContent() {
       .then((res) => res.json())
       .then(setData)
       .catch((err) => console.error('Error loading 3W data:', err));
+    // Conflict events for the response-gap analysis (optional: the dashboard works without it).
+    fetch('/data/acled_data.json')
+      .then((res) => res.json())
+      .then(setAcled)
+      .catch((err) => console.error('Error loading ACLED data:', err));
   }, []);
 
   const filters = useMemo(
@@ -123,6 +150,31 @@ function DashboardContent() {
     [data, filters]
   );
   const totalStatesCovered = stateAggregates.filter((s) => s.activities > 0).length;
+
+  // Response Gap Explorer: locality profiles (3W + ACLED), then each tool.
+  const profileSet = useMemo(() => (data ? buildProfiles(data, acled, filters) : null), [data, acled, filters]);
+  const priority = useMemo(() => (profileSet ? priorityIndex(profileSet, weights, selectedState) : []), [profileSet, weights, selectedState]);
+  const priorityByKey = useMemo(() => new Map(priority.map((p) => [p.profile.key, p])), [priority]);
+  // Default the exit simulator to the organization reporting the most activities.
+  const defaultExitOrg = useMemo(() => {
+    if (!data) return null;
+    const counts = new Map<number, number>();
+    for (const row of data.rows) counts.set(row[4], (counts.get(row[4]) ?? 0) + 1);
+    return Array.from(counts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+  }, [data]);
+  const activeExitOrg = exitOrg ?? defaultExitOrg;
+  const exit = useMemo(
+    () => (profileSet && activeExitOrg !== null ? simulateExit(profileSet, activeExitOrg, selectedState) : []),
+    [profileSet, activeExitOrg, selectedState],
+  );
+  const matrix = useMemo(() => (profileSet ? coverageRows(profileSet, selectedState) : []), [profileSet, selectedState]);
+  const overlayFill = useMemo(() => {
+    if (!showOnMap) return null;
+    if (mode === 'priority') return new Map(priority.map((p) => [p.profile.key, priorityColor(p.score)]));
+    if (mode === 'exit') return new Map(exit.map((e) => [e.profile.key, EXIT_COLORS[e.impact]]));
+    return new Map(matrix.map((r) => [r.profile.key, matrixCellColor(Math.min(...r.cells))]));
+  }, [showOnMap, mode, priority, exit, matrix]);
+  const selectedProfile = (selectedKey && profileSet?.profiles.get(selectedKey)) || null;
 
   const handleClusterClick = (cluster: string) => setSelectedCluster(cluster || null);
   const handleOrgTypeClick = (type: string) => setSelectedOrgType(type || null);
@@ -274,6 +326,80 @@ function DashboardContent() {
       selectedState={selectedState}
       metric={metric}
       onStateSelect={setSelectedState}
+      overlayFill={overlayFill}
+      overlayTitle={
+        mode === 'priority'
+          ? tr('Priority index (your weights)', 'مؤشر الأولوية (أوزانك)')
+          : mode === 'exit'
+            ? tr(`If ${activeExitOrg !== null ? data.orgs[activeExitOrg].acronym || data.orgs[activeExitOrg].name : ''} left`, `لو غادرت ${activeExitOrg !== null ? data.orgs[activeExitOrg].acronym || data.orgs[activeExitOrg].name : ''}`)
+            : tr('Weakest core cluster', 'أضعف قطاع أساسي')
+      }
+      overlayLegend={
+        mode === 'priority'
+          ? PRIORITY_RAMP.map((color, i) => ({
+              color,
+              label: i === 0 ? `< ${PRIORITY_BREAKS[0] * 100}` : i === PRIORITY_RAMP.length - 1 ? `${PRIORITY_BREAKS[i - 1] * 100}+` : `${PRIORITY_BREAKS[i - 1] * 100}–${PRIORITY_BREAKS[i] * 100}`,
+            })).reverse()
+          : mode === 'exit'
+            ? [
+                { color: EXIT_COLORS.uncovered, label: tr('No partner left', 'لا شريك متبقٍ') },
+                { color: EXIT_COLORS['cluster-lost'], label: tr('Loses a core cluster', 'تفقد قطاعًا أساسيًا') },
+                { color: EXIT_COLORS.reduced, label: tr('Other partners remain', 'يبقى شركاء آخرون') },
+              ]
+            : [
+                { color: matrixCellColor(0), label: tr('A core cluster has no partner', 'قطاع أساسي بلا شريك') },
+                { color: matrixCellColor(1), label: tr('Only one partner', 'شريك واحد فقط') },
+                { color: matrixCellColor(2), label: tr('Two partners', 'شريكان') },
+                { color: matrixCellColor(3), label: tr('Three or more', 'ثلاثة أو أكثر') },
+              ]
+      }
+      overlayTooltip={(key) => {
+        const p = profileSet?.profiles.get(key);
+        if (!p) return null;
+        const rank = priorityByKey.get(key);
+        const missing = missingCore(p);
+        return [
+          `${names.locality(p.name)} · ${names.state(p.state)}`,
+          tr(`${p.events} conflict events · ${partnerCount(p)} partners · ${p.activities} activities`, `${p.events} حدث نزاع · ${partnerCount(p)} شريك · ${p.activities} نشاط`),
+          rank ? tr(`Priority #${rank.rank} (score ${Math.round(rank.score * 100)})`, `الأولوية رقم ${rank.rank} (الدرجة ${Math.round(rank.score * 100)})`) : '',
+          missing.length ? tr(`Missing: ${missing.join(', ')}`, `غائب: ${missing.map((c) => clusterLabel(c, true)).join('، ')}`) : '',
+          tr('Click for the full profile', 'انقر لعرض الملف كاملًا'),
+        ]
+          .filter(Boolean)
+          .join('\n');
+      }}
+      selectedLocality={selectedKey}
+      onLocalityClick={(key) => setSelectedKey((k) => (k === key ? null : key))}
+    />
+  );
+
+  const filterNote = [
+    selectedCluster && clusterLabel(selectedCluster, isAr),
+    selectedOrgType && orgTypeLabel(selectedOrgType, isAr),
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
+  const insightsNode = profileSet && acled && (
+    <ThreeWExplorer
+      data={data}
+      months={data.months}
+      mode={mode}
+      onModeChange={setMode}
+      showOnMap={showOnMap}
+      onShowOnMapChange={setShowOnMap}
+      weights={weights}
+      onWeightsChange={setWeights}
+      priority={priority}
+      exitOrg={activeExitOrg}
+      onExitOrgChange={setExitOrg}
+      exit={exit}
+      matrix={matrix}
+      selected={selectedProfile}
+      selectedRank={selectedKey ? priorityByKey.get(selectedKey) ?? null : null}
+      onSelect={setSelectedKey}
+      onStateSelect={(state) => setSelectedState(state)}
+      filterNote={filterNote || null}
     />
   );
 
@@ -329,6 +455,7 @@ function DashboardContent() {
         <Box sx={{ px: 2, pt: 1.5, flexShrink: 0 }}>
           <Box sx={{ position: 'relative' }}>
             <DashboardHeader
+              articleHref="/insights/3w-response-gap-explorer"
               title={tr('3W Humanitarian Mapping', 'خرائط العمل الإنساني (3W)')}
               subtitle={tr('Who, What, Where — Sudan Response Monitoring', 'من يفعل ماذا وأين — رصد الاستجابة في السودان')}
               icon={<GroupsIcon sx={{ fontSize: 28 }} />}
@@ -428,6 +555,8 @@ function DashboardContent() {
               </Box>
             </Box>
 
+            {insightsNode && <Paper elevation={2} sx={{ mx: 2, mb: 1.25, p: 1.5, flexShrink: 0 }}>{insightsNode}</Paper>}
+
             <Paper elevation={2} sx={{ mx: 2, mb: 1.5, p: 1.25, flexShrink: 0 }}>
               <Typography variant="subtitle2" sx={{ fontFamily: 'Roboto, sans-serif', mb: 0.5 }}>
                 {tr('Monthly Trend (Jan–Jun 2026)', 'الاتجاه الشهري (يناير–يونيو 2026)')}
@@ -456,6 +585,7 @@ function DashboardContent() {
                 {aboutContent}
               </Paper>
             )}
+            {insightsNode && <Paper elevation={2} sx={{ p: 2, mb: 2 }}>{insightsNode}</Paper>}
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>{sidebarNode}</Box>
             <Paper elevation={2} sx={{ p: 2, mt: 2 }}>
               <Typography variant="subtitle2" sx={{ fontFamily: 'Roboto, sans-serif', mb: 1 }}>

@@ -28,6 +28,8 @@ import AppLayout from '@/components/AppLayout';
 import DashboardHeader from '@/components/DashboardHeader';
 import AcledFilters from '@/components/AcledFilters';
 import AcledTimeline, { MONTH_MS, usePlayback } from '@/components/AcledTimeline';
+import AcledInsights from '@/components/AcledInsights';
+import AcledAssistant from '@/components/AcledAssistant';
 import type { AcledMapMode, AcledMetric } from '@/components/AcledMap';
 import { unBlue, unCategorical } from '@/theme/unColors';
 import type { Admin1Collection, Admin2Collection } from '@/utils/geo';
@@ -42,6 +44,16 @@ import {
   monthlySeries,
   totals as computeTotals,
 } from '@/utils/acled';
+import {
+  HOTSPOT_COLORS,
+  InsightOverlay,
+  OVERLAY_COLORS,
+  briefData,
+  buildMatrix,
+  computeInsights,
+  overlayColors,
+} from '@/utils/acledInsights';
+import { AiQueryResult, aiEnabled } from '@/utils/ai';
 import { useI18n } from '@/i18n';
 import { useSudanNames } from '@/utils/sudanNamesAr';
 
@@ -94,6 +106,7 @@ function DashboardContent() {
   const playback = usePlayback(filters.monthRange);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [overlay, setOverlay] = useState<InsightOverlay | null>(null);
 
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
@@ -149,6 +162,29 @@ function DashboardContent() {
   const localitiesAffected = localityTotals.filter((l) => l.events > 0 && (!filters.locality || l.locality.name === filters.locality)).length;
   const hoveredLocalityName = hoverArea?.pcode ? data?.localities.find((l) => l.pcode === hoverArea.pcode)?.name ?? null : null;
 
+  // Smart insights: computed here, in the browser, for the current view.
+  const matrix = useMemo(() => (data ? buildMatrix(data) : null), [data]);
+  const insights = useMemo(() => (data && matrix ? computeInsights(data, matrix, view, metric) : null), [data, matrix, view, metric]);
+  const overlayFill = useMemo(() => (insights && overlay ? overlayColors(insights, overlay) : null), [insights, overlay]);
+  // What "Ask this map" may choose from: the model only routes to these.
+  const aiSchema = useMemo(() => {
+    if (!data) return null;
+    const localitiesByState: Record<string, string[]> = {};
+    data.localities.forEach((l) => (localitiesByState[l.state] ??= []).push(l.name));
+    return {
+      dataset: 'ACLED political violence events and fatalities per locality per month, Sudan',
+      filters: { state: data.states, locality: localitiesByState },
+      metrics: ['events', 'fatalities'],
+      period: { first: data.months[0], last: data.months[data.months.length - 1], format: 'YYYY-MM' },
+      overlays: {
+        surges: 'localities well above their own recent baseline (last 3 months vs 6 before)',
+        new: 'localities newly affected after a quiet baseline',
+        hotspots: 'statistically significant clusters (Getis-Ord Gi*) over the period',
+      },
+      notes: 'Rankings are shown by the dashboard bar charts: for "top"/"most" questions set filters, period and metric. Use "overlay" for questions about surges, escalation, new areas, spread or hotspots/clusters. Put a locality in filters.locality together with its state in filters.state.',
+    };
+  }, [data]);
+
   if (!data || !admin1 || !admin2) {
     return (
       <AppLayout>
@@ -173,6 +209,7 @@ function DashboardContent() {
     setFilters({ monthRange: [0, months.length - 1], state: null, locality: null });
     playback.stop();
     setHoverArea(null);
+    setOverlay(null);
   };
   const isFiltered = !!filters.state || from !== 0 || to !== months.length - 1 || current !== null;
   // Clicking a month on the trend charts jumps the timeline there (again to
@@ -183,6 +220,71 @@ function DashboardContent() {
     playback.seek(i);
   };
   const selectState = (state: string | null) => updateFilters({ state, locality: null });
+  const selectLocality = (locality: string, state: string) => updateFilters({ state, locality });
+  const changeOverlay = (next: InsightOverlay | null) => {
+    setOverlay(next);
+    if (next) setMapMode('2d');
+  };
+
+  // Apply an "Ask this map" answer. Everything is checked against the data, so
+  // a wrong or made-up name from the model can't break the view.
+  const applyQuery = (q: AiQueryResult): { ok: boolean; note: string } => {
+    if (!q || q.action === 'unsupported')
+      return { ok: false, note: q?.explain || tr("That question can't be answered from this dataset.", 'لا يمكن الإجابة عن هذا السؤال من هذه البيانات.') };
+    const f = (q.filters ?? {}) as Record<string, unknown>;
+    const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : null);
+    const lower = (v: string) => v.toLowerCase();
+    let state = str(f.state) && data.states.find((s) => lower(s) === lower(str(f.state)!)) || null;
+    let locality: string | null = null;
+    for (const name of [str(f.locality), str(q.flyTo)]) {
+      if (!name || locality) continue;
+      const match = data.localities.find((l) => lower(l.name) === lower(name) && (!state || l.state === state));
+      if (match) {
+        locality = match.name;
+        state = match.state;
+      } else if (!state) state = data.states.find((s) => lower(s) === lower(name)) ?? null;
+    }
+    let range: [number, number] = [0, months.length - 1];
+    const fromStr = str(q.period?.from);
+    const toStr = str(q.period?.to);
+    if (fromStr || toStr) {
+      const toKey = toStr && toStr.length === 4 ? `${toStr}-12` : toStr;
+      let a = fromStr ? months.findIndex((m) => m >= fromStr) : 0;
+      let b = toKey ? months.reduce((last, m, i) => (m <= toKey ? i : last), -1) : months.length - 1;
+      if (a < 0) a = months.length - 1;
+      if (b < 0) b = 0;
+      range = a <= b ? [a, b] : [b, a];
+    }
+    const nextMetric = q.metric === 'fatalities' || q.metric === 'events' ? q.metric : metric;
+    const nextOverlay = q.overlay === 'surges' || q.overlay === 'new' || q.overlay === 'hotspots' ? q.overlay : null;
+    playback.stop();
+    setFilters({ monthRange: range, state, locality });
+    setMetric(nextMetric);
+    changeOverlay(nextOverlay);
+    return { ok: true, note: q.explain || tr('Updated the map.', 'تم تحديث الخريطة.') };
+  };
+
+  const getBriefData = () =>
+    insights &&
+    briefData(data, insights, {
+      period: current === null ? `${months[from]} to ${months[to]}` : months[current],
+      area: filters.locality ? `${filters.locality}, ${filters.state}` : filters.state ?? 'Sudan (all states)',
+      totals,
+      topStates: topStates.map((s) => ({ name: s.name, events: s.events, fatalities: s.fatalities })),
+    });
+
+  const overlayLegend =
+    overlay === 'hotspots'
+      ? [
+          { color: HOTSPOT_COLORS[99], label: tr('Hotspot · 99% confidence', 'بؤرة ساخنة · ثقة 99٪') },
+          { color: HOTSPOT_COLORS[95], label: tr('Hotspot · 95%', 'بؤرة ساخنة · 95٪') },
+          { color: HOTSPOT_COLORS[90], label: tr('Hotspot · 90%', 'بؤرة ساخنة · 90٪') },
+        ]
+      : overlay === 'surges'
+        ? [{ color: OVERLAY_COLORS.surges, label: tr('Surging locality', 'محلية تشهد تصاعدًا') }]
+        : overlay === 'new'
+          ? [{ color: OVERLAY_COLORS.new, label: tr('Newly affected locality', 'محلية متأثرة حديثًا') }]
+          : null;
   const transitionMs = playback.playing ? Math.min(700, (MONTH_MS / playback.speed) * 0.75) : 450;
 
   const stateOptions = data.states;
@@ -312,6 +414,8 @@ function DashboardContent() {
         onStateSelect={selectState}
         onLocalitySelect={(locality, state) => updateFilters(locality ? { state, locality } : { locality: null })}
         onHover={setHoverArea}
+        overlayFill={overlayFill}
+        overlayLegend={overlayLegend}
       />
       <Box sx={{ position: 'absolute', top: 12, left: 12, right: 64, zIndex: 500, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 0.75, pointerEvents: 'none', '& > *': { pointerEvents: 'auto' } }}>
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
@@ -394,6 +498,30 @@ function DashboardContent() {
     </>
   );
 
+  const smartNode = insights && aiSchema && (
+    <Box sx={{ display: 'flex', gap: 3, flexDirection: isDesktop ? 'row' : 'column' }}>
+      <Box sx={{ flex: 2, minWidth: 0 }}>
+        <AcledInsights
+          data={data}
+          insights={insights}
+          overlay={overlay}
+          onOverlayChange={changeOverlay}
+          onLocalitySelect={selectLocality}
+          onHover={setHoverArea}
+          compact={!isDesktop}
+        />
+      </Box>
+      {aiEnabled && (
+        <>
+          {isDesktop && <Divider orientation="vertical" flexItem />}
+          <Box sx={{ flex: 1, minWidth: 0, maxWidth: isDesktop ? 420 : 'none' }}>
+            <AcledAssistant schema={aiSchema} getBriefData={getBriefData} onQuery={applyQuery} />
+          </Box>
+        </>
+      )}
+    </Box>
+  );
+
   const aboutContent = (
     <>
       {isAr ? (
@@ -452,6 +580,7 @@ function DashboardContent() {
         <Box sx={{ px: 2, pt: 1.5, flexShrink: 0 }}>
           <Box sx={{ position: 'relative' }}>
             <DashboardHeader
+              articleHref="/insights/acled-conflict-analytics"
               title={tr('Sudan Conflicts', 'النزاعات في السودان')}
               subtitle={tr('Political Violence Events & Fatalities — Sudan', 'أحداث العنف السياسي والوفيات — السودان')}
               icon={<CrisisAlertIcon sx={{ fontSize: 28 }} />}
@@ -540,6 +669,7 @@ function DashboardContent() {
               </Paper>
             </Box>
 
+            <Paper elevation={2} sx={{ mx: 2, mb: 1.25, p: 1.5, flexShrink: 0 }}>{smartNode}</Paper>
             <Paper elevation={2} sx={{ mx: 2, mb: 1.5, p: 1.5, flexShrink: 0 }}>{trendNode}</Paper>
           </>
         ) : (
@@ -564,6 +694,7 @@ function DashboardContent() {
               {mapNode}
             </Paper>
             <Paper elevation={2} sx={{ p: 1.5, mb: 2 }}>{timelineNode}</Paper>
+            <Paper elevation={2} sx={{ p: 2, mb: 2 }}>{smartNode}</Paper>
             {aboutOpen && (
               <Paper elevation={2} sx={{ p: 2.5, mb: 2 }}>
                 {aboutHeader}

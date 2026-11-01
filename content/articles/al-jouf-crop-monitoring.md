@@ -1,18 +1,18 @@
 ---
 title: "Crop Monitoring for Al Jouf Without a Server: Sentinel-2, Python and a Static WebGIS"
-date: 2026-09-28
+date: 2026-10-31
 author: Amin Adnan Gasim
 category: Remote Sensing
-readingTime: 8 min
-description: "Automatic centre-pivot detection, NDVI/EVI time series, crop classification and anomaly alerts for Al Jouf, Saudi Arabia, built with an offline Python pipeline and served as static files plus live Planetary Computer tiles."
-tags: [agriculture, Saudi Arabia, Al Jouf, Sentinel-2, centre pivot, NDVI, OpenCV, Planetary Computer]
+readingTime: 11 min
+description: "Automatic centre-pivot detection, crop classification, field health against peers, harvest detection, phenology and irrigation water demand for 181 fields in Al Jouf, Saudi Arabia: an offline Python pipeline, static files, live Planetary Computer tiles and analytics in the browser."
+tags: [agriculture, water, Saudi Arabia, Al Jouf, Sentinel-2, centre pivot, NDVI, evapotranspiration, OpenCV, Planetary Computer]
 ---
 
 # Crop Monitoring for Al Jouf Without a Server
 
 *Sentinel-2, an offline Python pipeline and a static WebGIS*
 
-**The dashboard finds 160 centre pivots and 21 block fields in Al Jouf automatically, covering 13,781 hectares, and follows every one through 442 Sentinel-2 scene dates since April 2023. Each field gets a crop type per season, and 50 fields have been flagged at least once for falling behind their peers. No server of mine runs at any point.**
+**The dashboard finds 160 centre pivots and 21 block fields in Al Jouf automatically, covering 13,781 hectares, and follows every one through 442 Sentinel-2 scene dates since April 2023. Each field gets a crop type per season, a health status against fields growing the same crop, detected harvests and cuttings, season phenology and an estimate of how much irrigation water it needs. Over the last 12 months that comes to about 166 million m³ across the farm. No server of mine runs at any point.**
 
 [Open the GeoAI Crop Monitoring dashboard →](/projects/geoai-crop-monitoring)
 
@@ -22,7 +22,7 @@ tags: [agriculture, Saudi Arabia, Al Jouf, Sentinel-2, centre pivot, NDVI, OpenC
 
 Al Jouf in northern Saudi Arabia is one of the Kingdom's largest agricultural regions, known for its olive orchards as well as cereals and forage. From space it is unmistakable: rows of green centre-pivot circles in the desert, each one irrigated with groundwater.
 
-That makes field-level monitoring useful to more than agronomists. What is grown, when, and whether a field is thriving tells you a lot about water use in one of the driest farming regions on Earth. The dashboard answers three questions for every field: **what is growing, how is it doing, and is anything going wrong?**
+That makes field-level monitoring useful to more than agronomists. What is grown, when, and whether a field is thriving tells you a lot about water use in one of the driest farming regions on Earth, where irrigation draws on non-renewable groundwater. The dashboard answers four questions for every field: **what is growing, how is it doing compared with its peers, is anything going wrong, and how much water is it using?**
 
 ## What it shows
 
@@ -33,7 +33,10 @@ That makes field-level monitoring useful to more than agronomists. What is grown
 | Total field area | 13,781 ha |
 | Sentinel-2 scene dates processed | 442 (April 2023 – September 2026) |
 | Crop classes assigned | fallow, alfalfa / forage, orchard, double crop, winter cereal, summer crop |
-| Fields flagged at least once | 50 (none on the latest date, 20 September 2026) |
+| Fields flagged at least once (seasonal anomaly) | 50 |
+| Health on 20 September 2026 | 13 thriving, 36 normal, 2 on watch, 4 stressed, 13 recently harvested or cut; the rest off-season or fallow |
+| Estimated irrigation demand, last 12 months | about 166 million m³ (≈ 15,300 m³ per irrigated hectare) |
+| Typical demand by crop | alfalfa ≈ 19,000 m³/ha, winter cereals ≈ 11,000 m³/ha |
 
 ![Map of centre-pivot and block fields in Al Jouf over live Sentinel-2 NDVI; each field is outlined in its crop-type colour.](/images/articles/al-jouf-fields-map.png "Figure 1. The 181 detected fields over Sentinel-2 NDVI for 20 September 2026, streamed live from Planetary Computer. Field outlines follow crop type.")
 
@@ -41,7 +44,7 @@ That makes field-level monitoring useful to more than agronomists. What is grown
 
 ## Two halves: an offline pipeline and a static WebGIS
 
-My other browser-only projects, [Blue Nile Flood Risk](/projects/blue-nile-flood-risk) and [Riyadh Urban Heat](/projects/riyadh-urban-heat), compute everything live in the browser. Crop monitoring takes a different route, and the reason is scale: every Sentinel-2 scene since 2023 × every field is not something to recompute on each page view.
+My other satellite dashboard, [Riyadh Urban Heat](/projects/riyadh-urban-heat), computes everything live in the browser. Crop monitoring takes a different route, and the reason is scale: every Sentinel-2 scene since 2023 × every field is not something to recompute on each page view.
 
 So the work is split in two:
 
@@ -118,11 +121,12 @@ A flag also needs **two consecutive clear readings** below the line, so a single
 
 | Library / service | Role |
 | --- | --- |
-| Next.js 14, React 18, TypeScript | Static page and state |
+| Next.js 16, React 19, TypeScript | Static page and state |
 | Material UI 5 | Filters, alert list, field panel |
-| MapLibre GL JS 5 via react-map-gl 8 | WebGL map of fields and imagery |
+| MapLibre GL JS 6 via react-map-gl 8 | WebGL map of fields and imagery, five colour modes |
 | Chart.js 4 via react-chartjs-2 | Field and regional NDVI/EVI time series, crop summary |
 | Planetary Computer data API | Live NDVI, EVI and true-colour tiles for any Sentinel-2 scene |
+| NASA POWER daily API | Air temperature for reference evapotranspiration |
 
 The time slider steps through every Sentinel-2 date. For the selected date, the map requests Planetary Computer item tiles with a band-math expression and a colour map, so the index image is rendered on the tile server and streamed to MapLibre as a normal raster layer:
 
@@ -133,6 +137,58 @@ colormap   = rdylgn
 ```
 
 Field polygons are coloured by crop type or index value, anomalous fields are outlined, and clicking a field opens its full time series. A cloudy field on the chosen date shows its latest clear reading instead of a gap.
+
+## The intelligence layer (browser)
+
+The offline pipeline answers "what was measured". Everything that depends on the date the visitor picks is computed in the browser from the same two files, for all 181 fields in milliseconds (`cropInsights.ts`).
+
+### Health against peers
+
+A field at NDVI 0.4 might be fine in December and failing in March. So each field is compared with **the fields growing the same crop on the same date**: their median, and a robust z-score using the median absolute deviation, which a few bare or cloudy fields can't distort. The result is one of seven states:
+
+| State | Rule (simplified) |
+| --- | --- |
+| Thriving | more than 10% above the crop's median, z > 1 |
+| Normal | within the usual range |
+| Watch | below 80% of the median, or losing more than 0.06 NDVI per 10 days |
+| Stressed | below 70% of the median and z < −1.5 |
+| Harvested / cut | a sharp drop detected in the last five weeks |
+| Off-season | the whole crop is bare on this date |
+| Fallow / idle | classed fallow and not green |
+
+The 30-day trend comes from a least-squares slope through the clear readings.
+
+### Telling harvest from stress
+
+A cut alfalfa pivot and a failing one look the same on a single date: bare. The difference is the shape of the curve. A **harvest or cutting** is a drop from a green canopy (NDVI ≥ 0.45) to bare ground (≤ 0.30) within 25 days; for five weeks afterwards the field reads as harvested, not stressed. Over the last year the detector finds a median of three deep cuts per alfalfa field.
+
+### Phenology and vigour
+
+For each season (September–August) the browser smooths the series with a three-point median and reads off the peak and its date, green-up and senescence (where the curve crosses half its amplitude), the number of green cycles, and a **vigour** score: NDVI above 0.15 integrated over the season. Vigour is ranked against fields of the same crop in the same season, as a percentile. It is a proxy for yield potential, not a yield.
+
+### Irrigation water demand
+
+This is the part I find most useful for Al Jouf. Following the FAO-56 approach, crop water use is the crop coefficient times reference evapotranspiration:
+
+```
+Kc   = 1.25 · NDVI + 0.1            (bounded 0.15–1.2)
+ET0  = Hargreaves (NASA POWER daily Tmax and Tmin)
+ETc  = Kc · ET0                     (daily, NDVI interpolated between clear scenes)
+gross irrigation = ETc / 0.85 × area   (centre-pivot efficiency)
+```
+
+NASA POWER is keyless and called once from the browser for the whole period. If it is unreachable, a monthly ET₀ climatology for Al Jouf takes over and the page says so. Each field gets its 12-month crop evapotranspiration, gross irrigation in m³ and m³ per hectare, compared with the median of its crop, so an unusually thirsty pivot stands out.
+
+### Look-alike fields and change
+
+Selecting a field lists the five fields whose NDVI over the past year correlates best with it (Pearson r), and outlines them on the map. They usually share a crop, a planting date or a management pattern, which makes them natural comparisons. A **change** mode colours every field by its NDVI change since 10, 30, 60, 90 or 365 days earlier.
+
+### Interaction
+
+- **Five map modes:** index imagery, health, change, water and crop type, each with its own legend and a hover readout.
+- **Timeline playback** steps through the scenes, with imagery and every analysis updating.
+- **A farm brief** writes six to eight sentences from the numbers for the chosen date (how many fields are green, which are stressed and why, what changed, how much water was used) and each sentence is clickable.
+- **Click-to-filter:** the health bar filters the map; the brief jumps to a field.
 
 ## Why this split works
 
@@ -149,6 +205,8 @@ Field polygons are coloured by crop type or index value, anomalous fields are ou
 - **Field edges are mixed pixels.** At 10–20 m, pixels on a field's rim blend crop and desert, which slightly lowers mean values for small fields.
 - **Short history.** Series start in April 2023, so there are only a few seasons to compare.
 - **Peers need numbers.** The anomaly test is only as good as the number of same-crop fields observed on the same dates.
+- **Water estimates are modelled, not metered.** The NDVI–Kc relation is a general one, Hargreaves is a simple ET₀ method, and the 85% efficiency is assumed. Treat the figures as a consistent way to compare fields and seasons, not as abstraction volumes.
+- **Only deep cuts are detected.** A light cut that never drops below NDVI 0.30, or one hidden by clouds, is missed, so real cutting frequency is higher than the count shown.
 
 ## What I learned
 
@@ -162,13 +220,13 @@ Field polygons are coloured by crop type or index value, anomalous fields are ou
 
 - **From rules to a trained classifier.** Label a set of fields and train a gradient-boosted model (LightGBM) on phenology features, validated on fields from areas it never saw. The rules become the baseline to beat, and the dashboard will show both with their accuracy.
 - **Learned field boundaries.** Compare the Hough detector with a small segmentation model, including for sector pivots and irregular fields.
-- **Water use.** Combine each field's crop and season with evapotranspiration data to estimate irrigation demand per field.
+- **Validate water use.** Compare the estimates with metered pivots or with satellite actual-evapotranspiration products, and calibrate Kc per crop.
 - **Beyond Al Jouf.** Apply the same pipeline to Sudan's Gezira scheme, where field-level monitoring could support one of Africa's largest irrigation systems.
 
-If you work on agricultural monitoring, water management or food security in the region and want this for your area, get in touch at [info@coffeemap.dev](mailto:info@coffeemap.dev).
+If you work on agricultural monitoring, water management or food security in the region and want this for your area, I am available for consulting: [info@coffeemap.dev](mailto:info@coffeemap.dev).
 
 [Open the GeoAI Crop Monitoring dashboard →](/projects/geoai-crop-monitoring)
 
 ---
 
-*Data: Copernicus Sentinel-2 (ESA) via Microsoft Planetary Computer. Stack: Python, OpenCV, Rasterio, NumPy, STAC API, Planetary Computer, Next.js, MapLibre GL JS, Chart.js.*
+*Data: Copernicus Sentinel-2 (ESA) via Microsoft Planetary Computer; NASA POWER. Stack: Python, OpenCV, Rasterio, NumPy, STAC API, Planetary Computer, Next.js, MapLibre GL JS, Chart.js.*

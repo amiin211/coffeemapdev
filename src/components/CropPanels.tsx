@@ -289,7 +289,7 @@ export function FieldInfoPanel({ field, index, reading, anomalyNow, anomalyCount
         <Chip
           size="small"
           icon={anomalyNow ? <WarningAmberIcon /> : <CheckCircleOutlineIcon />}
-          label={anomalyNow ? tr('Anomaly', 'شذوذ') : tr('Normal', 'طبيعي')}
+          label={anomalyNow ? tr('Seasonal anomaly', 'شذوذ موسمي') : tr('Within seasonal range', 'ضمن النطاق الموسمي')}
           color={anomalyNow ? 'error' : 'success'}
           variant={anomalyNow ? 'filled' : 'outlined'}
         />

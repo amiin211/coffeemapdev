@@ -46,7 +46,7 @@ const Projects = ({ selectedCategory = null }: ProjectsProps) => {
               lineHeight: 1.7,
             }}
           >
-            {tr('Explore our portfolio of geospatial engineering solutions across humanitarian and infrastructure domains', 'استكشف أعمالنا في الهندسة الجيومكانية عبر المجالين الإنساني والبنية التحتية')}
+            {tr('Live dashboards and tools I have built for agriculture, cities, humanitarian response, data quality and construction.', 'لوحات وأدوات حية بنيتها للزراعة والمدن والاستجابة الإنسانية وجودة البيانات والإنشاءات.')}
           </Typography>
         </Box>
 

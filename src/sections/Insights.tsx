@@ -46,7 +46,7 @@ const Insights = ({ selectedCategory = null }: InsightsProps) => {
               lineHeight: 1.7,
             }}
           >
-            {tr('Technical deep dives and best practices from our geospatial engineering experience', 'شروحات تقنية معمّقة وأفضل الممارسات من خبرتنا في الهندسة الجيومكانية')}
+            {tr('Case studies of my projects: the question, the data, the method and what I learned.', 'دراسات حالة لمشاريعي: السؤال، والبيانات، والمنهج، وما تعلمته.')}
           </Typography>
         </Box>
 

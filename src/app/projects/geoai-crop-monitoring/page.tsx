@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Box, Typography, Paper, Divider, CircularProgress, IconButton, useMediaQuery, useTheme } from '@mui/material';
+import { Box, Typography, Paper, Divider, CircularProgress, IconButton, Tab, Tabs, useMediaQuery, useTheme } from '@mui/material';
 import { default as nextDynamic } from 'next/dynamic';
 import GrassIcon from '@mui/icons-material/Grass';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
@@ -11,6 +11,26 @@ import TuneIcon from '@mui/icons-material/Tune';
 import AppLayout from '@/components/AppLayout';
 import DashboardHeader from '@/components/DashboardHeader';
 import { AnomalyAlerts, CropFilters, FieldInfoPanel } from '@/components/CropPanels';
+import { CropMapMode, FarmBrief, FieldIntel, HealthBar, MapModeBar, fieldNameFor } from '@/components/CropIntel';
+import {
+  CutEvent,
+  Et0Source,
+  FieldHealth,
+  Phenology,
+  HEALTH_COLORS,
+  HEALTH_LABEL,
+  HEALTH_ORDER,
+  Health,
+  buildFarmBrief,
+  changeBetween,
+  computeHealth,
+  computePhenology,
+  detectCuts,
+  fetchEt0,
+  indexDaysBefore,
+  similarFields,
+  waterUse,
+} from '@/lib/cropInsights';
 import { agriGreen, agriAccents } from '@/theme/agriColors';
 import {
   CROP_TYPES,
@@ -72,6 +92,13 @@ function DashboardContent() {
   const [selectedField, setSelectedField] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [mapMode, setMapMode] = useState<CropMapMode>('index');
+  const [compareDays, setCompareDays] = useState(30);
+  const [healthFilter, setHealthFilter] = useState<Health | null>(null);
+  const [playing, setPlaying] = useState(false);
+  const [sideTab, setSideTab] = useState<'insights' | 'field' | 'alerts'>('insights');
+  const [showSimilar, setShowSimilar] = useState(true);
+  const [et0, setEt0] = useState<Et0Source>({ daily: new Map(), source: 'climatology' });
 
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
@@ -92,6 +119,31 @@ function DashboardContent() {
       .catch((err) => console.error('Error loading crop data:', err));
   }, []);
 
+  // Daily reference evapotranspiration for the farm (NASA POWER, keyless);
+  // falls back to an Al Jouf monthly climatology when unreachable.
+  useEffect(() => {
+    if (!series) return;
+    let live = true;
+    fetchEt0(series.dates[0], series.dates[series.dates.length - 1], 38.29, 29.93).then((e) => live && setEt0(e));
+    return () => {
+      live = false;
+    };
+  }, [series]);
+
+  // Timeline playback: one scene every 1.4 s, stopping at the latest scene.
+  useEffect(() => {
+    if (!playing || !series) return;
+    const id = setInterval(() => {
+      setDateIndex((i) => {
+        const next = Math.min(series.dates.length - 1, i + 1);
+        setSliderIndex(next);
+        if (next === series.dates.length - 1) setPlaying(false);
+        return next;
+      });
+    }, 1400);
+    return () => clearInterval(id);
+  }, [playing, series]);
+
   const commitDate = (i: number) => {
     setSliderIndex(i);
     setDateIndex(i);
@@ -99,6 +151,77 @@ function DashboardContent() {
 
   const fieldProps = useMemo(() => fields?.features.map((f) => f.properties) ?? [], [fields]);
   const selected = fieldProps.find((f) => f.id === selectedField) ?? null;
+
+  // ---- crop intelligence (src/lib/cropInsights.ts) ----
+  const cuts = useMemo(() => {
+    const m = new Map<string, CutEvent[]>();
+    if (series) fieldProps.forEach((f) => m.set(f.id, detectCuts(series.fields[f.id].ndvi, series.dates)));
+    return m;
+  }, [series, fieldProps]);
+  const phenology = useMemo(() => (series ? computePhenology(fieldProps, series) : new Map<string, Phenology[]>()), [series, fieldProps]);
+  const health = useMemo(() => (series ? computeHealth(fieldProps, series, dateIndex, cuts) : new Map<string, FieldHealth>()), [series, fieldProps, dateIndex, cuts]);
+  const compareIndex = series ? indexDaysBefore(series.dates, dateIndex, compareDays) : 0;
+  const change = useMemo(() => {
+    const m = new Map<string, number | null>();
+    if (series) fieldProps.forEach((f) => m.set(f.id, changeBetween(series, f.id, compareIndex, dateIndex)));
+    return m;
+  }, [series, fieldProps, compareIndex, dateIndex]);
+  const water = useMemo(() => {
+    const m = new Map<string, ReturnType<typeof waterUse>>();
+    if (!series) return m;
+    const from = indexDaysBefore(series.dates, dateIndex, 365);
+    fieldProps.forEach((f) => m.set(f.id, waterUse(series.fields[f.id].ndvi, series.dates, from, dateIndex, f.area_ha, et0)));
+    return m;
+  }, [series, fieldProps, dateIndex, et0]);
+  const modeValues = useMemo(() => {
+    const m = new Map<string, number | null>();
+    if (mapMode === 'change') change.forEach((v, k) => m.set(k, v));
+    if (mapMode === 'water') water.forEach((v, k) => m.set(k, v.perHa));
+    return m;
+  }, [mapMode, change, water]);
+  const healthStats = useMemo(() => {
+    const counts = Object.fromEntries(HEALTH_ORDER.map((h) => [h, 0])) as Record<Health, number>;
+    const areas = Object.fromEntries(HEALTH_ORDER.map((h) => [h, 0])) as Record<Health, number>;
+    fieldProps.forEach((f) => {
+      if (cropFilter && f.crop !== cropFilter) return;
+      const h = health.get(f.id)?.health;
+      if (h) { counts[h]++; areas[h] += f.area_ha; }
+    });
+    return { counts, areas };
+  }, [fieldProps, health, cropFilter]);
+  const similar = useMemo(() => (series && selectedField ? similarFields(selectedField, series, dateIndex) : []), [series, selectedField, dateIndex]);
+  const nameOf = useMemo(() => fieldNameFor(fieldProps, isAr), [fieldProps, isAr]);
+  const brief = useMemo(() => {
+    if (!series) return [];
+    const scope = fieldProps.filter((f) => !cropFilter || f.crop === cropFilter);
+    const deltas = scope.map((f) => ({ id: f.id, d: change.get(f.id) ?? null, ha: f.area_ha })).filter((x): x is { id: string; d: number; ha: number } => x.d !== null);
+    const area = deltas.reduce((s, x) => s + x.ha, 0);
+    const sorted = [...deltas].sort((a, b) => a.d - b.d);
+    return buildFarmBrief({
+      fields: scope,
+      health,
+      dateLabel: [formatDate(series.dates[dateIndex]), formatDate(series.dates[dateIndex], true)],
+      compareLabel: [formatDate(series.dates[compareIndex]), formatDate(series.dates[compareIndex], true)],
+      meanChange: area ? deltas.reduce((s, x) => s + x.d * x.ha, 0) / area : null,
+      losers: sorted.slice(0, 3),
+      gainers: sorted.slice(-3).reverse(),
+      yearWaterM3: scope.reduce((s, f) => s + (water.get(f.id)?.grossM3 ?? 0), 0),
+      et0Source: et0.source,
+      label: (id, ar) => fieldNameFor(fieldProps, ar)(id),
+      crop: (c, ar) => cropLabel(c, ar),
+    });
+  }, [series, fieldProps, cropFilter, change, health, dateIndex, compareIndex, water, et0.source]);
+  const waterPeerMedian = useMemo(() => {
+    if (!selected) return null;
+    const crop = health.get(selected.id)?.crop ?? selected.crop;
+    const v = fieldProps.filter((f) => (health.get(f.id)?.crop ?? f.crop) === crop).map((f) => water.get(f.id)?.perHa ?? 0).filter((x) => x > 0).sort((a, b) => a - b);
+    return v.length >= 3 ? v[v.length >> 1] : null;
+  }, [selected, fieldProps, health, water]);
+
+  const selectField = (id: string | null) => {
+    setSelectedField(id);
+    if (id) setSideTab('field');
+  };
 
   const cropSummary = useMemo(
     () =>
@@ -168,13 +291,16 @@ function DashboardContent() {
         if (selected && crop && selected.crop !== crop) setSelectedField(null);
       }}
       selectedField={selectedField}
-      onFieldSelect={setSelectedField}
+      onFieldSelect={selectField}
       onReset={() => {
         commitDate(dates.length - 1);
         setIndex('ndvi');
         setShowIndexLayer(true);
         setCropFilter(null);
         setSelectedField(null);
+        setHealthFilter(null);
+        setMapMode('index');
+        setPlaying(false);
       }}
     />
   );
@@ -182,6 +308,7 @@ function DashboardContent() {
   // With a field selected the cards describe that field; otherwise the farm.
   const selectedCrop = selected ? cropOn(selected, dates[dateIndex]) : null;
   const selectedAnomaly = selectedSeries ? anomalyAt(selectedSeries, dates, dateIndex) : false;
+  const selectedHealth = selected ? health.get(selected.id) : undefined;
   const clearViews = selectedSeries ? selectedSeries.ndvi.filter((v) => v !== null).length : 0;
 
   const statsNode = selected ? (
@@ -198,9 +325,9 @@ function DashboardContent() {
         color="#2E7D32"
       />
       <StatTile
-        label={tr(`Status · ${selectedSeries!.anomalies.length} anomalous dates in total`, `الحالة · ${selectedSeries!.anomalies.length} تاريخًا شاذًا إجمالًا`)}
-        value={selectedAnomaly ? tr('Anomaly', 'شذوذ') : tr('Normal', 'طبيعي')}
-        color={selectedAnomaly ? '#D50000' : agriAccents[2]}
+        label={tr(`Health vs peers${selectedAnomaly ? ' · seasonal anomaly' : ''}`, `الصحة مقارنة بالنظراء${selectedAnomaly ? ' · شذوذ موسمي' : ''}`)}
+        value={selectedHealth ? HEALTH_LABEL[selectedHealth.health][isAr ? 1 : 0] : '—'}
+        color={selectedHealth ? (selectedHealth.health === 'normal' ? agriAccents[2] : HEALTH_COLORS[selectedHealth.health] === '#E0E0E0' || HEALTH_COLORS[selectedHealth.health] === '#B0BEC5' ? '#78909C' : HEALTH_COLORS[selectedHealth.health]) : agriAccents[2]}
       />
       <StatTile
         label={tr(`Crop · ${selectedCrop?.season ?? 'season'} (${clearViews} clear scenes)`, `المحصول · ${selectedCrop?.season ?? 'الموسم'} (${clearViews} مشهدًا صافيًا)`)}
@@ -218,7 +345,11 @@ function DashboardContent() {
       <StatTile label={tr('Cropped Area (ha)', 'المساحة المزروعة (هكتار)')} value={Math.round(visibleFields.reduce((s, f) => s + f.area_ha, 0))} color={agriAccents[1]} />
       <StatTile label={tr(`Mean ${INDEX_LABEL[index]} · ${date(dates[dateIndex])}`, `متوسط ${INDEX_LABEL[index]} · ${date(dates[dateIndex])}`)} value={meanOnDate !== null ? meanOnDate.toFixed(2) : '—'} color="#2E7D32" />
       <StatTile label={tr('Fields in Anomaly', 'حقول في حالة شذوذ')} value={alerts.length} color={alerts.length ? '#D50000' : agriAccents[2]} />
-      <StatTile label={tr('Sentinel-2 Scenes', 'مشاهد Sentinel-2')} value={dates.length} color={agriAccents[3]} />
+      <StatTile
+        label={tr('Irrigation demand · last 12 months', 'الطلب على الري · آخر 12 شهرًا')}
+        value={`${(visibleFields.reduce((s, f) => s + (water.get(f.id)?.grossM3 ?? 0), 0) / 1e6).toFixed(1)} ${tr('M m³', 'مليون م³')}`}
+        color="#1565C0"
+      />
     </Box>
   );
 
@@ -232,32 +363,93 @@ function DashboardContent() {
         showIndexLayer={showIndexLayer}
         cropFilter={cropFilter}
         selectedField={selectedField}
-        onFieldSelect={setSelectedField}
+        onFieldSelect={selectField}
+        mode={mapMode}
+        health={health}
+        modeValues={modeValues}
+        highlight={showSimilar ? similar.map((x) => x.id) : []}
+        healthFilter={healthFilter}
+        compareLabel={date(dates[compareIndex])}
       />
-      {sliderIndex !== dateIndex && (
-        <Box sx={{ position: 'absolute', top: 16, left: 16, zIndex: 500, px: 1.5, py: 0.75, ...floatingPanelSx }}>
-          <Typography variant="caption" sx={{ fontWeight: 600 }}>
-            {date(dates[sliderIndex])}
-          </Typography>
-        </Box>
-      )}
+      <Box sx={{ position: 'absolute', top: 12, left: 12, zIndex: 500, maxWidth: 'calc(100% - 70px)' }}>
+        <MapModeBar
+          mode={mapMode}
+          onMode={setMapMode}
+          playing={playing}
+          onPlay={() => {
+            if (!playing && dateIndex >= dates.length - 1) commitDate(Math.max(0, dates.length - 40));
+            setPlaying((v) => !v);
+          }}
+          compareDays={compareDays}
+          onCompareDays={setCompareDays}
+        />
+        {(playing || sliderIndex !== dateIndex) && (
+          <Box sx={{ mt: 0.75, display: 'inline-block', px: 1.5, py: 0.5, ...floatingPanelSx }}>
+            <Typography variant="caption" sx={{ fontWeight: 700 }}>{date(dates[sliderIndex])}</Typography>
+          </Box>
+        )}
+      </Box>
     </Box>
   );
 
+  const fieldIntelNode = selected ? (
+    <FieldIntel
+      field={selected}
+      health={health.get(selected.id)}
+      phenology={phenology.get(selected.id) ?? []}
+      cuts={cuts.get(selected.id) ?? []}
+      dateIso={dates[dateIndex]}
+      water={water.get(selected.id) ?? { etcMm: 0, grossM3: 0, perHa: 0, days: 0 }}
+      waterPeerMedian={waterPeerMedian}
+      similar={similar}
+      fieldName={nameOf}
+      onSelect={selectField}
+      showSimilar={showSimilar}
+      onToggleSimilar={() => setShowSimilar((v) => !v)}
+    />
+  ) : null;
+
   const sidePanelNode = (
     <>
-      <FieldInfoPanel
-        field={selected}
-        index={index}
-        reading={selectedReading}
-        anomalyNow={selectedSeries ? anomalyAt(selectedSeries, dates, dateIndex) : false}
-        anomalyCount={selectedSeries?.anomalies.length ?? 0}
-        onClear={() => setSelectedField(null)}
-      />
-      <Divider />
-      <CropSummaryChart entries={cropSummary} selected={cropFilter} onSelect={setCropFilter} height={200} />
-      <Divider />
-      <AnomalyAlerts alerts={alerts} title={tr(`Alerts · ${date(dates[dateIndex])}`, `التنبيهات · ${date(dates[dateIndex])}`)} selectedField={selectedField} onSelect={setSelectedField} />
+      <Tabs
+        value={sideTab}
+        onChange={(_, v) => setSideTab(v)}
+        variant="fullWidth"
+        sx={{ minHeight: 34, flexShrink: 0, '& .MuiTab-root': { minHeight: 34, py: 0.5, fontSize: '0.75rem', textTransform: 'none', fontWeight: 600 } }}
+      >
+        <Tab value="insights" label={tr('Insights', 'الرؤى')} />
+        <Tab value="field" label={selected ? fieldLabel(selected.name, isAr) : tr('Field', 'الحقل')} />
+        <Tab value="alerts" label={`${tr('Alerts', 'التنبيهات')} (${alerts.length})`} />
+      </Tabs>
+      <Box sx={{ overflowY: 'auto', minHeight: 0, display: 'flex', flexDirection: 'column', gap: 1.5, pr: 0.5 }}>
+        {sideTab === 'insights' && (
+          <>
+            <HealthBar counts={healthStats.counts} areas={healthStats.areas} selected={healthFilter} onSelect={(h) => { setHealthFilter(h); if (h) setMapMode('health'); }} />
+            <FarmBrief items={brief} onField={selectField} onHealth={(h) => { setHealthFilter(h); setMapMode('health'); }} />
+            <Divider />
+            <Box sx={{ flexShrink: 0 }}>
+              <CropSummaryChart entries={cropSummary} selected={cropFilter} onSelect={setCropFilter} height={190} />
+            </Box>
+          </>
+        )}
+        {sideTab === 'field' && (
+          <>
+            <FieldInfoPanel
+              field={selected}
+              index={index}
+              reading={selectedReading}
+              anomalyNow={selectedSeries ? anomalyAt(selectedSeries, dates, dateIndex) : false}
+              anomalyCount={selectedSeries?.anomalies.length ?? 0}
+              onClear={() => setSelectedField(null)}
+            />
+            {fieldIntelNode && <Divider />}
+            {fieldIntelNode}
+          </>
+        )}
+        {sideTab === 'alerts' && (
+          <AnomalyAlerts alerts={alerts} title={tr(`Alerts · ${date(dates[dateIndex])}`, `التنبيهات · ${date(dates[dateIndex])}`)} selectedField={selectedField} onSelect={selectField} />
+        )}
+      </Box>
     </>
   );
 
@@ -417,7 +609,7 @@ function DashboardContent() {
 
               <Paper
                 elevation={2}
-                sx={{ width: 360, flexShrink: 0, height: 640, p: 2, display: 'flex', flexDirection: 'column', gap: 1.5, overflow: 'hidden', '& > :last-child': { flex: 1 } }}
+                sx={{ width: 370, flexShrink: 0, height: 640, p: 1.5, pt: 0.5, display: 'flex', flexDirection: 'column', gap: 1, overflow: 'hidden', '& > :last-child': { flex: 1 } }}
               >
                 {sidePanelNode}
               </Paper>
@@ -449,7 +641,7 @@ function DashboardContent() {
                 {aboutContent}
               </Paper>
             )}
-            <Paper elevation={2} sx={{ p: 2, mb: 2, display: 'flex', flexDirection: 'column', gap: 2, '& > :last-child': { maxHeight: 320 } }}>
+            <Paper elevation={2} sx={{ p: 2, pt: 0.5, mb: 2, display: 'flex', flexDirection: 'column', gap: 1, '& > :last-child': { maxHeight: 520 } }}>
               {sidePanelNode}
             </Paper>
             <Paper elevation={2} sx={{ p: 2 }}>{trendNode}</Paper>

@@ -1,18 +1,18 @@
 ---
 title: "Serverless GeoAI: The Architecture Behind CoffeeMap.dev"
-date: 2026-09-28
+date: 2026-10-31
 author: Amin Adnan Gasim
 category: GeoAI
-readingTime: 8 min
-description: "How three satellite dashboards for Sudan and Saudi Arabia run with no VPS, no database and no Python at runtime: two routes, six patterns and one rule for deciding where each computation belongs."
+readingTime: 9 min
+description: "How my satellite and humanitarian dashboards for Saudi Arabia and Sudan run with no VPS, no database and no Python at runtime: two routes, seven patterns and one rule for deciding where each computation belongs."
 tags: [architecture, serverless GeoAI, remote sensing, MapLibre, Planetary Computer, STAC, static hosting]
 ---
 
 # Serverless GeoAI: The Architecture Behind CoffeeMap.dev
 
-*Two routes, six patterns and one rule for deciding where each computation runs*
+*Two routes, seven patterns and one rule for deciding where each computation runs*
 
-**Three satellite dashboards on CoffeeMap.dev (flood risk on the Blue Nile, urban heat in Riyadh and crop monitoring in Al Jouf) run with no VPS, no database and no Python at runtime. The site is static files on shared hosting. The heavy lifting happens in three places I don't operate or pay for per request: public tile servers, an occasional offline script, and the visitor's own browser.**
+**My dashboards on CoffeeMap.dev, urban heat and greening in Riyadh, crop and water monitoring in Al Jouf, and conflict and response-gap analysis for Sudan, run with no VPS, no database and no Python at runtime. The site is static files on shared hosting. The heavy lifting happens in three places I don't operate or pay for per request: public tile servers, an occasional offline script, and the visitor's own browser.**
 
 ---
 
@@ -22,7 +22,7 @@ Most geospatial web apps follow the same shape: a server with GDAL, a database w
 
 So I set one rule for every project: **no server of mine at runtime.** Anything the page needs must be a static file I host, a public API anyone can call, or code that runs on the visitor's device.
 
-The three articles on each project describe *what* they do. This one describes the architecture they share, and the one decision that splits them into two routes.
+The articles on each project describe *what* they do. This one describes the architecture they share, and the one decision that splits them into two routes.
 
 ## The architecture at a glance
 
@@ -32,7 +32,7 @@ The three articles on each project describe *what* they do. This one describes t
 
 The diagram has four layers:
 
-1. **Public data.** Microsoft Planetary Computer (Sentinel-1, Sentinel-2, Landsat, ESA WorldCover), terrain tiles (AWS Terrarium, MapTiler), weather APIs (Open-Meteo, NASA POWER) and OpenStreetMap through Overpass. All are keyless, except optional sources where the visitor brings their own token.
+1. **Public data.** Microsoft Planetary Computer (Sentinel-2, Landsat, ESA WorldCover), terrain tiles (AWS Terrarium, MapTiler), NASA POWER weather, OpenStreetMap through Overpass, and humanitarian datasets from ACLED and OCHA. All are keyless.
 2. **Two compute routes.** Route A computes everything live in the browser. Route B precomputes once, offline, and streams imagery live.
 3. **Static hosting.** A Next.js static export: HTML, JavaScript, JSON and bundled snapshots.
 4. **The visitor's browser.** MapLibre GL draws the map, Chart.js the charts, and results are painted to a canvas that overlays the map exactly.
@@ -45,32 +45,34 @@ Every calculation in these projects answers one question first:
 
 | Question | Route A: live in the browser | Route B: precompute once |
 | --- | --- | --- |
-| Does the result change with user input (dates, thresholds, weights)? | Yes | No, or only the display changes |
-| How much data per view? | Dozens of tiles, about a million cells | Years of scenes × thousands of fields |
-| Time per view | Seconds (Blue Nile: about 13 s on a laptop) | Would be hours; done once instead |
+| Does the result change with user input (dates, weights, budgets, filters)? | Yes | No, or only the display changes |
+| How much data per view? | Dozens of tiles or a compact JSON file | Years of scenes × thousands of fields |
+| Time per view | Seconds | Would be hours; done once instead |
 | Where the heavy maths runs | Tile server band math + the visitor's device | My laptop, occasionally |
 | What the host serves | The app | The app + small JSON/GeoJSON files |
-| Projects | Blue Nile Flood Risk, Riyadh Urban Heat | GeoAI Crop Monitoring |
+| Projects | Riyadh Urban Heat, Sudan Conflicts, 3W Response Gaps | GeoAI Crop Monitoring |
+
+The line is not always between projects. Crop monitoring precomputes its time series once (Route B), then computes field health, harvest detection and water demand in the browser for whichever date the visitor picks (Route A).
 
 ## Route A: live in the browser
 
-Blue Nile Flood Risk and Riyadh Urban Heat recompute everything on each visit, so visitors can change dates, radar thresholds or model weights and see the result instantly. Four patterns make that possible without a single GIS library in the bundle.
+Riyadh Urban Heat recomputes everything on each visit, so visitors can change dates, model weights or a tree budget and see the result in seconds. Four patterns make that possible without a single GIS library in the bundle.
 
 ### Pattern 1: Band math on the tile server
 
 Planetary Computer's data API evaluates an expression on its own servers and returns a PNG tile. I use that to do the unit conversion upstream and receive values the browser only has to unpack:
 
 ```
-# Sentinel-1 backscatter to decibels (Blue Nile)
-expression = 10*log10(vv);10*log10(vh);10*log10(vv)
-rescale    = -35,5
-
-# Landsat Collection 2 surface temperature to °C (Riyadh)
+# Landsat Collection 2 surface temperature to °C
 expression = lwir11*0.00341802+149.0-273.15
 rescale    = 10,70
+
+# Sentinel-2 NDVI, with the +1000 offset of baseline 04.00 removed
+expression = (B08-B04)/(B08+B04-2000)
+rescale    = -1,1
 ```
 
-`rescale` maps the physical range onto the 0–255 byte of a PNG channel. The browser reverses it. The precision cost is small and knowable: about 0.16 dB for radar and 0.24 °C for temperature, both finer than the sensors' own noise.
+`rescale` maps the physical range onto the 0–255 byte of a PNG channel. The browser reverses it. The precision cost is small and knowable: about 0.24 °C for temperature and 0.008 for NDVI, both finer than the sensors' own noise.
 
 ### Pattern 2: Decode exactly
 
@@ -87,12 +89,7 @@ Terrain tiles use the same path, with their own decode formulas (Terrarium: h = 
 
 ### Pattern 3: The tile grid is the analysis grid
 
-This is the decision that removes the GIS stack. Instead of choosing a projection and resampling into it, each project analyses data on the **Web Mercator pixel grid of one zoom level**, the same grid the map tiles already use:
-
-| Project | Zoom | Cell size | Grid | Cells |
-| --- | --- | --- | --- | --- |
-| Blue Nile Flood Risk | 9 | about 300 m | about 1,100 × 1,130 | 1.2 million |
-| Riyadh Urban Heat | 11 | about 70 m | 1,456 × 1,117 | 1.6 million |
+This is the decision that removes the GIS stack. Instead of choosing a projection and resampling into it, the analysis runs on the **Web Mercator pixel grid of one zoom level**, the same grid the map tiles already use. For Riyadh that is zoom 11: cells of about 70 m, 1,456 × 1,117 of them, 1.6 million in all.
 
 Every tile pixel lands on exactly one cell: no reprojection library, no resampling. Layers live in typed arrays (`Float32Array`, `Uint8Array`), a dozen layers at a time, comfortably inside browser memory. When a result is ready, it is painted to a canvas and added to MapLibre as an image source with four corner coordinates, and it lines up perfectly.
 
@@ -100,16 +97,25 @@ Every tile pixel lands on exactly one cell: no reprojection library, no resampli
 
 With a million cells, anything slower than linear time is noticeable. The workhorses are:
 
-- **Exact Euclidean distance transforms** (Felzenszwalb & Huttenlocher) in two 1-D passes: distance to rivers, parks or canopy, plus *which* feature is nearest.
+- **Exact Euclidean distance transforms** (Felzenszwalb & Huttenlocher) in two 1-D passes: distance to parks or tree canopy.
 - **Separable box blurs with running sums:** neighbourhood shares such as canopy within a 300 m walk.
 - **k-means with quantile initialisation:** repeatable heat hotspots.
+- **Least squares by the normal equations:** a five-term regression over every second built-up cell learns how much canopy cools Riyadh's surface, in a fraction of a second.
 - **TensorFlow.js as a GPU engine:** scoring 1.6 million cells as one matrix product through WebGL, loaded only on the page that needs it.
+
+The greening simulator reuses all of them. A new plan changes canopy in some cells; one blur gives the neighbourhood change, one distance transform the new distance to shade, and the fitted model the cooling. Re-scoring the whole city takes under a second.
+
+### Pattern 5: Statistics on compact tables
+
+Route A is not only for rasters. Sudan Conflicts and the 3W Response Gap Explorer run on JSON files of under 150 kilobytes: one row per locality and month, with numbers instead of repeated names. Small Node scripts build them from the ACLED export and the OCHA 3W dataset.
+
+Everything analytical then happens in the browser, because it depends on the visitor's filters: Poisson z-scores for surges against each locality's own baseline, Getis-Ord Gi* hotspots, a priority index whose weights are sliders, and a simulation of what coverage would be lost if one partner left. None of it needs a server, and none of it needs an AI model; the optional AI assistant on Sudan Conflicts only explains numbers the browser has already computed.
 
 ## Route B: precompute once, stream live
 
-Crop monitoring in Al Jouf follows every field through every Sentinel-2 scene since April 2023. That is far too much work to repeat for each visitor, and the answer is the same for everyone. So the work is split.
+Crop monitoring in Al Jouf follows 181 fields through 442 Sentinel-2 scene dates since April 2023. That is far too much work to repeat for each visitor, and the time series is the same for everyone. So the work is split.
 
-### Pattern 5: Offline pipeline, static outputs
+### Pattern 6: Offline pipeline, static outputs
 
 An offline Python pipeline, run occasionally, does the heavy lifting. Three libraries carry it, each with one job: **Rasterio fetches the pixels, NumPy does the maths, OpenCV sees the shapes.**
 
@@ -135,34 +141,36 @@ Results are cached, so a rerun only processes new scenes. The two output files a
 
 One honest note: OpenCV here is **classical computer vision**, hand-tuned rules with no training data. It works well because centre pivots are near-perfect circles. The next step is a trained segmentation model for irregular and sector-shaped fields, with the Hough detector as the baseline to beat.
 
-### Pattern 6: Keep the imagery live
+### Pattern 7: Keep the imagery live, and the date-dependent analysis in the browser
 
 The pipeline stores numbers, not pictures. When a visitor moves the time slider, the map asks Planetary Computer for that date's NDVI, EVI or true-colour tile, rendered with band math and a colour map on the tile server. The site never stores a single satellite image, yet every date is one request away.
+
+What depends on the chosen date is computed in the browser from the two static files: each field's health against fields of the same crop, harvest and cutting events, season phenology, and irrigation demand from NDVI-based crop coefficients and NASA POWER weather. It runs for all 181 fields in milliseconds.
 
 ## Designing for the real internet
 
 Public services are free, not guaranteed. Four habits keep the dashboards working:
 
-- **Snapshots first, live second.** The Blue Nile page ships a bundled OpenStreetMap river snapshot and swaps in live Overpass data when a mirror answers. During development I saw 504 errors and an 85-second response.
-- **Say when there is no data.** Sentinel-1 coverage over Sudan is patchy in some years, so the page reports empty date windows instead of drawing an empty map.
-- **The visitor's credentials stay with the visitor.** Sentinel Hub and Copernicus Data Space logins run in the browser (both token endpoints allow CORS). Nothing is stored, and no key of mine is ever in the bundle.
-- **Pay for heavy libraries only where they are used.** TensorFlow.js and map components load on their own pages only.
+- **Snapshots first, live second.** The Riyadh page ships bundled OpenStreetMap snapshots of trees and parks and swaps in live Overpass data when a mirror answers. During development I saw 504 errors and an 85-second response.
+- **Have a fallback for every live input.** If NASA POWER is unreachable, crop water demand falls back to a monthly evapotranspiration climatology for Al Jouf, and the page says which one it used.
+- **Say when there is no data.** When a date window has no clear scenes, the page reports it instead of drawing an empty map.
+- **Pay for heavy libraries only where they are used.** TensorFlow.js, Three.js and map components load on their own pages only.
 
 ## What this architecture is not good at
 
 Being honest about the trade-offs is part of the design:
 
 - **National scale.** A browser handles a few million cells, not a country at 10 m. That work belongs in Route B.
-- **Someone else's uptime.** If Planetary Computer or Overpass is down, Route A waits. Snapshots soften this; they don't remove it.
+- **Someone else's uptime.** If Planetary Computer or Overpass is down, Route A waits. Snapshots and fallbacks soften this; they don't remove it.
 - **Rate limits and fair use.** Keyless APIs are shared. A popular page must cache responsibly and respect each service's terms.
 - **Proprietary or sensitive data.** Everything the browser receives, a visitor can see. Confidential data needs a different design.
 - **Device variety.** A laptop takes seconds; an old phone takes longer. Grids and zoom levels are chosen with that in mind.
 
 ## What's next: Route C, trained models in the browser
 
-Today, the "models" in these projects are transparent rules and weighted indices. That is deliberate for screening tools, but the next step is trained models, and the architecture already has a place for them:
+Today, most "models" in these projects are transparent rules, weighted indices and simple regressions fitted on the fly. That is deliberate for screening tools, but the next step is trained models, and the architecture already has a place for them:
 
-1. **Train offline** on open benchmarks and hand-labelled local data (a flood-segmentation U-Net, a crop-type classifier).
+1. **Train offline** on open benchmarks and hand-labelled local data (a field-boundary segmentation network, a crop-type classifier).
 2. **Export to ONNX** and quantise to a few megabytes.
 3. **Ship the model as a static file,** like any other asset.
 4. **Run inference in the browser** with ONNX Runtime Web on WebGPU, falling back to WebAssembly.
@@ -171,12 +179,13 @@ Training is Route B; inference is Route A. The rule stays the same: no server of
 
 ## The projects
 
-- [Blue Nile Flood Risk](/projects/blue-nile-flood-risk): Sentinel-1 flood detection and risk for Sennar and Gezira, Sudan. [Read the article](/insights/blue-nile-flood-risk).
-- [Riyadh Urban Heat](/projects/riyadh-urban-heat): heat exposure and tree canopy equity across 1.6 million cells. [Read the article](/insights/riyadh-urban-heat).
-- [GeoAI Crop Monitoring](/projects/geoai-crop-monitoring): centre pivots, crop types and anomaly alerts in Al Jouf. [Read the article](/insights/al-jouf-crop-monitoring).
+- [Riyadh Urban Heat](/projects/riyadh-urban-heat): heat exposure, tree canopy equity and a greening simulator across 1.6 million cells. [Read the article](/insights/riyadh-urban-heat).
+- [GeoAI Crop Monitoring](/projects/geoai-crop-monitoring): centre pivots, crop types, field health and water demand in Al Jouf. [Read the article](/insights/al-jouf-crop-monitoring).
+- [Sudan Conflicts](/projects/acled-conflict-dashboard): surges, hotspots and trends from ACLED data. [Read the article](/insights/acled-conflict-analytics).
+- [3W Humanitarian Mapping](/projects/3w-humanitarian-mapping): response gaps and partner-exit scenarios. [Read the article](/insights/3w-response-gap-explorer).
 
-If you run a team that needs satellite analysis without infrastructure to maintain, for humanitarian response, agriculture or urban planning, get in touch at [info@coffeemap.dev](mailto:info@coffeemap.dev).
+If you run a team that needs satellite or humanitarian analysis without infrastructure to maintain, for agriculture, urban planning or response coordination, I am available for consulting: [info@coffeemap.dev](mailto:info@coffeemap.dev).
 
 ---
 
-*Data: Copernicus Sentinel-1 and Sentinel-2 (ESA), Landsat 8/9 (USGS) and ESA WorldCover via Microsoft Planetary Computer; AWS Terrain Tiles; MapTiler; Open-Meteo; NASA POWER; © OpenStreetMap contributors.*
+*Data: Copernicus Sentinel-2 (ESA), Landsat 8/9 (USGS) and ESA WorldCover via Microsoft Planetary Computer; AWS Terrain Tiles; MapTiler; NASA POWER; ACLED; OCHA; © OpenStreetMap contributors.*

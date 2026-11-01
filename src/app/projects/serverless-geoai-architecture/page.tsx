@@ -16,7 +16,7 @@ export default function ServerlessGeoAIArchitecture() {
           title={tr('Serverless GeoAI Architecture', 'معمارية الذكاء الجيومكاني بلا خوادم')}
           subtitle={tr('How CoffeeMap.dev runs satellite analysis with no VPS, no database and no Python at runtime', 'كيف يشغّل CoffeeMap.dev تحليل صور الأقمار الصناعية بلا خادم افتراضي ولا قاعدة بيانات ولا Python وقت التشغيل')}
           icon={<AccountTreeIcon sx={{ fontSize: 28 }} />}
-          source={tr('Blue Nile Flood Risk · Riyadh Urban Heat · GeoAI Crop Monitoring', 'مخاطر فيضانات النيل الأزرق · الحرارة الحضرية في الرياض · مراقبة المحاصيل بالذكاء الجيومكاني')}
+          source={tr('Riyadh Urban Heat · GeoAI Crop Monitoring · Sudan Conflicts · 3W', 'الحرارة الحضرية في الرياض · مراقبة المحاصيل بالذكاء الجيومكاني · نزاعات السودان · 3W')}
           author="Amin Adnan Gasim"
           date={tr('Sep 2026', 'سبتمبر 2026')}
           gradientFrom="#5B4A3D"

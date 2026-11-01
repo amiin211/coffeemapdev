@@ -18,10 +18,12 @@ export const filterInsightsByCategory = (
 };
 
 const CATEGORY_LABELS: Record<string, { en: string; ar: string }> = {
-  'enterprise-gis': { en: 'Enterprise GIS', ar: 'نظم معلومات جغرافية مؤسسية' },
+  'enterprise-gis': { en: 'QA/QC & Data Quality', ar: 'ضبط الجودة' },
   'web-mapping': { en: 'Web Mapping', ar: 'خرائط الويب' },
   'geoai': { en: 'GeoAI', ar: 'ذكاء جيومكاني' },
-  'gis-bim': { en: 'GIS-BIM', ar: 'نظم المعلومات الجغرافية و BIM' },
+  'gis-bim': { en: 'BIM & Digital Twins', ar: 'BIM والتوائم الرقمية' },
+  humanitarian: { en: 'Humanitarian', ar: 'العمل الإنساني' },
+  surveying: { en: 'Surveying & Geodesy', ar: 'المساحة والجيوديسيا' },
 };
 
 export const getCategoryLabel = (category: string, locale: 'en' | 'ar' = 'en'): string =>

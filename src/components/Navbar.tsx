@@ -11,7 +11,7 @@ import { Bi, switchLocalePath, useI18n } from '@/i18n';
 const NAV_ITEMS: { label: Bi; href: string }[] = [
   { label: { en: 'Home', ar: 'الرئيسية' }, href: '/' },
   { label: { en: 'About', ar: 'نبذة' }, href: '/about' },
-  { label: { en: 'Expertise', ar: 'الخبرات' }, href: '/#capabilities' },
+  { label: { en: 'Services', ar: 'الخدمات' }, href: '/#capabilities' },
   { label: { en: 'Contact', ar: 'تواصل' }, href: '/#contact' },
 ];
 

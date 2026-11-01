@@ -16,8 +16,11 @@ Reply with ONLY one JSON object, no prose, matching:
  "metric":"<schema metric>", "groupBy":"<schema field or null>",
  "period":{"from":"YYYY-MM","to":"YYYY-MM"} or null,
  "top":<int or null>, "flyTo":"<admin name or null>",
+ "overlay":"<one of the schema's overlays, or null>",
  "explain":"<one short sentence restating what will be shown>"}
-Use only names and values that appear in the schema. If the question can't be answered from the schema, use "unsupported" and say why in "explain".`,
+Use only names and values that appear in the schema. Follow any "notes" in the schema.
+"explain" must describe what the dashboard will show, never state figures or facts of your own.
+Write "explain" in the language given in LANG. If the question can't be answered from the schema, use "unsupported" and say why in "explain".`,
   },
   // Plain-language explanation of the numbers for one clicked feature.
   explain: {

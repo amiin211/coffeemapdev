@@ -21,6 +21,8 @@ import {
   cropOn,
 } from '@/utils/crop';
 import { MAPLIBRE_WORKER_URL } from '@/lib/maplibre';
+import { FieldHealth, HEALTH_COLORS, HEALTH_LABEL, Health } from '@/lib/cropInsights';
+import { CHANGE_RAMP, CropMapMode, ModeLegend, WATER_MAX, WATER_RAMP } from '@/components/CropIntel';
 import { useI18n } from '@/i18n';
 
 interface CropMapProps {
@@ -32,9 +34,15 @@ interface CropMapProps {
   cropFilter: string | null;
   selectedField: string | null;
   onFieldSelect: (id: string | null) => void;
+  mode: CropMapMode;
+  health: Map<string, FieldHealth>;
+  modeValues: Map<string, number | null>; // NDVI change or m³/ha, by field
+  highlight: string[]; // look-alike fields
+  healthFilter: Health | null;
+  compareLabel: string;
 }
 
-// MapLibre demotiles basemap (served locally, fills + labels only).
+// Desaturated OpenStreetMap raster basemap shared with the other dashboards.
 const BASEMAP = '/data/basemap_style.json';
 const ANOMALY_COLOR = '#D50000';
 
@@ -64,7 +72,14 @@ export default function CropMap({
   cropFilter,
   selectedField,
   onFieldSelect,
+  mode,
+  health,
+  modeValues,
+  highlight,
+  healthFilter,
+  compareLabel,
 }: CropMapProps) {
+  const [hover, setHover] = useState<{ x: number; y: number; id: string } | null>(null);
   const [popup, setPopup] = useState<{ lng: number; lat: number; id: string } | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [minZoom, setMinZoom] = useState(8);
@@ -101,13 +116,16 @@ export default function CropMap({
             crop: f.properties.crop,
             value: reading?.value ?? -1,
             anomaly: anomalyAt(s, series.dates, dateIndex),
-            dimmed: !!cropFilter && f.properties.crop !== cropFilter,
+            dimmed: (!!cropFilter && f.properties.crop !== cropFilter) || (!!healthFilter && health.get(f.properties.id)?.health !== healthFilter),
             selected: f.properties.id === selectedField,
+            health: health.get(f.properties.id)?.health ?? 'nodata',
+            mv: modeValues.get(f.properties.id) ?? -999,
+            similar: highlight.includes(f.properties.id),
           },
         };
       }),
     }),
-    [fields, series, index, dateIndex, cropFilter, selectedField]
+    [fields, series, index, dateIndex, cropFilter, selectedField, health, healthFilter, modeValues, highlight]
   );
 
   // Everything outside the AOI is shaded so the scene's surroundings recede.
@@ -134,6 +152,20 @@ export default function CropMap({
     ['interpolate', ['linear'], ['get', 'value'], ...RAMP.flatMap((c, i) => [(i / (RAMP.length - 1)) * 0.8, c])],
   ] as unknown as ExpressionSpecification;
 
+  const healthColor = ['match', ['get', 'health'], ...Object.entries(HEALTH_COLORS).flat(), '#ffffff'] as unknown as ExpressionSpecification;
+  const changeColor = [
+    'case',
+    ['<', ['get', 'mv'], -900], 'rgba(0,0,0,0)',
+    ['interpolate', ['linear'], ['get', 'mv'], ...CHANGE_RAMP.flatMap((c, i) => [-0.4 + (i / (CHANGE_RAMP.length - 1)) * 0.8, c])],
+  ] as unknown as ExpressionSpecification;
+  const waterColor = [
+    'case',
+    ['<', ['get', 'mv'], -900], 'rgba(0,0,0,0)',
+    ['interpolate', ['linear'], ['get', 'mv'], ...WATER_RAMP.flatMap((c, i) => [(i / (WATER_RAMP.length - 1)) * WATER_MAX, c])],
+  ] as unknown as ExpressionSpecification;
+  const modeFill = mode === 'health' ? healthColor : mode === 'change' ? changeColor : mode === 'water' ? waterColor : cropColor;
+  const indexMode = mode === 'index';
+
   const { isAr, tr } = useI18n();
   // Arabic mirrors the map chrome: controls on the left, legend on the right.
   const side = isAr ? 'left' : 'right';
@@ -155,6 +187,20 @@ export default function CropMap({
   const popupAnomaly = popupSeries ? anomalyAt(popupSeries, series.dates, dateIndex) : false;
   const popupCrop = popupField ? cropOn(popupField, date) : null;
 
+  const hoverText = (id: string) => {
+    const f = fields.features.find((x) => x.properties.id === id)?.properties;
+    if (!f) return null;
+    const h = health.get(id);
+    const mv = modeValues.get(id);
+    const reading = valueAt(series.fields[id][index], series.dates, dateIndex);
+    let body = `${INDEX_LABEL[index]} ${reading ? reading.value.toFixed(2) : '—'}`;
+    if (mode === 'health' && h) body = `${HEALTH_LABEL[h.health][isAr ? 1 : 0]}${h.ratio ? ` · ${Math.round(h.ratio * 100)}% ${tr('of peers', 'من النظراء')}` : ''}`;
+    if (mode === 'change') body = mv == null ? tr('no clear pair of scenes', 'لا يوجد مشهدان صافيان') : `ΔNDVI ${mv > 0 ? '+' : ''}${mv.toFixed(2)}`;
+    if (mode === 'water') body = mv == null ? '—' : `${Math.round(mv).toLocaleString()} m³/ha · ${tr('12 months', '12 شهرًا')}`;
+    if (mode === 'crop') body = cropLabel(cropOn(f, date)?.crop ?? f.crop, isAr);
+    return { title: `${fieldLabel(f.name, isAr)} · ${f.area_ha} ${tr('ha', 'هكتار')}`, body };
+  };
+
   return (
     <Box sx={{ height: '100%', position: 'relative' }}>
       <MapGL
@@ -169,7 +215,10 @@ export default function CropMap({
         onMouseMove={(e) => {
           const canvas = mapRef.current?.getCanvas();
           if (canvas) canvas.style.cursor = e.features?.length ? 'pointer' : '';
+          const id = e.features?.[0]?.properties?.id as string | undefined;
+          setHover(id ? { x: e.point.x, y: e.point.y, id } : null);
         }}
+        onMouseLeave={() => setHover(null)}
         onLoad={() => setMapLoaded(true)}
         style={{ width: '100%', height: '100%' }}
       >
@@ -184,7 +233,7 @@ export default function CropMap({
           <Layer
             id="index"
             type="raster"
-            layout={{ visibility: showIndexLayer ? 'visible' : 'none' }}
+            layout={{ visibility: showIndexLayer && indexMode ? 'visible' : 'none' }}
             paint={{ 'raster-opacity': 0.85, 'raster-fade-duration': 300 }}
           />
         </Source>
@@ -199,18 +248,20 @@ export default function CropMap({
             id="fields-fill"
             type="fill"
             paint={{
-              'fill-color': showIndexLayer ? '#ffffff' : valueColor,
-              'fill-opacity': showIndexLayer ? ['case', ['get', 'dimmed'], 0.55, 0.01] : ['case', ['get', 'dimmed'], 0.1, 0.85],
+              'fill-color': !indexMode ? modeFill : showIndexLayer ? '#ffffff' : valueColor,
+              'fill-opacity': !indexMode
+                ? ['case', ['get', 'dimmed'], 0.12, 0.82]
+                : showIndexLayer ? ['case', ['get', 'dimmed'], 0.55, 0.01] : ['case', ['get', 'dimmed'], 0.1, 0.85],
               'fill-opacity-transition': { duration: 300 },
             }}
           />
           <Layer
             id="fields-outline"
             type="line"
-            layout={{ 'line-sort-key': ['case', ['get', 'selected'], 3, ['get', 'anomaly'], 2, 1] }}
+            layout={{ 'line-sort-key': ['case', ['get', 'selected'], 4, ['get', 'similar'], 3, ['get', 'anomaly'], 2, 1] }}
             paint={{
-              'line-color': ['case', ['get', 'anomaly'], ANOMALY_COLOR, ['get', 'selected'], '#ffffff', cropColor],
-              'line-width': ['case', ['get', 'selected'], 3.5, ['get', 'anomaly'], 3, 1.5],
+              'line-color': ['case', ['get', 'selected'], '#ffffff', ['get', 'similar'], '#00B8D4', ['get', 'anomaly'], ANOMALY_COLOR, indexMode ? cropColor : 'rgba(255,255,255,0.75)'],
+              'line-width': ['case', ['get', 'selected'], 3.5, ['get', 'similar'], 3.5, ['get', 'anomaly'], 3, indexMode ? 1.5 : 0.8],
               'line-opacity': ['case', ['get', 'dimmed'], 0.25, 1],
             }}
           />
@@ -248,7 +299,19 @@ export default function CropMap({
         )}
       </MapGL>
 
-      <Box sx={{ position: 'absolute', bottom: 20, left: 20, zIndex: 500, p: 1.5, ...floatingPanelSx }}>
+      {hover && hoverText(hover.id) && (
+        <Box sx={{ position: 'absolute', left: hover.x + 14, top: hover.y + 14, zIndex: 600, px: 1, py: 0.5, pointerEvents: 'none', ...floatingPanelSx, bgcolor: 'rgba(33,33,33,0.85)', color: 'white' }}>
+          <Typography variant="caption" sx={{ display: 'block', fontWeight: 700, lineHeight: 1.3 }}>{hoverText(hover.id)!.title}</Typography>
+          <Typography variant="caption" sx={{ display: 'block', lineHeight: 1.3, opacity: 0.9 }}>{hoverText(hover.id)!.body}</Typography>
+        </Box>
+      )}
+
+      {!indexMode && (
+        <Box sx={{ position: 'absolute', bottom: 20, left: 20, zIndex: 500, p: 1.5, ...floatingPanelSx }}>
+          <ModeLegend mode={mode} compareLabel={compareLabel} />
+        </Box>
+      )}
+      {indexMode && <Box sx={{ position: 'absolute', bottom: 20, left: 20, zIndex: 500, p: 1.5, ...floatingPanelSx }}>
         <Typography variant="caption" sx={{ fontWeight: 600, display: 'block', mb: 0.5 }}>
           {INDEX_LABEL[index]} · {formatDate(date, isAr)}
         </Typography>
@@ -266,7 +329,7 @@ export default function CropMap({
             {tr('Anomaly (NDVI < seasonal mean − 2σ)', 'شذوذ (NDVI أقل من المتوسط الموسمي − 2σ)')}
           </Typography>
         </Box>
-      </Box>
+      </Box>}
     </Box>
   );
 }
