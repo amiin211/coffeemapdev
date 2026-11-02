@@ -1,11 +1,14 @@
 'use client';
 
+import { useRef, useState } from 'react';
 import { Box, Paper, Typography } from '@mui/material';
 import { default as nextDynamic } from 'next/dynamic';
 import MosqueIcon from '@mui/icons-material/Mosque';
 import AppLayout from '@/components/AppLayout';
 import DashboardHeader from '@/components/DashboardHeader';
 import { useI18n } from '@/i18n';
+import ProjectReport, { type ReportSpec } from '@/components/ProjectReport';
+import type { MosqueReportRef } from '@/components/MosqueViewer';
 
 const MosqueViewer = nextDynamic(() => import('@/components/MosqueViewer'), {
   ssr: false,
@@ -14,11 +17,18 @@ const MosqueViewer = nextDynamic(() => import('@/components/MosqueViewer'), {
 
 export default function ThreeDMosqueViewer() {
   const { tr } = useI18n();
+  const reportRef: MosqueReportRef = useRef(null);
+  const [report, setReport] = useState<ReportSpec | null>(null);
   return (
     <AppLayout>
       <Box sx={{ minHeight: 'calc(100vh - 96px)', display: 'flex', flexDirection: 'column', px: 2, pt: 1.5, pb: 2 }}>
+        {report && <ProjectReport spec={report} onClose={() => setReport(null)} />}
         <DashboardHeader
           articleHref="/insights/3d-mosque-4d-bim"
+          onReport={() => {
+            const spec = reportRef.current?.();
+            if (spec) setReport(spec);
+          }}
           title={tr('3D Mosque Viewer & 4D BIM', 'عارض المسجد ثلاثي الأبعاد ونمذجة 4D')}
           subtitle={tr('Mosque site with BIM data, terrain, traffic, day / night lighting and a drone photogrammetry survey — Aseer, Saudi Arabia', 'موقع مسجد مع بيانات BIM والتضاريس وحركة المرور والإضاءة النهارية والليلية ومسح فوتوغرامتري بطائرة مسيّرة — عسير، المملكة العربية السعودية')}
           icon={<MosqueIcon sx={{ fontSize: 28 }} />}
@@ -35,7 +45,7 @@ export default function ThreeDMosqueViewer() {
             (scroll past the header to see it all); full screen is in the viewer. */}
         <Paper elevation={2} sx={{ position: 'relative', height: { xs: 'calc(100svh - 120px)', md: 'calc(100vh - 110px)' }, minHeight: { xs: 460, md: 600 }, overflow: 'hidden' }}>
           <Box sx={{ position: 'absolute', inset: 0 }}>
-            <MosqueViewer />
+            <MosqueViewer reportRef={reportRef} />
           </Box>
         </Paper>
 

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { Box, Typography, Container, Chip, Button } from '@mui/material';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import WaterDropIcon from '@mui/icons-material/WaterDrop';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import PersonIcon from '@mui/icons-material/Person';
@@ -21,6 +22,7 @@ interface DashboardHeaderProps {
   borderRadius?: number;
   mb?: number;
   articleHref?: string; // "Read the article" button when the project has a write-up
+  onReport?: () => void; // "PDF report" button
 }
 
 export default function DashboardHeader({
@@ -35,6 +37,7 @@ export default function DashboardHeader({
   borderRadius = 2,
   mb = 3,
   articleHref,
+  onReport,
 }: DashboardHeaderProps) {
   const { tr, href } = useI18n();
   return (
@@ -90,6 +93,26 @@ export default function DashboardHeader({
                   }}
                 >
                   {tr('Read the article', 'اقرأ المقال')}
+                </Button>
+              )}
+              {onReport && (
+                <Button
+                  onClick={onReport}
+                  size="small"
+                  variant="outlined"
+                  startIcon={<PictureAsPdfIcon sx={{ fontSize: '16px !important' }} />}
+                  sx={{
+                    color: 'white',
+                    borderColor: 'rgba(255,255,255,0.7)',
+                    textTransform: 'none',
+                    fontWeight: 700,
+                    fontSize: '0.75rem',
+                    py: 0.2,
+                    borderRadius: 4,
+                    '&:hover': { borderColor: 'white', bgcolor: 'rgba(255,255,255,0.12)' },
+                  }}
+                >
+                  {tr('PDF report', 'تقرير PDF')}
                 </Button>
               )}
               <Chip 

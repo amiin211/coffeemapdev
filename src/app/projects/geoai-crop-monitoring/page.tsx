@@ -10,6 +10,7 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import TuneIcon from '@mui/icons-material/Tune';
 import AppLayout from '@/components/AppLayout';
 import DashboardHeader from '@/components/DashboardHeader';
+import ProjectReport, { captureCanvas, type ReportSpec } from '@/components/ProjectReport';
 import { AnomalyAlerts, CropFilters, FieldInfoPanel } from '@/components/CropPanels';
 import { CropMapMode, FarmBrief, FieldIntel, HealthBar, MapModeBar, fieldNameFor } from '@/components/CropIntel';
 import {
@@ -99,6 +100,7 @@ function DashboardContent() {
   const [sideTab, setSideTab] = useState<'insights' | 'field' | 'alerts'>('insights');
   const [showSimilar, setShowSimilar] = useState(true);
   const [et0, setEt0] = useState<Et0Source>({ daily: new Map(), source: 'climatology' });
+  const [report, setReport] = useState<ReportSpec | null>(null);
 
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
@@ -273,6 +275,108 @@ function DashboardContent() {
   const visibleFields = fieldProps.filter((f) => !cropFilter || f.crop === cropFilter);
   const selectedSeries = selected ? series.fields[selected.id] : null;
   const selectedReading = selectedSeries ? valueAt(selectedSeries[index], dates, dateIndex) : null;
+
+  // PDF report: farm status on the date on screen.
+  const openReport = () => {
+    const n = (v: number, d = 0) => v.toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: d });
+    const scopeFields = visibleFields;
+    const totalHa = scopeFields.reduce((s, f) => s + f.area_ha, 0);
+    const date = formatDate(dates[dateIndex], isAr);
+    const yearWater = scopeFields.reduce((s, f) => s + (water.get(f.id)?.grossM3 ?? 0), 0);
+    const stressed = healthStats.counts.stressed + healthStats.counts.watch;
+    const fieldRows = scopeFields
+      .map((f) => ({ f, h: health.get(f.id), d: change.get(f.id) ?? null, w: water.get(f.id) }))
+      .filter((r) => r.h && (r.h.health === 'stressed' || r.h.health === 'watch'))
+      .sort((a, b) => (a.h!.z ?? 0) - (b.h!.z ?? 0))
+      .slice(0, 15);
+    const modeCaption =
+      mapMode === 'health'
+        ? tr('Field health against same-crop peers', 'صحة الحقول مقارنةً بنظيراتها من المحصول نفسه')
+        : mapMode === 'change'
+          ? tr(`NDVI change over the last ${compareDays} days`, `تغيّر NDVI خلال آخر ${compareDays} يومًا`)
+          : mapMode === 'water'
+            ? tr('Estimated irrigation water use per hectare, last 12 months', 'استهلاك مياه الري التقديري لكل هكتار، آخر 12 شهرًا')
+            : tr(`${INDEX_LABEL[index]} per field`, `${INDEX_LABEL[index]} لكل حقل`);
+    setReport({
+      title: tr('GeoAI Crop Monitoring', 'مراقبة المحاصيل بالذكاء الجيومكاني'),
+      subtitle: tr('Field health, change and water use from Sentinel-2', 'صحة الحقول وتغيّرها واستهلاك المياه من Sentinel-2'),
+      color: agriGreen.dark,
+      path: '/projects/geoai-crop-monitoring',
+      scope: [
+        [tr('Date', 'التاريخ'), date],
+        [tr('Compared with', 'مقارنةً بـ'), formatDate(dates[compareIndex], isAr)],
+        [tr('Area', 'المنطقة'), tr(`Tabarjal, Al Jouf, Saudi Arabia · ${scopeFields.length} fields, ${n(totalHa)} ha`, `طبرجل، الجوف، المملكة العربية السعودية · ${scopeFields.length} حقلًا، ${n(totalHa)} هكتار`)],
+        [tr('Crop filter', 'تصفية المحصول'), cropFilter ? cropLabel(cropFilter, isAr) : tr('All crops', 'كل المحاصيل')],
+        [tr('Imagery', 'الصور'), tr(`${dates.length} Sentinel-2 dates, ${dates[0]} → ${dates[dates.length - 1]}`, `${dates.length} تاريخًا من Sentinel-2، ${dates[0]} → ${dates[dates.length - 1]}`)],
+      ],
+      summary: tr(
+        `On ${date}, ${stressed} of ${scopeFields.length} fields need attention (stressed or on watch). Each field is compared with fields of the same crop on the same date, so a low reading means a field is behind its peers, not just early in its season. Estimated irrigation over the last 12 months: ${n(yearWater / 1e6, 1)} million m³.`,
+        `في ${date}، تحتاج ${stressed} من ${scopeFields.length} حقلًا إلى متابعة (مُجهَدة أو تحت المراقبة). ويُقارن كل حقل بحقول المحصول نفسه في التاريخ نفسه، فالقراءة المنخفضة تعني أن الحقل متأخر عن نظرائه، لا أنه في بداية موسمه فحسب. الري التقديري خلال آخر 12 شهرًا: ${n(yearWater / 1e6, 1)} مليون م³.`,
+      ),
+      findings: brief.map((b) => (isAr ? b.ar : b.en)),
+      kpis: [
+        { label: tr('Fields', 'الحقول'), value: String(scopeFields.length), note: `${n(totalHa)} ha` },
+        { label: tr('Need attention', 'تحتاج متابعة'), value: String(stressed), note: tr(`${n(healthStats.areas.stressed + healthStats.areas.watch)} ha`, `${n(healthStats.areas.stressed + healthStats.areas.watch)} هكتار`) },
+        { label: tr(`Mean ${INDEX_LABEL[index]}`, `متوسط ${INDEX_LABEL[index]}`), value: meanOnDate === null ? '–' : meanOnDate.toFixed(2), note: tr('area-weighted', 'موزون بالمساحة') },
+        { label: tr('Irrigation, 12 months', 'الري، 12 شهرًا'), value: tr(`${n(yearWater / 1e6, 1)}M m³`, `${n(yearWater / 1e6, 1)} مليون م³`), note: et0.source === 'climatology' ? tr('ET₀ climatology', 'ET₀ مناخي') : 'ET₀ NASA POWER' },
+      ],
+      figures: [
+        {
+          image: captureCanvas('.maplibregl-canvas'),
+          caption: `${modeCaption}, ${date}.`,
+          legend: mapMode === 'health' ? HEALTH_ORDER.filter((h) => healthStats.counts[h] > 0).map((h) => ({ color: HEALTH_COLORS[h], label: `${HEALTH_LABEL[h][isAr ? 1 : 0]} (${healthStats.counts[h]})` })) : undefined,
+        },
+      ],
+      tables: [
+        {
+          title: tr('Field health', 'صحة الحقول'),
+          columns: [tr('Status', 'الحالة'), tr('Fields', 'الحقول'), tr('Area (ha)', 'المساحة (هكتار)')],
+          numeric: [false, true, true],
+          rows: HEALTH_ORDER.filter((h) => healthStats.counts[h] > 0).map((h) => [HEALTH_LABEL[h][isAr ? 1 : 0], healthStats.counts[h], n(healthStats.areas[h])]),
+        },
+        ...(fieldRows.length
+          ? [
+              {
+                title: tr('Fields that need attention', 'الحقول التي تحتاج متابعة'),
+                columns: [tr('Field', 'الحقل'), tr('Crop', 'المحصول'), tr('Area (ha)', 'المساحة'), 'NDVI', tr('Peer median', 'وسيط النظراء'), tr(`Change, ${compareDays} d`, `التغيّر، ${compareDays} يومًا`), tr('Status', 'الحالة')],
+                numeric: [false, false, true, true, true, true, false],
+                rows: fieldRows.map(({ f, h, d }) => [
+                  nameOf(f.id),
+                  cropLabel(h!.crop, isAr),
+                  n(f.area_ha),
+                  h!.value === null ? '–' : h!.value.toFixed(2),
+                  h!.peerMedian === null ? '–' : h!.peerMedian.toFixed(2),
+                  d === null ? '–' : `${d > 0 ? '+' : ''}${d.toFixed(2)}`,
+                  HEALTH_LABEL[h!.health][isAr ? 1 : 0],
+                ]),
+                note: tr('Sorted from furthest below peers.', 'مرتبة من الأبعد تحت نظرائه.'),
+              },
+            ]
+          : []),
+        {
+          title: tr('Crops', 'المحاصيل'),
+          columns: [tr('Crop (latest season)', 'المحصول (آخر موسم)'), tr('Fields', 'الحقول'), tr('Area (ha)', 'المساحة (هكتار)')],
+          numeric: [false, true, true],
+          rows: cropSummary.map((c) => [cropLabel(c.crop, isAr), c.fields, n(c.area)]),
+        },
+      ],
+      method: [
+        tr('Sentinel-2 L2A scenes are masked for cloud and shadow with the scene classification layer, and NDVI and EVI are averaged per field.', 'تُقنّع مشاهد Sentinel-2 L2A من السحب والظلال بطبقة تصنيف المشهد، ويُحسب متوسط NDVI وEVI لكل حقل.'),
+        tr('Health compares each field with same-crop fields on the same date (robust z-score) and its 30-day trend; cuts and harvests are detected as sharp drops.', 'تقارن الصحة كل حقل بحقول المحصول نفسه في التاريخ نفسه (درجة z متينة) واتجاهه خلال 30 يومًا؛ وتُكتشف الحشات والحصاد كهبوط حاد.'),
+        tr('Water use: crop coefficient from NDVI × reference evapotranspiration (ET₀), summed over 12 months and scaled by field area and irrigation efficiency.', 'استهلاك المياه: معامل المحصول من NDVI × التبخر-نتح المرجعي (ET₀)، مجموعًا على 12 شهرًا ومضروبًا في مساحة الحقل وكفاءة الري.'),
+      ],
+      limits: [
+        tr('Crop classes come from seasonal NDVI patterns, not ground survey; confidence is shown per field on the dashboard.', 'تأتي فئات المحاصيل من أنماط NDVI الموسمية، لا من مسح ميداني؛ وتظهر الثقة لكل حقل في اللوحة.'),
+        tr('Water use is an estimate of crop demand, not metered abstraction.', 'استهلاك المياه تقدير لاحتياج المحصول، لا لكميات مقاسة بالعدادات.'),
+        tr('Cloud gaps can delay a reading by up to a few weeks.', 'قد تؤخر فجوات السحب القراءة حتى بضعة أسابيع.'),
+      ],
+      sources: [
+        tr('Sentinel-2 Level-2A, ESA Copernicus (contains modified Copernicus Sentinel data), via Microsoft Planetary Computer.', 'Sentinel-2 المستوى 2A، ESA Copernicus (يتضمن بيانات Copernicus Sentinel معدّلة)، عبر Microsoft Planetary Computer.'),
+        tr('Reference evapotranspiration: NASA POWER (or FAO-56 climatology when unavailable).', 'التبخر-نتح المرجعي: NASA POWER (أو المناخ وفق FAO-56 عند عدم التوفر).'),
+        tr('Field boundaries detected automatically from Sentinel-2 (centre pivots by Hough transform on a multi-year maximum-NDVI composite). Basemap © OpenStreetMap contributors.', 'حدود الحقول مكتشفة آليًا من Sentinel-2 (المحاور المركزية بتحويل هاف على مركّب أقصى NDVI متعدد السنوات). الخريطة الأساسية © مساهمو OpenStreetMap.'),
+      ],
+    });
+  };
 
   const filtersNode = (
     <CropFilters
@@ -541,7 +645,9 @@ function DashboardContent() {
               gradientTo={agriGreen.dark}
               mb={isDesktop ? 1.5 : 3}
               articleHref="/insights/al-jouf-crop-monitoring"
+              onReport={openReport}
             />
+            {report && <ProjectReport spec={report} onClose={() => setReport(null)} />}
             <IconButton
               onClick={() => setAboutOpen((v) => !v)}
               sx={{ position: 'absolute', top: 12, right: 12, color: 'white' }}

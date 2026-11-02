@@ -206,6 +206,7 @@ export default function CropMap({
       <MapGL
         ref={mapRef}
         workerUrl={MAPLIBRE_WORKER_URL}
+        canvasContextAttributes={{ preserveDrawingBuffer: true }} // lets the PDF report snapshot the map
         initialViewState={{ longitude: 38.29, latitude: 29.93, zoom: 11 }}
         minZoom={minZoom}
         maxZoom={16}

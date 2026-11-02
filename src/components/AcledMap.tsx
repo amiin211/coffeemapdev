@@ -29,6 +29,8 @@ interface AcledMapProps {
   localityTotals: LocalityTotals[]; // within the selected state, if any
   nationalLocalityTotals: LocalityTotals[]; // every locality (3D view)
   scaleMax?: ScaleMax | null; // else each period is scaled to its own maximum
+  /** 3D bar maxima for both measures (fixed across a month-by-month range), else per period. */
+  barMax?: { events: number; fatalities: number } | null;
   periodLabel: string;
   metric: AcledMetric;
   mode: AcledMapMode;
@@ -53,6 +55,12 @@ const HIGHLIGHT_COLOR = '#F2A900';
 const MUTED_COLOR = '#D5DBE3';
 const MAX_RADIUS = 26;
 const MAX_HEIGHT = 260_000; // metres at zoom 5, for the busiest locality
+// 3D view: two square columns per locality, events (blue) west of the
+// centroid and fatalities (red) east of it, each scaled to its own maximum.
+export const EVENTS_BAR_COLOR = '#1B4F91';
+export const FATALITIES_BAR_COLOR = '#D32F2F';
+const BAR_HALF = 0.055; // half the bar side, degrees of latitude (~6 km)
+const BAR_GAP = 0.012;
 const PITCH_3D = 50;
 const BEARING_3D = -12;
 const [RAMP_NONE, RAMP_LOW, RAMP_MEDIUM, RAMP_HIGH] = unChoroplethRamp;
@@ -83,13 +91,22 @@ interface PopupInfo {
 }
 
 // Animated values: `r` = ratio for the choropleth (by state / within the
-// selected state), `n` = ratio nationwide (3D heights), `v` = circle shown.
+// selected state), `e` / `f` = events / fatalities ratio nationwide (3D bar
+// heights), `v` = circle shown.
 type Values = Map<string, number>;
 interface Frame {
   state: Values; // by adm1_name
   locality: Values; // by pcode
-  national: Values;
+  barE: Values;
+  barF: Values;
   visible: Values;
+}
+
+// One square column as a polygon, centred `dx` degrees of longitude east of (lon, lat).
+function square(lon: number, lat: number, dx: number): number[][] {
+  const k = 1 / Math.cos((lat * Math.PI) / 180);
+  const x0 = lon + dx - BAR_HALF * k, x1 = lon + dx + BAR_HALF * k, y0 = lat - BAR_HALF, y1 = lat + BAR_HALF;
+  return [[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]];
 }
 
 const ease = (p: number) => 1 - Math.pow(1 - p, 3);
@@ -108,6 +125,7 @@ export default function AcledMap({
   localityTotals,
   nationalLocalityTotals,
   scaleMax,
+  barMax = null,
   periodLabel,
   metric,
   mode,
@@ -124,7 +142,7 @@ export default function AcledMap({
   const [popup, setPopup] = useState<PopupInfo | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   const mapRef = useRef<MapRef>(null);
-  const shown = useRef<Frame>({ state: new Map(), locality: new Map(), national: new Map(), visible: new Map() });
+  const shown = useRef<Frame>({ state: new Map(), locality: new Map(), barE: new Map(), barF: new Map(), visible: new Map() });
   const lastHover = useRef<AreaRef | null>(null);
   const is3d = mode === '3d';
 
@@ -158,7 +176,8 @@ export default function AcledMap({
   const maxOf = (values: number[]) => Math.max(0, ...values);
   const stateMax = scaleMax?.state ?? maxOf(Array.from(stateTotals.values(), (s) => s[metric]));
   const localityMax = scaleMax?.locality ?? maxOf(localityTotals.map((l) => l[metric]));
-  const nationalMax = scaleMax?.national ?? maxOf(nationalLocalityTotals.map((l) => l[metric]));
+  const eventsMax = barMax?.events ?? maxOf(nationalLocalityTotals.map((l) => l.events));
+  const fatalitiesMax = barMax?.fatalities ?? maxOf(nationalLocalityTotals.map((l) => l.fatalities));
   const localityByPcode = useMemo(() => new Map(localityTotals.map((l) => [l.locality.pcode, l])), [localityTotals]);
 
   const target = useMemo<Frame>(() => {
@@ -166,10 +185,11 @@ export default function AcledMap({
     return {
       state: new Map(Array.from(stateTotals.values(), (s) => [s.name, ratio(s[metric], stateMax)])),
       locality: new Map(localityTotals.map((l) => [l.locality.pcode, ratio(l[metric], localityMax)])),
-      national: new Map(nationalLocalityTotals.map((l) => [l.locality.pcode, ratio(l[metric], nationalMax)])),
+      barE: new Map(nationalLocalityTotals.map((l) => [l.locality.pcode, ratio(l.events, eventsMax)])),
+      barF: new Map(nationalLocalityTotals.map((l) => [l.locality.pcode, ratio(l.fatalities, fatalitiesMax)])),
       visible: new Map(localityTotals.map((l) => [l.locality.pcode, l[metric] > 0 ? 1 : 0])),
     };
-  }, [stateTotals, localityTotals, nationalLocalityTotals, metric, stateMax, localityMax, nationalMax]);
+  }, [stateTotals, localityTotals, nationalLocalityTotals, metric, stateMax, localityMax, eventsMax, fatalitiesMax]);
 
   // Tween from what is on screen now to the new values: areas fade between
   // periods, circles grow/shrink in and out.
@@ -182,11 +202,12 @@ export default function AcledMap({
     const paint = (f: Frame) => {
       f.state.forEach((r, id) => map.setFeatureState({ source: 'states', id }, { r }));
       f.locality.forEach((r, id) => {
-        const n = f.national.get(id) ?? 0;
         const v = f.visible.get(id) ?? 0;
-        map.setFeatureState({ source: 'localities', id }, { r, n });
+        map.setFeatureState({ source: 'localities', id }, { r });
         map.setFeatureState({ source: 'locality-points', id }, { r, v });
       });
+      f.barE.forEach((h, id) => map.setFeatureState({ source: 'bars', id: `${id}|e` }, { h }));
+      f.barF.forEach((h, id) => map.setFeatureState({ source: 'bars', id: `${id}|f` }, { h }));
     };
     const step = (now: number) => {
       const p = transitionMs > 0 ? Math.min(1, (now - start) / transitionMs) : 1;
@@ -194,7 +215,8 @@ export default function AcledMap({
       const next: Frame = {
         state: lerpMaps(from.state, target.state, k),
         locality: lerpMaps(from.locality, target.locality, k),
-        national: lerpMaps(from.national, target.national, k),
+        barE: lerpMaps(from.barE, target.barE, k),
+        barF: lerpMaps(from.barF, target.barF, k),
         visible: lerpMaps(from.visible, target.visible, k),
       };
       shown.current = next;
@@ -220,6 +242,25 @@ export default function AcledMap({
     []
   );
 
+  // Two columns per locality (fixed set; heights come from feature-state).
+  const barsGeoJson = useMemo<GeoJSON.FeatureCollection<GeoJSON.Polygon>>(
+    () => ({
+      type: 'FeatureCollection',
+      features: nationalLocalityTotals.flatMap((l) => {
+        const { lon, lat, pcode, name, state } = l.locality;
+        const off = (BAR_HALF + BAR_GAP / 2) / Math.cos((lat * Math.PI) / 180);
+        return (['e', 'f'] as const).map((m) => ({
+          type: 'Feature' as const,
+          geometry: { type: 'Polygon' as const, coordinates: [square(lon, lat, m === 'e' ? -off : off)] },
+          properties: { id: `${pcode}|${m}`, m, pcode, name, state },
+        }));
+      }),
+    }),
+    // Built once, like the points.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+
   const hl = highlight;
   const isSelectedState: ExpressionSpecification = ['==', ['get', 'adm1_name'], selectedState ?? ''];
   const isHlState: ExpressionSpecification = ['all', ['==', ['get', 'adm1_name'], hl?.state ?? ''], hl?.pcode == null];
@@ -241,21 +282,22 @@ export default function AcledMap({
       : 0.8;
   const statesOpacity: ExpressionSpecification | number = overlayOn ? (selectedState ? ['case', isSelectedState, 0, 0.12] : 0.3) : baseStatesOpacity;
 
-  // A hovered locality turns amber; a hovered (or selected) state keeps its
-  // colours and mutes the others, so the heights stay readable.
+  // Bars: blue events, red fatalities. A hovered locality's bars turn amber;
+  // with a state hovered or selected, the other states' bars are muted.
   const focusState = hl && hl.pcode == null ? hl.state : selectedState;
-  const extrusionColor: ExpressionSpecification = [
+  const barBase: ExpressionSpecification = ['case', ['==', ['get', 'm'], 'e'], EVENTS_BAR_COLOR, FATALITIES_BAR_COLOR];
+  const barColor: ExpressionSpecification = [
     'case',
-    isHlLocality,
+    ['==', ['get', 'pcode'], hl?.pcode ?? ''],
     HIGHLIGHT_COLOR,
-    focusState ? ['case', ['==', ['get', 'adm1_name'], focusState], rampColor(fs('n')), MUTED_COLOR] : rampColor(fs('n')),
+    focusState ? ['case', ['==', ['get', 'state'], focusState], barBase, MUTED_COLOR] : barBase,
   ];
   // Halve the height per zoom level so the bars keep the same screen height
   // when the camera flies to a state. With a state selected only its
   // localities stand up; the rest lie flat as context and can't block the view.
   const height = (scale: number): ExpressionSpecification =>
-    selectedState ? ['case', isSelectedState, ['*', fs('n'), scale], 0] : ['*', fs('n'), scale];
-  const extrusionHeight: ExpressionSpecification = [
+    selectedState ? ['case', ['==', ['get', 'state'], selectedState], ['*', fs('h'), scale], 0] : ['*', fs('h'), scale];
+  const barHeight: ExpressionSpecification = [
     'interpolate', ['exponential', 2], ['zoom'], 3, height(MAX_HEIGHT * 4), 10, height(MAX_HEIGHT / 32),
   ];
 
@@ -268,8 +310,8 @@ export default function AcledMap({
     const feature = event.features?.[0];
     if (!feature) return null;
     const p = feature.properties;
-    if (feature.layer.id === 'locality-circles') return { state: p.state, pcode: p.pcode };
-    if (feature.layer.id === 'localities-fill' || feature.layer.id === 'localities-3d' || feature.layer.id === 'insights-fill') return { state: p.adm1_name, pcode: p.adm2_pcode };
+    if (feature.layer.id === 'locality-circles' || feature.layer.id === 'bars-3d') return { state: p.state, pcode: p.pcode };
+    if (feature.layer.id === 'localities-fill' || feature.layer.id === 'localities-base' || feature.layer.id === 'insights-fill') return { state: p.adm1_name, pcode: p.adm2_pcode };
     return { state: p.adm1_name, pcode: null };
   };
 
@@ -280,7 +322,9 @@ export default function AcledMap({
     if (feature.layer.id === 'locality-circles') {
       const [lng, lat] = (feature.geometry as GeoJSON.Point).coordinates;
       setPopup({ view, lng, lat, pcode: p.pcode, name: p.name, state: p.state });
-    } else if (feature.layer.id === 'localities-fill' || feature.layer.id === 'localities-3d' || feature.layer.id === 'insights-fill') {
+    } else if (feature.layer.id === 'bars-3d') {
+      onLocalitySelect(p.name === selectedLocality ? null : p.name, p.state);
+    } else if (feature.layer.id === 'localities-fill' || feature.layer.id === 'localities-base' || feature.layer.id === 'insights-fill') {
       onLocalitySelect(p.adm2_name === selectedLocality ? null : p.adm2_name, p.adm1_name);
     } else if (feature.layer.id === 'states-fill' && p.adm1_name !== selectedState) {
       onStateSelect(p.adm1_name);
@@ -304,7 +348,7 @@ export default function AcledMap({
     }
   };
 
-  const legendMax = is3d ? nationalMax : selectedState ? localityMax : stateMax;
+  const legendMax = selectedState ? localityMax : stateMax;
   const legendBuckets = [
     { color: RAMP_NONE, range: '0' },
     { color: RAMP_LOW, range: '1' },
@@ -318,12 +362,13 @@ export default function AcledMap({
       <MapGL
         ref={mapRef}
         workerUrl={MAPLIBRE_WORKER_URL}
+        canvasContextAttributes={{ preserveDrawingBuffer: true }} // lets the PDF report snapshot the map
         initialViewState={{ longitude: 30, latitude: 15, zoom: 5 }}
         minZoom={3}
         maxZoom={10}
         maxPitch={70}
         mapStyle={BASEMAP}
-        interactiveLayerIds={is3d ? ['localities-3d'] : overlayOn ? ['locality-circles', 'insights-fill', 'localities-fill', 'states-fill'] : ['locality-circles', 'localities-fill', 'states-fill']}
+        interactiveLayerIds={is3d ? ['bars-3d', 'localities-base'] : overlayOn ? ['locality-circles', 'insights-fill', 'localities-fill', 'states-fill'] : ['locality-circles', 'localities-fill', 'states-fill']}
         onClick={handleClick}
         onMouseMove={handleMove}
         onMouseLeave={handleLeave}
@@ -367,16 +412,21 @@ export default function AcledMap({
             layout={visibility(!is3d)}
             paint={{ 'line-color': '#ffffff', 'line-width': ['interpolate', ['linear'], ['zoom'], 5, 0.4, 8, 1] }}
           />
+          {/* 3D view: a flat, light locality base for context under the bars. */}
           <Layer
-            id="localities-3d"
-            type="fill-extrusion"
+            id="localities-base"
+            type="fill"
             layout={visibility(is3d)}
             paint={{
-              'fill-extrusion-color': extrusionColor,
-              'fill-extrusion-height': extrusionHeight,
-              'fill-extrusion-opacity': 0.92,
-              'fill-extrusion-vertical-gradient': true,
+              'fill-color': ['case', isHlLocality, '#FFF3D6', focusState ? ['case', ['==', ['get', 'adm1_name'], focusState], '#EEF3FA', '#F6F6F6'] : '#EEF3FA'],
+              'fill-opacity': 0.9,
             }}
+          />
+          <Layer
+            id="localities-base-outline"
+            type="line"
+            layout={visibility(is3d)}
+            paint={{ 'line-color': '#B8C4D6', 'line-width': ['interpolate', ['linear'], ['zoom'], 5, 0.3, 8, 0.8] }}
           />
         </Source>
 
@@ -409,6 +459,20 @@ export default function AcledMap({
             paint={{ 'line-color': overlayColor, 'line-width': 1.5 }}
           />
           <Layer id="localities-highlight" type="line" filter={isHlLocality} layout={visibility(!is3d)} paint={{ 'line-color': HIGHLIGHT_COLOR, 'line-width': 3 }} />
+        </Source>
+
+        <Source id="bars" type="geojson" data={barsGeoJson} promoteId="id">
+          <Layer
+            id="bars-3d"
+            type="fill-extrusion"
+            layout={visibility(is3d)}
+            paint={{
+              'fill-extrusion-color': barColor,
+              'fill-extrusion-height': barHeight,
+              'fill-extrusion-opacity': 0.95,
+              'fill-extrusion-vertical-gradient': true,
+            }}
+          />
         </Source>
 
         <Source id="locality-points" type="geojson" data={pointsGeoJson} promoteId="pcode">
@@ -444,10 +508,31 @@ export default function AcledMap({
       </MapGL>
 
       <Box sx={{ position: 'absolute', bottom: 20, left: 20, zIndex: 500, p: 1.5, ...floatingPanelSx }}>
+        {is3d ? (
+          <Box>
+            <Typography variant="caption" sx={{ fontWeight: 600, display: 'block', mb: 0.5 }}>
+              {tr('Each locality: two bars', 'لكل محلية عمودان')}
+            </Typography>
+            {([
+              [EVENTS_BAR_COLOR, tr('Events', 'الأحداث'), eventsMax],
+              [FATALITIES_BAR_COLOR, tr('Fatalities', 'الوفيات'), fatalitiesMax],
+            ] as [string, string, number][]).map(([color, label, max]) => (
+              <Box key={label} sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mt: 0.25 }}>
+                <Box sx={{ width: 10, height: 18, borderRadius: '2px', bgcolor: color }} />
+                <Typography variant="caption" sx={{ fontSize: '0.68rem' }}>
+                  {label} · {tr(`tallest = ${max.toLocaleString()}`, `الأطول = ${max.toLocaleString()}`)}
+                </Typography>
+              </Box>
+            ))}
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.62rem', mt: 0.5, maxWidth: 220, lineHeight: 1.35 }}>
+              {tr('Each measure has its own scale, so a tall red bar beside a short blue one means few events but many deaths.', 'لكل مقياس سلّمه الخاص، فالعمود الأحمر الطويل بجانب أزرق قصير يعني أحداثًا قليلة ووفيات كثيرة.')}
+              {scaleMax ? tr(' Same scale for every month of the range.', ' مقياس واحد لكل أشهر الفترة.') : ''}
+            </Typography>
+          </Box>
+        ) : (
+        <>
         <Typography variant="caption" sx={{ fontWeight: 600, display: 'block', mb: 0.75 }}>
-          {is3d
-            ? tr(`${metricLabel(metric)} by locality (height & colour)`, `${metricLabel(metric, true)} حسب المحلية (الارتفاع واللون)`)
-            : tr(`${metricLabel(metric)} by ${selectedState ? 'Locality' : 'State'}`, `${metricLabel(metric, true)} حسب ${selectedState ? 'المحلية' : 'الولاية'}`)}
+          {tr(`${metricLabel(metric)} by ${selectedState ? 'Locality' : 'State'}`, `${metricLabel(metric, true)} حسب ${selectedState ? 'المحلية' : 'الولاية'}`)}
         </Typography>
         <Box sx={{ display: 'flex' }} dir="ltr">
           {legendBuckets.map((bucket, i) => (
@@ -472,6 +557,8 @@ export default function AcledMap({
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.62rem', mt: 0.5 }}>
             {tr('Same scale for every month of the range', 'مقياس واحد لكل أشهر الفترة')}
           </Typography>
+        )}
+        </>
         )}
         {overlayOn && overlayLegend && (
           <Box sx={{ mt: 1, pt: 1, borderTop: '1px solid rgba(0,0,0,0.08)' }}>

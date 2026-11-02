@@ -39,7 +39,7 @@ Each locality gets four scores between 0 and 1:
 
 The index is their weighted mean. The weights are **sliders**, because priorities are a judgement: a protection cluster and a food security cluster will weigh the factors differently, and the map and ranked list update as they move.
 
-With the default weights, the top of the list is **Al Quoz in South Kordofan** (37 conflict events, two partners, none of the five core clusters covered), followed by Abu Zabad, Bara, Gebrat Al Sheikh and Ar Reif Ash Shargi, all in Kordofan, where the conflict analysis shows violence rising.
+With the default weights, the top of the list is **Al Quoz in South Kordofan** (37 conflict events and 245 reported fatalities in those six months, two partners, none of the five core clusters covered), followed by Abu Zabad, Bara, Gebrat Al Sheikh and Ar Reif Ash Shargi, all in Kordofan, where the conflict analysis shows violence rising.
 
 Percentile ranks keep the factors comparable without assuming any of them is normally distributed, and they make the index robust to the very large numbers a few localities report.
 
@@ -58,6 +58,10 @@ Only core clusters count as a lost service. Losing a coordination forum or a log
 For the most conflict-affected localities, a matrix shows how many partners each core cluster has: zero cells stand out immediately. It is the table a cluster coordinator would otherwise build by hand in a spreadsheet each month.
 
 ![The 3W dashboard with the Response Gap Explorer: localities coloured by priority score, with the ranked list and partner-exit simulator.](/images/3w.png "Figure 1. The Response Gap Explorer: priority index on the map, ranked localities and the partner-exit simulator.")
+
+## Conflict in 3D, and a report to take away
+
+The map can tilt into a **3D view** that stands a red bar on every locality, its height the ACLED fatalities over the same six months, on top of whichever 3W layer is showing. Seeing the tallest bars rise out of thinly covered localities makes the gap argument faster than any table. And a **PDF report** turns the current view into an A4 brief for a coordination meeting: the priority list, the coverage matrix, the exit test for the selected partner, the map, method, limitations and sources.
 
 ## How it works
 

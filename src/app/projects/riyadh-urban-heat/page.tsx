@@ -8,6 +8,7 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import CloseIcon from '@mui/icons-material/Close';
 import AppLayout from '@/components/AppLayout';
 import DashboardHeader from '@/components/DashboardHeader';
+import ProjectReport, { captureCanvas, type ReportSpec } from '@/components/ProjectReport';
 import EquityHelpDialog from '@/components/EquityHelpDialog';
 import UrbanHeatControls, { DateWindow } from '@/components/UrbanHeatControls';
 import type { CellInfo, UrbanImages, UrbanLayerVisibility } from '@/components/UrbanHeatMap';
@@ -156,6 +157,7 @@ export default function RiyadhUrbanHeat() {
   const [sim, setSim] = useState<Simulation | null>(null);
   const [simulating, setSimulating] = useState(false);
   const [resultsVersion, setResultsVersion] = useState(0);
+  const [report, setReport] = useState<ReportSpec | null>(null);
   const nextId = useRef(1);
 
   const theme = useTheme();
@@ -564,6 +566,95 @@ export default function RiyadhUrbanHeat() {
     </Box>
   );
 
+  // PDF report of the analysis and the plan on screen.
+  const openReport = () => {
+    if (!stats) return;
+    const n = (v: number) => Math.round(v).toLocaleString('en-US');
+    const ranked = districts.filter((d) => Number.isFinite(d.lst)).sort((a, b) => b.priorityPct - a.priorityPct);
+    const legend = [
+      ...(visible.heat ? [{ color: '#f03b20', label: tr('Land surface temperature (hot = red)', 'حرارة سطح الأرض (الحار = أحمر)') }] : []),
+      ...(visible.priority ? [{ color: '#b2182b', label: tr('Priority zones', 'مناطق الأولوية') }] : []),
+      ...(sim ? [{ color: KIND_COLOR.trees, label: tr('Planned trees / interventions', 'الأشجار والتدخلات المخطط لها') }] : []),
+    ];
+    setReport({
+      title: tr('Riyadh Urban Heat & Tree Canopy Equity', 'الحرارة الحضرية ومظلة الأشجار في الرياض'),
+      subtitle: tr('Where the city is hottest, who lacks shade, and what planting would do', 'أين المدينة أشد حرارة، ومن يفتقر إلى الظل، وماذا يفعل التشجير'),
+      color: desert.dark,
+      path: '/projects/riyadh-urban-heat',
+      scope: [
+        [tr('Imagery window', 'نافذة الصور'), `${win.start} → ${win.end}`],
+        [tr('Landsat LST scenes', 'مشاهد Landsat للحرارة'), dateSpan(scenes.lst)],
+        [tr('Sentinel-2 NDVI scenes', 'مشاهد Sentinel-2 للغطاء النباتي'), dateSpan(scenes.ndvi)],
+        [tr('Area', 'المنطقة'), tr(`Riyadh built-up city, ${n(stats.urbanKm2)} km²`, `مدينة الرياض المبنية، ${n(stats.urbanKm2)} كم²`)],
+        ...(sim ? ([[tr('Plan', 'الخطة'), tr(`${n(sim.trees)} trees${interventions.length ? ` + ${interventions.length} placed interventions` : ''}`, `${n(sim.trees)} شجرة${interventions.length ? ` + ${interventions.length} تدخلًا مُضافًا` : ''}`)]] as [string, string][]) : []),
+      ],
+      summary: tr(
+        `In the window analysed, Riyadh's built-up area averaged ${fmt(stats.meanUrbanLst, 1, ' °C')} at the surface, ${fmt(Math.abs(stats.suhi), 1, ' °C')} ${stats.suhi >= 0 ? 'above' : 'below'} its non-built surroundings. Tree canopy covers ${fmt(stats.urbanCanopyPct, 1, '%')} of the city; ${n(stats.priorityKm2)} km² are priority zones where heat risk is high and access to shade and parks is low.`,
+        `في النافذة المحللة، بلغ متوسط حرارة سطح المنطقة المبنية في الرياض ${fmt(stats.meanUrbanLst, 1, ' °م')}، أي ${stats.suhi >= 0 ? 'أعلى' : 'أدنى'} من محيطها غير المبني بـ${fmt(Math.abs(stats.suhi), 1, ' °م')}. وتغطي مظلة الأشجار ${fmt(stats.urbanCanopyPct, 1, '٪')} من المدينة؛ و${n(stats.priorityKm2)} كم² مناطق أولوية حيث خطر الحرارة مرتفع والوصول إلى الظل والحدائق منخفض.`,
+      ),
+      findings: [
+        ...brief.map((b) => (isAr ? b.ar : b.en)),
+        ...(sim
+          ? [
+              tr(
+                `The plan would cool ${fmt(sim.cooledKm2, 1, ' km²')} by at least 0.5 °C (peak ${fmt(-sim.peakCooling, 1, ' °C')}), lift urban canopy from ${fmt(sim.urbanCanopyPctBefore, 1, '%')} to ${fmt(sim.urbanCanopyPctAfter, 1, '%')} and shrink priority zones from ${fmt(sim.priorityKm2Before, 1, ' km²')} to ${fmt(sim.priorityKm2After, 1, ' km²')}.`,
+                `ستبرّد الخطة ${fmt(sim.cooledKm2, 1, ' كم²')} بما لا يقل عن 0.5 °م (الذروة ${fmt(-sim.peakCooling, 1, ' °م')})، وترفع المظلة من ${fmt(sim.urbanCanopyPctBefore, 1, '٪')} إلى ${fmt(sim.urbanCanopyPctAfter, 1, '٪')}، وتقلّص مناطق الأولوية من ${fmt(sim.priorityKm2Before, 1, ' كم²')} إلى ${fmt(sim.priorityKm2After, 1, ' كم²')}.`,
+              ),
+            ]
+          : []),
+      ],
+      kpis: [
+        { label: tr('Mean urban surface temp.', 'متوسط حرارة السطح الحضري'), value: fmt(stats.meanUrbanLst, 1, ' °C') },
+        { label: tr('Surface heat island', 'جزيرة الحرارة السطحية'), value: fmt(stats.suhi, 1, ' °C'), note: tr('city minus surroundings', 'المدينة ناقص المحيط') },
+        { label: tr('Urban tree canopy', 'مظلة الأشجار الحضرية'), value: fmt(stats.urbanCanopyPct, 1, '%') },
+        { label: tr('Priority zones', 'مناطق الأولوية'), value: `${n(stats.priorityKm2)} km²` },
+        ...(model ? [{ label: tr('Cooling per +10 pts canopy', 'التبريد لكل +10 نقاط مظلة'), value: fmt(model.per10, 2, ' °C'), note: `R² ${model.r2.toFixed(2)}, n = ${n(model.n)}` }] : []),
+        ...(air ? [{ label: tr('Mean daily max air temp.', 'متوسط العظمى اليومية للهواء'), value: fmt(air.meanTmax, 1, ' °C'), note: 'NASA POWER' }] : []),
+        ...(sim
+          ? [
+              { label: tr('Plan: trees', 'الخطة: الأشجار'), value: n(sim.trees), note: tr(`${fmt(sim.shareOfGreenRiyadh * 100, 1, '%')} of Green Riyadh's 7.5 M`, `${fmt(sim.shareOfGreenRiyadh * 100, 1, '٪')} من 7.5 مليون للرياض الخضراء`) },
+              { label: tr('Plan: indicative cost (SAR)', 'الخطة: التكلفة التقديرية (ريال)'), value: `${(sim.costSar[0] / 1e6).toFixed(0)}–${(sim.costSar[1] / 1e6).toFixed(0)}M` },
+            ]
+          : []),
+      ],
+      figures: [{ image: captureCanvas('.maplibregl-canvas'), caption: tr('The map as configured on screen: layers, priority zones and any planned planting.', 'الخريطة كما هي معروضة: الطبقات ومناطق الأولوية وأي تشجير مخطط.'), legend }],
+      tables: [
+        {
+          title: tr('Districts ranked by priority share', 'الأحياء مرتبة حسب نسبة الأولوية'),
+          columns: [tr('District', 'الحي'), tr('Surface temp. (°C)', 'حرارة السطح (°م)'), tr('Canopy', 'المظلة'), tr('Equity score', 'درجة العدالة'), tr('Priority area', 'مساحة الأولوية')],
+          numeric: [false, true, true, true, true],
+          rows: ranked.map((d) => [isAr ? d.nameAr : d.name, fmt(d.lst, 1), fmt(d.canopyPct, 1, '%'), fmt(d.equity, 2), fmt(d.priorityPct, 0, '%')]),
+          note: tr('Means within 1.5 km of each district centre. Equity below 0 = less shade and park access than the heat there calls for.', 'متوسطات ضمن 1.5 كم من مركز كل حي. العدالة أقل من 0 = ظل ووصول للحدائق أقل مما تتطلبه الحرارة هناك.'),
+        },
+        ...(sim && sites.length
+          ? [
+              {
+                title: tr('Top planting sites', 'أهم مواقع التشجير'),
+                columns: [tr('#', '#'), tr('District', 'الحي'), tr('Trees', 'الأشجار'), tr('Location', 'الموقع')],
+                numeric: [true, false, true, false],
+                rows: sites.slice(0, 10).map((st, i) => [i + 1, (isAr ? st.districtAr : st.district) || '—', st.trees, `${st.lat.toFixed(4)}, ${st.lon.toFixed(4)}`]),
+              },
+            ]
+          : []),
+      ],
+      method: [
+        tr('Land surface temperature: Landsat 8/9 Collection 2 thermal band, median of the clear scenes in the window; vegetation: Sentinel-2 NDVI median.', 'حرارة سطح الأرض: النطاق الحراري لـLandsat 8/9 (المجموعة 2)، وسيط المشاهد الصافية في النافذة؛ والغطاء النباتي: وسيط NDVI من Sentinel-2.'),
+        tr('Built-up city from ESA WorldCover; shade and park access from canopy within 300 m and OpenStreetMap parks; hotspots by Getis-Ord Gi*.', 'المنطقة المبنية من ESA WorldCover؛ والوصول إلى الظل والحدائق من المظلة ضمن 300 م وحدائق OpenStreetMap؛ والبؤر الساخنة بـGetis-Ord Gi*.'),
+        tr('Cooling model: a regression of LST on canopy, nearby canopy, built density and elevation, fitted to this city and window; plans are simulated with it.', 'نموذج التبريد: انحدار لحرارة السطح على المظلة والمظلة المجاورة وكثافة البناء والارتفاع، مُعايَر على هذه المدينة والنافذة؛ وتُحاكى الخطط به.'),
+      ],
+      limits: [
+        tr('Surface temperature is not air temperature; it measures how hot roofs, roads and ground get at the satellite overpass (about 10:30 local time).', 'حرارة السطح ليست حرارة الهواء؛ إنها تقيس سخونة الأسطح والطرق والأرض وقت مرور القمر الصناعي (نحو 10:30 بالتوقيت المحلي).'),
+        tr('At 30 m, small parks and single trees are blurred; canopy from NDVI also counts irrigated lawns.', 'بدقة 30 م تُطمس الحدائق الصغيرة والأشجار المفردة؛ وتحتسب المظلة المشتقة من NDVI المسطحات المروية أيضًا.'),
+        tr('Simulated cooling and costs are indicative screening estimates, not a design.', 'التبريد المحاكى والتكاليف تقديرات فرز أولية، لا تصميم.'),
+      ],
+      sources: [
+        tr('Landsat 8/9 Collection 2 Level-2 (USGS) and Sentinel-2 Level-2A (ESA Copernicus), via Microsoft Planetary Computer.', 'Landsat 8/9 المجموعة 2 المستوى 2 (USGS) وSentinel-2 المستوى 2A (ESA Copernicus)، عبر Microsoft Planetary Computer.'),
+        tr('ESA WorldCover 10 m (CC BY 4.0); NASA POWER daily climate; terrain from AWS Terrain Tiles.', 'ESA WorldCover بدقة 10 م (CC BY 4.0)؛ مناخ NASA POWER اليومي؛ والتضاريس من AWS Terrain Tiles.'),
+        tr('Trees and parks © OpenStreetMap contributors (ODbL).', 'الأشجار والحدائق © مساهمو OpenStreetMap (ODbL).'),
+      ],
+    });
+  };
+
   const header = (
     <Box sx={{ position: 'relative' }}>
       <DashboardHeader
@@ -577,7 +668,9 @@ export default function RiyadhUrbanHeat() {
         gradientTo={desert.dark}
         mb={isDesktop ? 1.5 : 3}
         articleHref="/insights/riyadh-urban-heat"
+        onReport={stats ? openReport : undefined}
       />
+      {report && <ProjectReport spec={report} onClose={() => setReport(null)} />}
       <IconButton onClick={() => setAboutOpen((v) => !v)} sx={{ position: 'absolute', top: 12, right: 12, color: 'white' }} aria-label={tr('About this dashboard', 'حول لوحة المعلومات')}>
         <InfoOutlinedIcon />
       </IconButton>

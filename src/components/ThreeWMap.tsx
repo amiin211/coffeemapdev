@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Box, Typography } from '@mui/material';
+import { Box, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material';
+import MapOutlinedIcon from '@mui/icons-material/MapOutlined';
+import ViewInArIcon from '@mui/icons-material/ViewInAr';
 import MapGL, { Source, Layer, Marker, Popup, MapLayerMouseEvent, MapRef } from 'react-map-gl/maplibre';
 import type { StyleSpecification, ExpressionSpecification } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -27,6 +29,23 @@ interface ThreeWMapProps {
   overlayTooltip?: (key: string) => string | null;
   selectedLocality?: string | null; // locality key, outlined on the map
   onLocalityClick?: (key: string) => void;
+  /** ACLED fatalities per locality key over the 3W months, drawn as red 3D bars. */
+  fatalities?: Map<string, number> | null;
+  fatalityPeriod?: string;
+}
+
+const FATALITY_COLOR = '#C62828';
+const BAR_HALF = 0.06; // half the bar side, degrees of latitude (~6.5 km)
+const BAR_MAX_HEIGHT = 260_000; // metres at zoom 5, for the deadliest locality
+
+// Centroid of a polygon's outer ring (or the largest part of a multipolygon).
+function ringCentroid(geometry: GeoJSON.Geometry): [number, number] | null {
+  const rings = geometry.type === 'Polygon' ? [geometry.coordinates[0]] : geometry.type === 'MultiPolygon' ? geometry.coordinates.map((p) => p[0]) : [];
+  if (!rings.length) return null;
+  const ring = rings.reduce((a, b) => (b.length > a.length ? b : a));
+  let x = 0, y = 0;
+  for (const [lon, lat] of ring) { x += lon; y += lat; }
+  return [x / ring.length, y / ring.length];
 }
 
 const STATES_FILL_LAYER = 'states-fill';
@@ -93,7 +112,10 @@ export default function ThreeWMap({
   overlayTooltip,
   selectedLocality = null,
   onLocalityClick,
+  fatalities = null,
+  fatalityPeriod = '',
 }: ThreeWMapProps) {
+  const [view3d, setView3d] = useState(false);
   const [hoveredLocality, setHoveredLocality] = useState<{ lng: number; lat: number; text: string } | null>(null);
   const [admin1, setAdmin1] = useState<Admin1Collection | null>(null);
   const [admin2, setAdmin2] = useState<Admin2Collection | null>(null);
@@ -119,6 +141,37 @@ export default function ThreeWMap({
       mapRef.current.fitBounds(collectionBounds(admin1), { padding: 30, duration: 0 });
     }
   }, [mapLoaded, admin1]);
+
+  // Tilt the camera for the 3D view, flatten it for 2D.
+  useEffect(() => {
+    if (!mapLoaded || !mapRef.current) return;
+    mapRef.current.easeTo({ pitch: view3d ? 50 : 0, bearing: view3d ? -12 : 0, duration: 800 });
+  }, [mapLoaded, view3d]);
+
+  // One red column per locality at its centroid, height ∝ fatalities.
+  const barsGeoJson = useMemo<GeoJSON.FeatureCollection<GeoJSON.Polygon> | null>(() => {
+    if (!admin2 || !fatalities) return null;
+    const max = Math.max(1, ...fatalities.values());
+    const features: GeoJSON.Feature<GeoJSON.Polygon>[] = [];
+    for (const f of admin2.features) {
+      const key = localityKey(f.properties.adm1_name, f.properties.adm2_name);
+      const value = fatalities.get(key) ?? 0;
+      const c = ringCentroid(f.geometry as GeoJSON.Geometry);
+      if (!value || !c) continue;
+      const k = BAR_HALF / Math.cos((c[1] * Math.PI) / 180);
+      features.push({
+        type: 'Feature',
+        geometry: { type: 'Polygon', coordinates: [[[c[0] - k, c[1] - BAR_HALF], [c[0] + k, c[1] - BAR_HALF], [c[0] + k, c[1] + BAR_HALF], [c[0] - k, c[1] + BAR_HALF], [c[0] - k, c[1] - BAR_HALF]]] },
+        properties: { key, name: f.properties.adm2_name, state: f.properties.adm1_name, value, ratio: value / max },
+      });
+    }
+    return { type: 'FeatureCollection', features };
+  }, [admin2, fatalities]);
+  const maxFatalities = fatalities ? Math.max(0, ...fatalities.values()) : 0;
+  const barHeight = (scale: number): ExpressionSpecification => ['*', ['get', 'ratio'], scale];
+  const barHeightExpression: ExpressionSpecification = [
+    'interpolate', ['exponential', 2], ['zoom'], 3, barHeight(BAR_MAX_HEIGHT * 4), 10, barHeight(BAR_MAX_HEIGHT / 32),
+  ];
 
   const byState = useMemo(() => new Map(stateAggregates.map((s) => [s.state, s])), [stateAggregates]);
   const maxValue = useMemo(() => Math.max(0, ...stateAggregates.map((s) => s[metric])), [stateAggregates, metric]);
@@ -198,6 +251,16 @@ export default function ThreeWMap({
     const feature = event.features?.[0];
     const canvas = mapRef.current?.getCanvas();
     if (canvas) canvas.style.cursor = feature ? 'pointer' : '';
+    if (feature?.layer.id === 'fatality-bars') {
+      const p = feature.properties;
+      setHovered(null);
+      setHoveredLocality({
+        lng: event.lngLat.lng,
+        lat: event.lngLat.lat,
+        text: tr(`${names.locality(p.name)} · ${names.state(p.state)}\n${Number(p.value).toLocaleString()} fatalities (ACLED, ${fatalityPeriod})`, `${names.locality(p.name)} · ${names.state(p.state)}\n${Number(p.value).toLocaleString()} وفاة (ACLED، ${fatalityPeriod})`),
+      });
+      return;
+    }
     if (feature?.layer.id === 'gap-overlay-fill') {
       const text = overlayTooltip?.(feature.properties.key) ?? null;
       setHovered(null);
@@ -230,12 +293,18 @@ export default function ThreeWMap({
       <MapGL
         ref={mapRef}
         workerUrl={MAPLIBRE_WORKER_URL}
+        canvasContextAttributes={{ preserveDrawingBuffer: true }} // lets the PDF report snapshot the map
         initialViewState={{ longitude: 28, latitude: 16, zoom: 5 }}
         minZoom={4}
         maxZoom={8}
         maxBounds={[15, 5, 45, 26]}
         mapStyle={osmStyle}
-        interactiveLayerIds={enrichedGeoJson ? (overlayOn ? ['gap-overlay-fill', STATES_FILL_LAYER] : [STATES_FILL_LAYER]) : []}
+        maxPitch={70}
+        interactiveLayerIds={
+          enrichedGeoJson
+            ? [...(view3d && barsGeoJson ? ['fatality-bars'] : []), ...(overlayOn ? ['gap-overlay-fill'] : []), STATES_FILL_LAYER]
+            : []
+        }
         onClick={handleClick}
         onMouseMove={handleMouseMove}
         onMouseLeave={() => {
@@ -293,6 +362,20 @@ export default function ThreeWMap({
             <Layer id="selected-locality-line" type="line" paint={{ 'line-color': '#0D2B52', 'line-width': 2.5 }} />
           </Source>
         )}
+        {view3d && barsGeoJson && (
+          <Source id="fatality-bars" type="geojson" data={barsGeoJson}>
+            <Layer
+              id="fatality-bars"
+              type="fill-extrusion"
+              paint={{
+                'fill-extrusion-color': FATALITY_COLOR,
+                'fill-extrusion-height': barHeightExpression,
+                'fill-extrusion-opacity': 0.92,
+                'fill-extrusion-vertical-gradient': true,
+              }}
+            />
+          </Source>
+        )}
         {hoveredLocality && (
           <Popup longitude={hoveredLocality.lng} latitude={hoveredLocality.lat} closeButton={false} closeOnClick={false} offset={12} maxWidth="260px">
             <Box sx={{ fontSize: '0.75rem', lineHeight: 1.45, whiteSpace: 'pre-line' }}>{hoveredLocality.text}</Box>
@@ -332,6 +415,28 @@ export default function ThreeWMap({
         )}
       </MapGL>
 
+      {fatalities && (
+        <Box sx={{ position: 'absolute', top: { xs: 12, md: 78 }, left: 12, zIndex: 500, ...floatingPanelSx }}>
+          <ToggleButtonGroup
+            size="small"
+            exclusive
+            value={view3d ? '3d' : '2d'}
+            onChange={(_, v) => v && setView3d(v === '3d')}
+            aria-label={tr('Map view', 'عرض الخريطة')}
+            sx={{ '& .MuiToggleButton-root': { textTransform: 'none', fontSize: '0.72rem', py: 0.4, px: 1, gap: 0.5 } }}
+          >
+            <ToggleButton value="2d">
+              <MapOutlinedIcon sx={{ fontSize: 16 }} />
+              {tr('2D', 'ثنائي الأبعاد')}
+            </ToggleButton>
+            <ToggleButton value="3d">
+              <ViewInArIcon sx={{ fontSize: 16 }} />
+              {tr('3D fatalities', 'الوفيات ثلاثية الأبعاد')}
+            </ToggleButton>
+          </ToggleButtonGroup>
+        </Box>
+      )}
+
       <Box sx={{ position: 'absolute', bottom: 20, left: 20, zIndex: 500, p: 1.5, ...floatingPanelSx }}>
         <Typography variant="caption" sx={{ fontWeight: 600, display: 'block', mb: 0.75 }}>
           {tr(`${metricLabels[metric]} by State`, `${metricLabelsAr[metric]} حسب الولاية`)}
@@ -355,6 +460,14 @@ export default function ThreeWMap({
             </Box>
           ))}
         </Box>
+        {view3d && barsGeoJson && (
+          <Box sx={{ mt: 1, pt: 1, borderTop: '1px solid rgba(0,0,0,0.08)', display: 'flex', alignItems: 'center', gap: 0.75 }}>
+            <Box sx={{ width: 10, height: 18, borderRadius: '2px', bgcolor: FATALITY_COLOR, flexShrink: 0 }} />
+            <Typography variant="caption" sx={{ fontSize: '0.65rem', lineHeight: 1.35 }}>
+              {tr(`Conflict fatalities (ACLED), ${fatalityPeriod} · tallest = ${maxFatalities.toLocaleString()}`, `وفيات النزاع (ACLED)، ${fatalityPeriod} · الأطول = ${maxFatalities.toLocaleString()}`)}
+            </Typography>
+          </Box>
+        )}
         {overlayOn && overlayLegend && (
           <Box sx={{ mt: 1, pt: 1, borderTop: '1px solid rgba(0,0,0,0.08)' }}>
             {overlayTitle && (

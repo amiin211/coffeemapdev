@@ -258,7 +258,7 @@ export class MosqueEnvironment {
     this.camera = new THREE.PerspectiveCamera(50, this.aspect(), 0.5, 5000);
     this.camera.position.set(10, 8, 12);
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); // PDF report snapshot
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(container.clientWidth, container.clientHeight);
     renderer.shadowMap.enabled = true;

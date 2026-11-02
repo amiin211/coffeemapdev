@@ -148,6 +148,7 @@ export default function UrbanHeatMap({ grid, images, trees, parks, visible, lstR
       <MapGL
         ref={mapRef}
         workerUrl={MAPLIBRE_WORKER_URL}
+        canvasContextAttributes={{ preserveDrawingBuffer: true }} // lets the PDF report snapshot the map
         initialViewState={{ bounds: [[AOI.minLon, AOI.minLat], [AOI.maxLon, AOI.maxLat]], fitBoundsOptions: { padding: 20 } }}
         mapStyle={BASEMAP}
         style={{ width: '100%', height: '100%' }}

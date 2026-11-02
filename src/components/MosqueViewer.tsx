@@ -23,7 +23,9 @@ import { CONFIG, MosqueEnvironment } from '@/lib/mosqueEnvironment';
 import { SurveyLayers, SurveyStatus } from '@/lib/surveyDrone';
 import { BimData, BimSelection, CATEGORY_COLORS, ColorMode, UNCATEGORISED_COLOR, UNIT_LABEL, formatSAR, quantityLabel, scheduleCsv } from '@/lib/mosqueBim';
 import { CATEGORIES_AR, DISCLAIMER_AR, QUANTITY_LABELS_AR, TYPES_AR, UNIT_LABEL_AR, formatSARAr, standardAr, wordAr, zoneAr } from '@/lib/mosqueBimAr';
-import { useI18n } from '@/i18n';
+import { formatDate, useI18n } from '@/i18n';
+import { mosqueReport } from '@/lib/mosqueReport';
+import type { ReportSpec } from '@/components/ProjectReport';
 
 // Light, warm sand panels (instead of dark ones) so the controls sit
 // naturally over the daylight scene.
@@ -256,7 +258,9 @@ function SurveyPanel({ layers, status, onLayers, onRestart }: {
   );
 }
 
-export default function MosqueViewer() {
+export type MosqueReportRef = React.MutableRefObject<(() => ReportSpec | null) | null>;
+
+export default function MosqueViewer({ reportRef }: { reportRef?: MosqueReportRef }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const worldRef = useRef<MosqueEnvironment | null>(null);
   const [progress, setProgress] = useState(0);
@@ -273,7 +277,7 @@ export default function MosqueViewer() {
   const [schedule, setSchedule] = useState<Schedule | null>(null);
   const [siteWorks, setSiteWorks] = useState<WorkPackage[]>([]);
   const [fullscreen, setFullscreen] = useState(false);
-  const { tr } = useI18n();
+  const { tr, isAr, locale } = useI18n();
 
   useEffect(() => {
     const onChange = () => setFullscreen(document.fullscreenElement === containerRef.current);
@@ -370,8 +374,26 @@ export default function MosqueViewer() {
     URL.revokeObjectURL(url);
   };
 
+  // Hand the page a builder for the PDF report of the current view.
+  useEffect(() => {
+    if (!reportRef) return;
+    reportRef.current = () => {
+      if (!bim || !schedule) return null;
+      let image: string | null = null;
+      try {
+        image = containerRef.current?.querySelector('canvas')?.toDataURL('image/jpeg', 0.92) ?? null;
+      } catch {
+        image = null;
+      }
+      return mosqueReport({ bim, schedule, siteWorks, buildDay, image }, tr, isAr, (iso) => formatDate(iso, locale, { day: 'numeric', month: 'short', year: 'numeric' }));
+    };
+    return () => {
+      reportRef.current = null;
+    };
+  }, [reportRef, bim, schedule, siteWorks, buildDay, tr, isAr, locale]);
+
   return (
-    <Box ref={containerRef} sx={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden', bgcolor: '#87ceeb' }}>
+    <Box ref={containerRef} data-mosque-viewer sx={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden', bgcolor: '#87ceeb' }}>
       {status === 'ready' && (
         <Stack direction="row" spacing={1} useFlexGap sx={{ position: 'absolute', top: 16, left: 16, flexWrap: 'wrap', maxWidth: selection ? 'calc(100% - 408px)' : 'calc(100% - 32px)' }}>
           {/* Each button shows the mode it switches to. */}

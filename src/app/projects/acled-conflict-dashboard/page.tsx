@@ -30,6 +30,7 @@ import AcledFilters from '@/components/AcledFilters';
 import AcledTimeline, { MONTH_MS, usePlayback } from '@/components/AcledTimeline';
 import AcledInsights from '@/components/AcledInsights';
 import AcledAssistant from '@/components/AcledAssistant';
+import ProjectReport, { captureCanvas, type ReportSpec } from '@/components/ProjectReport';
 import type { AcledMapMode, AcledMetric } from '@/components/AcledMap';
 import { unBlue, unCategorical } from '@/theme/unColors';
 import type { Admin1Collection, Admin2Collection } from '@/utils/geo';
@@ -107,6 +108,7 @@ function DashboardContent() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [overlay, setOverlay] = useState<InsightOverlay | null>(null);
+  const [report, setReport] = useState<ReportSpec | null>(null);
 
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
@@ -141,6 +143,11 @@ function DashboardContent() {
   const nationalLocalityTotals = useMemo(() => (data ? byLocality(data, { ...mapView, state: null, locality: null }) : []), [data, mapView]);
   const singleMonth = mapMonth !== null;
   const scaleMax = useMemo(() => (data && singleMonth ? monthlyMax(data, filters, metric) : null), [data, filters, metric, singleMonth]);
+  // 3D bars show both measures, each on its own (month-fixed) scale.
+  const barMax = useMemo(
+    () => (data && singleMonth ? { events: monthlyMax(data, filters, 'events').national, fatalities: monthlyMax(data, filters, 'fatalities').national } : null),
+    [data, filters, singleMonth],
+  );
 
   const topStates = useMemo(
     () => Array.from(stateTotals.values()).filter((s) => s[metric] > 0).sort((a, b) => b[metric] - a[metric]).slice(0, 10),
@@ -292,6 +299,139 @@ function DashboardContent() {
     ? data.localities.filter((l) => l.state === filters.state).map((l) => l.name)
     : [];
 
+  // PDF report of the view on screen (period, area, measure and map as set).
+  const openReport = () => {
+    const n = (v: number) => Math.round(v).toLocaleString('en-US');
+    const area = filters.locality
+      ? `${names.locality(filters.locality)}, ${names.state(filters.state!)}`
+      : filters.state
+        ? names.state(filters.state)
+        : tr('Sudan, all states', 'السودان، كل الولايات');
+    const m = metricName(metric).toLowerCase();
+    const perEvent = totals.events ? (totals.fatalities / totals.events).toFixed(1) : '0';
+    const findings: string[] = [];
+    if (topStates[0])
+      findings.push(
+        tr(
+          `${names.state(topStates[0].name)} recorded the most ${m}: ${n(topStates[0][metric])} (${Math.round((topStates[0][metric] / Math.max(1, totals[metric])) * 100)}% of the total).`,
+          `سجّلت ${names.state(topStates[0].name)} أعلى ${metricName(metric)}: ${n(topStates[0][metric])} (${Math.round((topStates[0][metric] / Math.max(1, totals[metric])) * 100)}٪ من الإجمالي).`,
+        ),
+      );
+    if (topLocalities[0])
+      findings.push(
+        tr(
+          `The most affected locality was ${names.pcode(topLocalities[0].pcode, topLocalities[0].name)} (${names.state(topLocalities[0].state)}), with ${n(topLocalities[0].events)} events and ${n(topLocalities[0].fatalities)} fatalities.`,
+          `كانت أكثر المحليات تأثرًا ${names.pcode(topLocalities[0].pcode, topLocalities[0].name)} (${names.state(topLocalities[0].state)})، بـ${n(topLocalities[0].events)} حدثًا و${n(topLocalities[0].fatalities)} وفاة.`,
+        ),
+      );
+    if (peak && from !== to)
+      findings.push(
+        tr(
+          `The peak month for ${m} was ${month(peak.month)}, with ${n(peak[metric])}.`,
+          `كان شهر الذروة لـ${metricName(metric)} ${month(peak.month)}، بـ${n(peak[metric])}.`,
+        ),
+      );
+    if (insights?.window) {
+      const w = insights.window;
+      const label = `${month(months[w.recent[0]])} – ${month(months[w.recent[1]])}`;
+      findings.push(
+        tr(
+          `Against each locality's own baseline, ${insights.surges.length} localities surged, ${insights.declines.length} declined and ${insights.newlyAffected.length} were newly affected in ${label}.`,
+          `مقارنةً بخط الأساس لكل محلية، تصاعدت ${insights.surges.length} محلية، وتراجعت ${insights.declines.length}، وتأثرت ${insights.newlyAffected.length} حديثًا في ${label}.`,
+        ),
+      );
+    }
+    if (insights?.hotspots.length)
+      findings.push(
+        tr(
+          `${insights.hotspots.length} localities form statistically significant hotspots (Getis-Ord Gi*, 90% confidence or higher).`,
+          `تشكّل ${insights.hotspots.length} محلية بؤرًا ساخنة ذات دلالة إحصائية (Getis-Ord Gi*، بثقة 90٪ أو أكثر).`,
+        ),
+      );
+    const legend =
+      overlayLegend ??
+      (mapMode === '3d'
+        ? [
+            { color: '#1B4F91', label: tr('Events (bar height)', 'الأحداث (ارتفاع العمود)') },
+            { color: '#D32F2F', label: tr('Fatalities (bar height)', 'الوفيات (ارتفاع العمود)') },
+          ]
+        : [{ color: unBlue.DEFAULT, label: tr(`Darker = more ${m}`, `الأغمق = ${metricName(metric)} أكثر`) }]);
+    setReport({
+      title: tr('Sudan Conflicts', 'النزاعات في السودان'),
+      subtitle: tr('Political violence events and fatalities', 'أحداث العنف السياسي والوفيات'),
+      color: unBlue.dark,
+      path: '/projects/acled-conflict-dashboard',
+      scope: [
+        [tr('Period', 'الفترة'), periodLabel],
+        [tr('Area', 'المنطقة'), area],
+        [tr('Measure on the map', 'المقياس على الخريطة'), mapMode === '3d' ? tr('Events and fatalities (3D bars)', 'الأحداث والوفيات (أعمدة ثلاثية الأبعاد)') : metricName(metric)],
+        [tr('Data as of', 'البيانات حتى'), data.asOf ?? month(lastMonth)],
+      ],
+      summary: tr(
+        `Between ${periodLabel}, ACLED recorded ${n(totals.events)} political violence events and ${n(totals.fatalities)} reported fatalities in ${area}, across ${statesAffected} states and ${localitiesAffected} localities (${perEvent} fatalities per event).`,
+        `خلال ${periodLabel}، سجّلت ACLED ‏${n(totals.events)} حدث عنف سياسي و${n(totals.fatalities)} وفاة مُبلغًا عنها في ${area}، في ${statesAffected} ولاية و${localitiesAffected} محلية (${perEvent} وفاة لكل حدث).`,
+      ),
+      findings,
+      kpis: [
+        { label: tr('Events', 'الأحداث'), value: n(totals.events) },
+        { label: tr('Fatalities', 'الوفيات'), value: n(totals.fatalities) },
+        { label: tr('States affected', 'الولايات المتأثرة'), value: String(statesAffected) },
+        { label: tr('Localities affected', 'المحليات المتأثرة'), value: String(localitiesAffected), note: tr(`${perEvent} fatalities per event`, `${perEvent} وفاة لكل حدث`) },
+      ],
+      figures: [
+        {
+          image: captureCanvas('.maplibregl-canvas'),
+          caption:
+            mapMode === '3d'
+              ? tr(`Events and fatalities by locality as paired 3D bars (each on its own scale), ${mapPeriodLabel}. ${area}.`, `الأحداث والوفيات حسب المحلية كأعمدة ثلاثية الأبعاد متجاورة (لكلٍّ مقياسه)، ${mapPeriodLabel}. ${area}.`)
+              : tr(`${metricName(metric)} by locality, ${mapPeriodLabel}. ${area}.`, `${metricName(metric)} حسب المحلية، ${mapPeriodLabel}. ${area}.`),
+          legend,
+        },
+      ],
+      tables: [
+        {
+          title: tr('States ranked', 'ترتيب الولايات'),
+          columns: [tr('State', 'الولاية'), tr('Events', 'الأحداث'), tr('Fatalities', 'الوفيات'), tr('Share of ' + m, 'الحصة')],
+          numeric: [false, true, true, true],
+          rows: topStates.map((s) => [names.state(s.name), s.events, s.fatalities, `${Math.round((s[metric] / Math.max(1, totals[metric])) * 100)}%`]),
+          note: tr(`Ranked by ${m}; top 10.`, `مرتبة حسب ${metricName(metric)}؛ أعلى 10.`),
+        },
+        {
+          title: tr('Localities ranked', 'ترتيب المحليات'),
+          columns: [tr('Locality', 'المحلية'), tr('State', 'الولاية'), tr('Events', 'الأحداث'), tr('Fatalities', 'الوفيات')],
+          numeric: [false, false, true, true],
+          rows: topLocalities.map((l) => [names.pcode(l.pcode, l.name), names.state(l.state), l.events, l.fatalities]),
+        },
+        ...(insights && insights.surges.length
+          ? [
+              {
+                title: tr('Surging localities', 'المحليات المتصاعدة'),
+                columns: [tr('Locality', 'المحلية'), tr('State', 'الولاية'), tr('Recent', 'الأخيرة'), tr('Expected', 'المتوقع'), 'z'],
+                numeric: [false, false, true, true, true],
+                rows: insights.surges.slice(0, 8).map((c) => [names.pcode(c.locality.pcode, c.locality.name), names.state(c.locality.state), Math.round(c.recent), Math.round(c.expected), c.z.toFixed(1)]),
+                note: tr('Recent window against the locality\'s own monthly baseline (Poisson z-score).', 'النافذة الأخيرة مقارنةً بخط الأساس الشهري للمحلية نفسها (درجة z لتوزيع بواسون).'),
+              },
+            ]
+          : []),
+      ],
+      method: [
+        tr('Monthly ACLED counts per locality (admin 2) are summed in the browser for the period and area selected.', 'تُجمع أعداد ACLED الشهرية لكل محلية (المستوى الإداري 2) داخل المتصفح للفترة والمنطقة المختارتين.'),
+        tr('Surges, declines and new areas compare the latest months with the same locality\'s earlier monthly mean; hotspots use Getis-Ord Gi* over neighbouring localities.', 'تقارن التصاعدات والتراجعات والمناطق الجديدة الأشهر الأخيرة بمتوسط المحلية نفسها سابقًا؛ وتستخدم البؤر الساخنة Getis-Ord Gi* على المحليات المجاورة.'),
+        tr('The last month is partial until ACLED\'s next update and is left out of trend tests.', 'الشهر الأخير جزئي حتى تحديث ACLED التالي، ويُستبعد من اختبارات الاتجاه.'),
+      ],
+      limits: [
+        tr('Fatality figures are reported estimates and are often revised; treat them as lower bounds.', 'أرقام الوفيات تقديرات مُبلغ عنها وكثيرًا ما تُراجع؛ تعامل معها كحد أدنى.'),
+        tr('Reporting is uneven: areas with poor access or communications are likely under-counted.', 'الإبلاغ غير متساوٍ: المناطق ضعيفة الوصول أو الاتصالات يُرجّح أن تكون أقل تمثيلًا.'),
+        tr('Counts describe recorded events, not their causes or the actors involved.', 'تصف الأعداد الأحداث المسجلة، لا أسبابها أو الأطراف المشاركة فيها.'),
+      ],
+      sources: [
+        tr(`ACLED (Armed Conflict Location & Event Data), Sudan HRP political violence events and fatalities by month, via HDX, as of ${data.asOf ?? month(lastMonth)}. acleddata.com`, `ACLED (بيانات مواقع وأحداث النزاعات المسلحة)، أحداث العنف السياسي والوفيات شهريًا في السودان، عبر HDX، حتى ${data.asOf ?? month(lastMonth)}. acleddata.com`),
+        tr('Administrative boundaries: OCHA COD-AB for Sudan (admin 1 and 2), via HDX.', 'الحدود الإدارية: OCHA COD-AB للسودان (المستويان 1 و2)، عبر HDX.'),
+        tr('Basemap © OpenStreetMap contributors, © CARTO.', 'الخريطة الأساسية © مساهمو OpenStreetMap، © CARTO.'),
+      ],
+    });
+  };
+
   const filtersNode = (
     <AcledFilters
       filters={filters}
@@ -370,7 +510,7 @@ function DashboardContent() {
       </ToggleButton>
       <ToggleButton value="3d" sx={toggleSx}>
         <ViewInArIcon sx={{ fontSize: 16 }} />
-        {tr('3D localities', 'المحليات ثلاثية الأبعاد')}
+        {tr('3D bars', 'أعمدة ثلاثية الأبعاد')}
       </ToggleButton>
     </ToggleButtonGroup>
   );
@@ -404,6 +544,7 @@ function DashboardContent() {
         localityTotals={mapLocalityTotals}
         nationalLocalityTotals={nationalLocalityTotals}
         scaleMax={scaleMax}
+        barMax={barMax}
         periodLabel={mapPeriodLabel}
         metric={metric}
         mode={mapMode}
@@ -579,8 +720,10 @@ function DashboardContent() {
       >
         <Box sx={{ px: 2, pt: 1.5, flexShrink: 0 }}>
           <Box sx={{ position: 'relative' }}>
+            {report && <ProjectReport spec={report} onClose={() => setReport(null)} />}
             <DashboardHeader
               articleHref="/insights/acled-conflict-analytics"
+              onReport={openReport}
               title={tr('Sudan Conflicts', 'النزاعات في السودان')}
               subtitle={tr('Political Violence Events & Fatalities — Sudan', 'أحداث العنف السياسي والوفيات — السودان')}
               icon={<CrisisAlertIcon sx={{ fontSize: 28 }} />}

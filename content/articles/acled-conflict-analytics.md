@@ -4,7 +4,7 @@ date: 2026-10-31
 author: Amin Adnan Gasim
 category: Humanitarian
 readingTime: 8 min
-description: "How the Sudan Conflicts dashboard turns 16,720 ACLED events into answers an information manager needs every week: where violence is rising beyond its normal level, which localities are newly affected, and where clusters of conflict form, computed in the browser with Poisson z-scores and Getis-Ord Gi*."
+description: "How the Sudan Conflicts dashboard turns 17,027 ACLED events into answers an information manager needs every week: where violence is rising beyond its normal level, which localities are newly affected, and where clusters of conflict form, computed in the browser with Poisson z-scores and Getis-Ord Gi*."
 tags: [Sudan, ACLED, conflict analysis, spatial statistics, Getis-Ord Gi*, humanitarian information management, MapLibre]
 ---
 
@@ -12,7 +12,7 @@ tags: [Sudan, ACLED, conflict analysis, spatial statistics, Getis-Ord Gi*, human
 
 *Surges, hotspots and trends from ACLED, with statistics a reader can check*
 
-**Since April 2023, ACLED has recorded 16,720 political violence events and 55,605 reported fatalities in Sudan's 189 localities. A map of totals shows where the war has been. It doesn't show what changed this quarter. The Sudan Conflicts dashboard adds that layer: it tests every locality against its own recent history, flags the ones that are newly affected, and finds statistically significant clusters, all in the visitor's browser, every time a filter changes.**
+**Between April 2023 and late October 2026, ACLED recorded 17,027 political violence events and 57,164 reported fatalities in Sudan's 189 localities. A map of totals shows where the war has been. It doesn't show what changed this quarter. The Sudan Conflicts dashboard adds that layer: it tests every locality against its own recent history, flags the ones that are newly affected, and finds statistically significant clusters, all in the visitor's browser, every time a filter changes.**
 
 [Open the Sudan Conflicts dashboard →](/projects/acled-conflict-dashboard)
 
@@ -24,19 +24,23 @@ When I worked with UN agencies, the weekly question from coordinators was rarely
 
 So the dashboard keeps the familiar parts, a choropleth by state and locality, monthly charts, a period slider and filters, and adds an **insights** layer that answers the "what changed" question with methods that hold up to scrutiny.
 
-## What it found (data to mid-September 2026)
+## What it found (data to 28 October 2026)
 
-The latest complete window compares June–August 2026 with the six months before (December 2025 – May 2026). September is left out automatically because the month is not finished.
+The latest complete window compares July–September 2026 with the six months before (January – June 2026). October is left out automatically because the month is not finished.
 
 | Signal | Events | Fatalities |
 | --- | --- | --- |
-| Localities surging (z ≥ 3) | 10 | 18 |
-| Strongest surge | Soudari, North Kordofan: 61 events vs 7.5 expected | Geisan, Blue Nile: 118 vs 19.5 expected |
-| Newly affected localities | 5 | 10 |
-| Hotspot localities (Gi*, 90% or more) | 34 | 38 |
-| State with the largest rise | North Kordofan: 234 events vs 103 expected | |
+| Localities surging (z ≥ 3) | 8 | 18 |
+| Strongest surge | Heiban, South Kordofan: 58 events vs 10 expected | Gharb Bara, North Kordofan: 159 vs 26 expected |
+| Newly affected localities | 4 | 12 |
+| Hotspot localities (Gi*, 90% or more) | 34 | 35 |
+| State with the largest rise | North Kordofan: 223 events vs 115 expected | North Kordofan: 739 fatalities vs 402 expected |
 
-The pattern the numbers draw is a war whose front has moved into **Kordofan**: Soudari, Gebrat Al Sheikh and Al Khiwai surge, while Dilling and Kadugli, the centres of earlier fighting, decline. The Gi* hotspots sit across North, West and South Kordofan and the central states. None of that is new to people following Sudan closely; the point is that the dashboard surfaces it in seconds, with a number attached to each claim.
+The front is still in **Kordofan**, and it has moved north. Four of the eight event surges are in North Kordofan or around it (Soudari, Gharb Bara, Gebrat Al Sheikh, with An Nuhud just across the West Kordofan border), and Heiban in the Nuba Mountains surges too, while Dilling, a centre of the fighting earlier in the year, declines (23 events against 67 expected). Fatalities tell a wider story: Geisan in Blue Nile and Gereida in South Darfur surge, and 12 localities that had no recorded deaths in the first half of the year now do, from Reifi Wad Elhilaiw in Kassala (100 fatalities) to Sirba and Beida in West Darfur.
+
+October is incomplete but already heavy: 1,048 reported fatalities by the 28th, more than any full month since March, with the largest counts in the Abyei area, Nyala Janoub and Wad Al Mahi in Blue Nile. Whether that is a surge will only be testable once the month closes.
+
+None of that is new to people following Sudan closely; the point is that the dashboard surfaces it in seconds, with a number attached to each claim.
 
 ![The Sudan Conflicts dashboard: a map of localities coloured by events, with surging localities highlighted and the insights panel listing them.](/images/acled.png "Figure 1. Sudan Conflicts with the insights layer: surging localities, newly affected areas and hotspots can each be drawn on the map.")
 
@@ -71,6 +75,8 @@ Hotspots are always computed nationwide, because a spatial statistic needs every
 - **Every list item is clickable** and zooms to the locality.
 - Switching between **events and fatalities** recomputes everything: some places are violent but rarely deadly, and the reverse.
 - Moving the **period slider** moves the comparison window with it, so you can ask the same question of any quarter since 2023.
+- The **3D view** stands two bars on every locality, blue for events and red for fatalities, each on its own scale, so a tall red bar beside a short blue one marks places where few events kill many people.
+- **PDF report** turns the view on screen into an A4 brief: scope, key findings, the map, ranked tables, method, limitations and sources.
 
 ### The optional AI assistant
 
@@ -105,4 +111,4 @@ If you coordinate humanitarian work on Sudan or the region and need conflict ana
 
 ---
 
-*Data: Armed Conflict Location & Event Data (ACLED), Sudan, April 2023 – September 2026; Sudan administrative boundaries (OCHA COD-AB). Stack: Next.js, TypeScript, MapLibre GL JS, Chart.js, Material UI.*
+*Data: Armed Conflict Location & Event Data (ACLED), Sudan, April 2023 – October 2026 (as of 28 October); Sudan administrative boundaries (OCHA COD-AB). Stack: Next.js, TypeScript, MapLibre GL JS, Chart.js, Material UI.*

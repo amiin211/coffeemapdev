@@ -105,11 +105,11 @@ export default function ThreeWExplorer(props: ThreeWExplorerProps) {
   };
   const period = months.length ? `${formatMonth(months[0], isAr)} – ${formatMonth(months[months.length - 1], isAr)}` : '';
 
-  // Organizations, busiest first, for the exit simulator.
+  // Organizations A–Z (by acronym, else name) for the exit simulator.
   const orgOptions = useMemo(() => {
     const counts = new Map<number, number>();
     for (const row of data.rows) counts.set(row[4], (counts.get(row[4]) ?? 0) + 1);
-    return Array.from(counts, ([index, count]) => ({ index, count, org: data.orgs[index] })).sort((a, b) => b.count - a.count);
+    return Array.from(counts, ([index, count]) => ({ index, count, org: data.orgs[index] })).sort((a, b) => (a.org.acronym || a.org.name).localeCompare(b.org.acronym || b.org.name, 'en', { sensitivity: 'base' }));
   }, [data]);
   const exitOption = orgOptions.find((o) => o.index === exitOrg) ?? null;
 

@@ -24,10 +24,12 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import CloseIcon from '@mui/icons-material/Close';
 import AppLayout from '@/components/AppLayout';
 import DashboardHeader from '@/components/DashboardHeader';
+import ProjectReport, { captureCanvas, type ReportSpec } from '@/components/ProjectReport';
 import ThreeWStatCards from '@/components/ThreeWStatCards';
 import ThreeWExplorer, { ExplorerMode, matrixCellColor } from '@/components/ThreeWExplorer';
 import {
   DEFAULT_WEIGHTS,
+  CORE_CLUSTERS,
   EXIT_COLORS,
   PRIORITY_BREAKS,
   PRIORITY_RAMP,
@@ -109,6 +111,7 @@ function DashboardContent() {
   const [weights, setWeights] = useState<Weights>(DEFAULT_WEIGHTS);
   const [exitOrg, setExitOrg] = useState<number | null>(null);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [report, setReport] = useState<ReportSpec | null>(null);
 
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
@@ -168,6 +171,11 @@ function DashboardContent() {
     [profileSet, activeExitOrg, selectedState],
   );
   const matrix = useMemo(() => (profileSet ? coverageRows(profileSet, selectedState) : []), [profileSet, selectedState]);
+  // ACLED fatalities over the 3W months, for the map's 3D view.
+  const fatalitiesByKey = useMemo(
+    () => (profileSet && acled ? new Map(Array.from(profileSet.profiles.values(), (p) => [p.key, p.fatalities])) : null),
+    [profileSet, acled],
+  );
   const overlayFill = useMemo(() => {
     if (!showOnMap) return null;
     if (mode === 'priority') return new Map(priority.map((p) => [p.profile.key, priorityColor(p.score)]));
@@ -326,6 +334,8 @@ function DashboardContent() {
       selectedState={selectedState}
       metric={metric}
       onStateSelect={setSelectedState}
+      fatalities={fatalitiesByKey}
+      fatalityPeriod={data.months.length ? (isAr ? `${formatDate(`${data.months[0]}-01`, locale, { month: 'short', year: 'numeric' })} – ${formatDate(`${data.months[data.months.length - 1]}-01`, locale, { month: 'short', year: 'numeric' })}` : `${monthLabel(data.months[0])}–${monthLabel(data.months[data.months.length - 1])} ${data.months[data.months.length - 1].slice(0, 4)}`) : ''}
       overlayFill={overlayFill}
       overlayTitle={
         mode === 'priority'
@@ -379,6 +389,146 @@ function DashboardContent() {
   ]
     .filter(Boolean)
     .join(' · ');
+
+  // PDF report of the view on screen.
+  const openReport = () => {
+    const n = (v: number) => Math.round(v).toLocaleString('en-US');
+    const ml = (m: string) => (isAr ? formatDate(`${m}-01`, locale, { month: 'long', year: 'numeric' }) : `${monthLabel(m)} ${m.slice(0, 4)}`);
+    const period = selectedMonth ? ml(selectedMonth) : `${ml(data.months[0])} – ${ml(data.months[data.months.length - 1])}`;
+    const area = selectedState ? names.state(selectedState) : tr('Sudan, all states', 'السودان، كل الولايات');
+    const exitOrgInfo = activeExitOrg !== null ? data.orgs[activeExitOrg] : null;
+    const exitName = exitOrgInfo ? exitOrgInfo.acronym || exitOrgInfo.name : '';
+    const uncovered = exit.filter((e) => e.impact === 'uncovered').length;
+    const clusterLost = exit.filter((e) => e.impact === 'cluster-lost').length;
+    const gapRows = matrix.filter((r) => r.cells.some((c) => c === 0));
+    const loc = (p: { name: string; state: string }) => `${names.locality(p.name)}, ${names.state(p.state)}`;
+    const findings: string[] = [];
+    if (priority[0])
+      findings.push(
+        tr(
+          `Highest priority: ${loc(priority[0].profile)} (score ${priority[0].score.toFixed(2)}), with ${n(priority[0].profile.events)} conflict events, ${n(priority[0].profile.fatalities)} fatalities and ${priority[0].profile.orgActivities.size} partners.`,
+          `أعلى أولوية: ${loc(priority[0].profile)} (الدرجة ${priority[0].score.toFixed(2)})، مع ${n(priority[0].profile.events)} حدث نزاع و${n(priority[0].profile.fatalities)} وفاة و${priority[0].profile.orgActivities.size} شريكًا.`,
+        ),
+      );
+    if (gapRows.length)
+      findings.push(
+        tr(
+          `${gapRows.length} of the ${matrix.length} most conflict-affected localities lack at least one core cluster (Health, WASH, Food Security, Protection, Nutrition).`,
+          `تفتقر ${gapRows.length} من أكثر ${matrix.length} محليات تأثرًا بالنزاع إلى قطاع أساسي واحد على الأقل (الصحة، والمياه والإصحاح، والأمن الغذائي، والحماية، والتغذية).`,
+        ),
+      );
+    if (exitOrgInfo)
+      findings.push(
+        tr(
+          `If ${exitName} left, ${exit.length} localities would lose its activities: ${uncovered} would have no partner left and ${clusterLost} would lose a core cluster.`,
+          `إن غادرت ${exitName}، تفقد ${exit.length} محلية أنشطتها: ${uncovered} لن يبقى فيها أي شريك، و${clusterLost} ستفقد قطاعًا أساسيًا.`,
+        ),
+      );
+    if (topOrgs[0])
+      findings.push(
+        tr(
+          `${topOrgs[0].org.acronym || topOrgs[0].org.name} reported the most activities (${n(topOrgs[0].activities)} across ${topOrgs[0].states} states).`,
+          `أبلغت ${topOrgs[0].org.acronym || topOrgs[0].org.name} عن أكبر عدد من الأنشطة (${n(topOrgs[0].activities)} في ${topOrgs[0].states} ولايات).`,
+        ),
+      );
+    const fatalTotal = fatalitiesByKey ? Array.from(fatalitiesByKey.values()).reduce((a, b) => a + b, 0) : 0;
+    setReport({
+      title: tr('3W Humanitarian Mapping', 'خرائط العمل الإنساني (3W)'),
+      subtitle: tr('Who does what, where — and where the response falls short', 'من يفعل ماذا وأين — وأين تقصر الاستجابة'),
+      color: unBlue.dark,
+      path: '/projects/3w-humanitarian-mapping',
+      scope: [
+        [tr('Period', 'الفترة'), period],
+        [tr('Area', 'المنطقة'), area],
+        [tr('Filters', 'عوامل التصفية'), [filterNote, selectedOrg].filter(Boolean).join(' · ') || tr('None', 'لا شيء')],
+        [tr('Priority weights', 'أوزان الأولوية'), tr(`conflict ${weights.conflict}, scarcity ${weights.scarcity}, missing clusters ${weights.missing}, decline ${weights.decline}`, `النزاع ${weights.conflict}، الندرة ${weights.scarcity}، القطاعات الغائبة ${weights.missing}، التراجع ${weights.decline}`)],
+      ],
+      summary: tr(
+        `${n(totalOrgsCount)} organizations reported ${n(totalActivities)} activities in ${totalStatesCovered} states (${period}). Combined with ${n(fatalTotal)} conflict fatalities recorded by ACLED over the same months, the analysis ranks localities by need against coverage, tests what one partner's exit would leave behind, and shows which core clusters are missing where conflict is heaviest.`,
+        `أبلغت ${n(totalOrgsCount)} منظمة عن ${n(totalActivities)} نشاطًا في ${totalStatesCovered} ولاية (${period}). وبدمجها مع ${n(fatalTotal)} وفاة سجّلتها ACLED في الأشهر نفسها، يرتّب التحليل المحليات حسب الحاجة مقابل التغطية، ويختبر ما يتركه انسحاب شريك واحد، ويُظهر القطاعات الأساسية الغائبة حيث النزاع أشد.`,
+      ),
+      findings,
+      kpis: [
+        { label: tr('Activities', 'الأنشطة'), value: n(totalActivities) },
+        { label: tr('Organizations', 'المنظمات'), value: n(totalOrgsCount) },
+        { label: tr('States covered', 'الولايات المغطاة'), value: String(totalStatesCovered) },
+        { label: tr('Conflict fatalities', 'وفيات النزاع'), value: n(fatalTotal), note: tr('ACLED, same months', 'ACLED، الأشهر نفسها') },
+      ],
+      figures: [
+        {
+          image: captureCanvas('.maplibregl-canvas'),
+          caption: showOnMap
+            ? mode === 'priority'
+              ? tr('Priority index by locality (darker = higher need against coverage).', 'مؤشر الأولوية حسب المحلية (الأغمق = حاجة أعلى مقابل التغطية).')
+              : mode === 'exit'
+                ? tr(`Localities affected if ${exitName} left.`, `المحليات المتأثرة إن غادرت ${exitName}.`)
+                : tr('Core-cluster coverage in the most conflict-affected localities.', 'تغطية القطاعات الأساسية في أكثر المحليات تأثرًا بالنزاع.')
+            : tr(`${metricLabels[metric]} by state and locality.`, `${metricLabelsAr[metric]} حسب الولاية والمحلية.`),
+          legend:
+            showOnMap && mode === 'exit'
+              ? [
+                  { color: EXIT_COLORS.uncovered, label: tr('No partner left', 'لا يبقى أي شريك') },
+                  { color: EXIT_COLORS['cluster-lost'], label: tr('Core cluster lost', 'فقدان قطاع أساسي') },
+                  { color: EXIT_COLORS.reduced, label: tr('Reduced', 'تغطية أقل') },
+                ]
+              : showOnMap && mode === 'priority'
+                ? [
+                    { color: priorityColor(0.1), label: tr('Low', 'منخفضة') },
+                    { color: priorityColor(0.42), label: tr('Medium', 'متوسطة') },
+                    { color: priorityColor(0.7), label: tr('Highest', 'الأعلى') },
+                  ]
+                : undefined,
+        },
+      ],
+      tables: [
+        {
+          title: tr('Priority localities', 'المحليات ذات الأولوية'),
+          columns: [tr('#', '#'), tr('Locality', 'المحلية'), tr('Score', 'الدرجة'), tr('Events', 'الأحداث'), tr('Fatalities', 'الوفيات'), tr('Partners', 'الشركاء'), tr('Missing core clusters', 'القطاعات الأساسية الغائبة')],
+          numeric: [true, false, true, true, true, true, false],
+          rows: priority.slice(0, 12).map((p) => [p.rank, loc(p.profile), p.score.toFixed(2), p.profile.events, p.profile.fatalities, p.profile.orgActivities.size, missingCore(p.profile).map((c) => clusterLabel(c, isAr)).join(', ') || '—']),
+          note: tr('Score 0–1: weighted percentile ranks of conflict, partner scarcity, missing core clusters and declining presence.', 'الدرجة 0–1: رتب مئينية موزونة للنزاع وندرة الشركاء والقطاعات الأساسية الغائبة وتراجع الحضور.'),
+        },
+        {
+          title: tr('Core-cluster coverage where conflict is heaviest', 'تغطية القطاعات الأساسية حيث النزاع أشد'),
+          columns: [tr('Locality', 'المحلية'), tr('Events', 'الأحداث'), ...CORE_CLUSTERS.map((c) => clusterLabel(c, isAr))],
+          numeric: [false, true, true, true, true, true, true],
+          rows: matrix.map((r) => [loc(r.profile), r.profile.events, ...r.cells.map((c) => (c ? c : '✕'))]),
+          note: tr('Cells show the number of partners per cluster; ✕ = no partner.', 'تُظهر الخلايا عدد الشركاء لكل قطاع؛ ✕ = لا شريك.'),
+        },
+        ...(exitOrgInfo && exit.length
+          ? [
+              {
+                title: tr(`Exit test: ${exitName}`, `اختبار الانسحاب: ${exitName}`),
+                columns: [tr('Locality', 'المحلية'), tr('Impact', 'الأثر'), tr('Its activities', 'أنشطتها'), tr('Partners left', 'الشركاء الباقون'), tr('Clusters lost', 'القطاعات المفقودة')],
+                numeric: [false, false, true, true, false],
+                rows: exit.slice(0, 12).map((e) => [
+                  loc(e.profile),
+                  e.impact === 'uncovered' ? tr('No partner left', 'لا شريك') : e.impact === 'cluster-lost' ? tr('Core cluster lost', 'فقدان قطاع') : tr('Reduced', 'تغطية أقل'),
+                  e.orgActivities,
+                  e.remainingPartners,
+                  e.lostClusters.map((c) => clusterLabel(c, isAr)).join(', ') || '—',
+                ]),
+              },
+            ]
+          : []),
+      ],
+      method: [
+        tr('OCHA 3W activity rows are counted per locality, organization and cluster; ACLED events and fatalities are summed over the same months and joined by state and locality name.', 'تُعدّ صفوف أنشطة 3W من أوتشا لكل محلية ومنظمة وقطاع؛ وتُجمع أحداث ACLED ووفياتها للأشهر نفسها وتُربط باسم الولاية والمحلية.'),
+        tr('The priority index ranks each factor as a percentile across localities, then combines them with the weights shown in the scope table.', 'يرتّب مؤشر الأولوية كل عامل كرتبة مئينية بين المحليات، ثم يجمعها بالأوزان الموضحة في جدول النطاق.'),
+        tr('The exit test removes one organization and recounts partners and core clusters in each locality it served.', 'يزيل اختبار الانسحاب منظمة واحدة ويعيد عدّ الشركاء والقطاعات الأساسية في كل محلية خدمتها.'),
+      ],
+      limits: [
+        tr('3W data records reported activities, not people reached or funding; partners that do not report are invisible.', 'تسجّل بيانات 3W الأنشطة المُبلغ عنها، لا الأشخاص المستفيدين أو التمويل؛ والشركاء غير المُبلغين لا يظهرون.'),
+        tr('Locality names are matched across two datasets; a few may not join.', 'تُطابق أسماء المحليات بين مجموعتي بيانات؛ وقد لا يتطابق بعضها.'),
+        tr('Conflict counts are a proxy for need; they do not measure displacement or food insecurity directly.', 'أعداد النزاع مؤشر تقريبي للحاجة؛ ولا تقيس النزوح أو انعدام الأمن الغذائي مباشرة.'),
+      ],
+      sources: [
+        tr('OCHA Sudan, 2026 HRP Response Monitoring, consolidated 3W data (Jan–Jun 2026), via HDX.', 'أوتشا السودان، رصد الاستجابة لخطة الاستجابة الإنسانية 2026، بيانات 3W الموحّدة (يناير–يونيو 2026)، عبر HDX.'),
+        tr(`ACLED (Armed Conflict Location & Event Data), Sudan HRP political violence events and fatalities by month, via HDX${acled?.asOf ? `, as of ${acled.asOf}` : ''}. acleddata.com`, `ACLED، أحداث العنف السياسي والوفيات شهريًا في السودان، عبر HDX${acled?.asOf ? `، حتى ${acled.asOf}` : ''}. acleddata.com`),
+        tr('Administrative boundaries: OCHA COD-AB for Sudan, via HDX. Basemap © OpenStreetMap contributors, © CARTO.', 'الحدود الإدارية: OCHA COD-AB للسودان، عبر HDX. الخريطة الأساسية © مساهمو OpenStreetMap، © CARTO.'),
+      ],
+    });
+  };
 
   const insightsNode = profileSet && acled && (
     <ThreeWExplorer
@@ -454,8 +604,10 @@ function DashboardContent() {
       >
         <Box sx={{ px: 2, pt: 1.5, flexShrink: 0 }}>
           <Box sx={{ position: 'relative' }}>
+            {report && <ProjectReport spec={report} onClose={() => setReport(null)} />}
             <DashboardHeader
               articleHref="/insights/3w-response-gap-explorer"
+              onReport={openReport}
               title={tr('3W Humanitarian Mapping', 'خرائط العمل الإنساني (3W)')}
               subtitle={tr('Who, What, Where — Sudan Response Monitoring', 'من يفعل ماذا وأين — رصد الاستجابة في السودان')}
               icon={<GroupsIcon sx={{ fontSize: 28 }} />}
