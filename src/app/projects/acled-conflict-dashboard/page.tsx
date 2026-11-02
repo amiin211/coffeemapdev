@@ -143,7 +143,7 @@ function DashboardContent() {
   const nationalLocalityTotals = useMemo(() => (data ? byLocality(data, { ...mapView, state: null, locality: null }) : []), [data, mapView]);
   const singleMonth = mapMonth !== null;
   const scaleMax = useMemo(() => (data && singleMonth ? monthlyMax(data, filters, metric) : null), [data, filters, metric, singleMonth]);
-  // 3D bars show both measures, each on its own (month-fixed) scale.
+  // 3D view shows both measures (height = events, colour = fatalities), each on its own (month-fixed) scale.
   const barMax = useMemo(
     () => (data && singleMonth ? { events: monthlyMax(data, filters, 'events').national, fatalities: monthlyMax(data, filters, 'fatalities').national } : null),
     [data, filters, singleMonth],
@@ -352,8 +352,9 @@ function DashboardContent() {
       overlayLegend ??
       (mapMode === '3d'
         ? [
-            { color: '#1B4F91', label: tr('Events (bar height)', 'الأحداث (ارتفاع العمود)') },
-            { color: '#D32F2F', label: tr('Fatalities (bar height)', 'الوفيات (ارتفاع العمود)') },
+            { color: '#FDD9C7', label: tr('Few fatalities', 'وفيات قليلة') },
+            { color: '#EF3B2C', label: tr('More', 'أكثر') },
+            { color: '#67000D', label: tr('Most fatalities (block height = events)', 'أكثر الوفيات (ارتفاع الكتلة = الأحداث)') },
           ]
         : [{ color: unBlue.DEFAULT, label: tr(`Darker = more ${m}`, `الأغمق = ${metricName(metric)} أكثر`) }]);
     setReport({
@@ -364,7 +365,7 @@ function DashboardContent() {
       scope: [
         [tr('Period', 'الفترة'), periodLabel],
         [tr('Area', 'المنطقة'), area],
-        [tr('Measure on the map', 'المقياس على الخريطة'), mapMode === '3d' ? tr('Events and fatalities (3D bars)', 'الأحداث والوفيات (أعمدة ثلاثية الأبعاد)') : metricName(metric)],
+        [tr('Measure on the map', 'المقياس على الخريطة'), mapMode === '3d' ? tr('Events (height) and fatalities (colour), 3D', 'الأحداث (الارتفاع) والوفيات (اللون)، ثلاثي الأبعاد') : metricName(metric)],
         [tr('Data as of', 'البيانات حتى'), data.asOf ?? month(lastMonth)],
       ],
       summary: tr(
@@ -383,7 +384,7 @@ function DashboardContent() {
           image: captureCanvas('.maplibregl-canvas'),
           caption:
             mapMode === '3d'
-              ? tr(`Events and fatalities by locality as paired 3D bars (each on its own scale), ${mapPeriodLabel}. ${area}.`, `الأحداث والوفيات حسب المحلية كأعمدة ثلاثية الأبعاد متجاورة (لكلٍّ مقياسه)، ${mapPeriodLabel}. ${area}.`)
+              ? tr(`Localities raised by events and coloured by fatalities (square-root scales), ${mapPeriodLabel}. ${area}.`, `المحليات مرفوعة حسب الأحداث وملوّنة حسب الوفيات (مقاييس الجذر التربيعي)، ${mapPeriodLabel}. ${area}.`)
               : tr(`${metricName(metric)} by locality, ${mapPeriodLabel}. ${area}.`, `${metricName(metric)} حسب المحلية، ${mapPeriodLabel}. ${area}.`),
           legend,
         },
@@ -510,7 +511,7 @@ function DashboardContent() {
       </ToggleButton>
       <ToggleButton value="3d" sx={toggleSx}>
         <ViewInArIcon sx={{ fontSize: 16 }} />
-        {tr('3D bars', 'أعمدة ثلاثية الأبعاد')}
+        {tr('3D', 'ثلاثي الأبعاد')}
       </ToggleButton>
     </ToggleButtonGroup>
   );

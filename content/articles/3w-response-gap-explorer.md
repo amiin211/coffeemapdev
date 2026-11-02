@@ -61,7 +61,7 @@ For the most conflict-affected localities, a matrix shows how many partners each
 
 ## Conflict in 3D, and a report to take away
 
-The map can tilt into a **3D view** that stands a red bar on every locality, its height the ACLED fatalities over the same six months, on top of whichever 3W layer is showing. Seeing the tallest bars rise out of thinly covered localities makes the gap argument faster than any table. And a **PDF report** turns the current view into an A4 brief for a coordination meeting: the priority list, the coverage matrix, the exit test for the selected partner, the map, method, limitations and sources.
+The map can tilt into a **3D view** that stands a red bar on every locality, its height the ACLED conflict events over the same six months, on top of whichever 3W layer is showing. Seeing the tallest bars rise out of thinly covered localities makes the gap argument faster than any table. And a **PDF report** turns the current view into an A4 brief for a coordination meeting: the priority list, the coverage matrix, the exit test for the selected partner, the map, method, limitations and sources.
 
 ## How it works
 

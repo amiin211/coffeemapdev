@@ -54,13 +54,18 @@ const CIRCLE_COLOR = '#D32F2F';
 const HIGHLIGHT_COLOR = '#F2A900';
 const MUTED_COLOR = '#D5DBE3';
 const MAX_RADIUS = 26;
-const MAX_HEIGHT = 260_000; // metres at zoom 5, for the busiest locality
-// 3D view: two square columns per locality, events (blue) west of the
-// centroid and fatalities (red) east of it, each scaled to its own maximum.
-export const EVENTS_BAR_COLOR = '#1B4F91';
-export const FATALITIES_BAR_COLOR = '#D32F2F';
-const BAR_HALF = 0.055; // half the bar side, degrees of latitude (~6 km)
-const BAR_GAP = 0.012;
+// 3D view: each locality rises as a solid block. Height = events and colour =
+// fatalities, both on a square-root scale so one or two extreme localities
+// don't flatten everything else.
+const MAX_HEIGHT = 110_000; // metres at zoom 5, for the busiest locality
+export const FATALITY_RAMP: [number, string][] = [
+  [0, '#E9EDF2'], // no recorded deaths
+  [0.001, '#FDD9C7'],
+  [0.25, '#FC9272'],
+  [0.5, '#EF3B2C'],
+  [0.75, '#B3141B'],
+  [1, '#67000D'],
+];
 const PITCH_3D = 50;
 const BEARING_3D = -12;
 const [RAMP_NONE, RAMP_LOW, RAMP_MEDIUM, RAMP_HIGH] = unChoroplethRamp;
@@ -100,13 +105,6 @@ interface Frame {
   barE: Values;
   barF: Values;
   visible: Values;
-}
-
-// One square column as a polygon, centred `dx` degrees of longitude east of (lon, lat).
-function square(lon: number, lat: number, dx: number): number[][] {
-  const k = 1 / Math.cos((lat * Math.PI) / 180);
-  const x0 = lon + dx - BAR_HALF * k, x1 = lon + dx + BAR_HALF * k, y0 = lat - BAR_HALF, y1 = lat + BAR_HALF;
-  return [[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]];
 }
 
 const ease = (p: number) => 1 - Math.pow(1 - p, 3);
@@ -206,8 +204,8 @@ export default function AcledMap({
         map.setFeatureState({ source: 'localities', id }, { r });
         map.setFeatureState({ source: 'locality-points', id }, { r, v });
       });
-      f.barE.forEach((h, id) => map.setFeatureState({ source: 'bars', id: `${id}|e` }, { h }));
-      f.barF.forEach((h, id) => map.setFeatureState({ source: 'bars', id: `${id}|f` }, { h }));
+      f.barE.forEach((e, id) => map.setFeatureState({ source: 'prisms', id }, { e }));
+      f.barF.forEach((d, id) => map.setFeatureState({ source: 'prisms', id }, { d }));
     };
     const step = (now: number) => {
       const p = transitionMs > 0 ? Math.min(1, (now - start) / transitionMs) : 1;
@@ -242,25 +240,6 @@ export default function AcledMap({
     []
   );
 
-  // Two columns per locality (fixed set; heights come from feature-state).
-  const barsGeoJson = useMemo<GeoJSON.FeatureCollection<GeoJSON.Polygon>>(
-    () => ({
-      type: 'FeatureCollection',
-      features: nationalLocalityTotals.flatMap((l) => {
-        const { lon, lat, pcode, name, state } = l.locality;
-        const off = (BAR_HALF + BAR_GAP / 2) / Math.cos((lat * Math.PI) / 180);
-        return (['e', 'f'] as const).map((m) => ({
-          type: 'Feature' as const,
-          geometry: { type: 'Polygon' as const, coordinates: [square(lon, lat, m === 'e' ? -off : off)] },
-          properties: { id: `${pcode}|${m}`, m, pcode, name, state },
-        }));
-      }),
-    }),
-    // Built once, like the points.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
-  );
-
   const hl = highlight;
   const isSelectedState: ExpressionSpecification = ['==', ['get', 'adm1_name'], selectedState ?? ''];
   const isHlState: ExpressionSpecification = ['all', ['==', ['get', 'adm1_name'], hl?.state ?? ''], hl?.pcode == null];
@@ -282,22 +261,24 @@ export default function AcledMap({
       : 0.8;
   const statesOpacity: ExpressionSpecification | number = overlayOn ? (selectedState ? ['case', isSelectedState, 0, 0.12] : 0.3) : baseStatesOpacity;
 
-  // Bars: blue events, red fatalities. A hovered locality's bars turn amber;
-  // with a state hovered or selected, the other states' bars are muted.
+  // Blocks: colour by fatalities, height by events (square-root scales). A
+  // hovered locality turns amber; with a state hovered or selected, the other
+  // states are muted and, when selected, lie flat.
   const focusState = hl && hl.pcode == null ? hl.state : selectedState;
-  const barBase: ExpressionSpecification = ['case', ['==', ['get', 'm'], 'e'], EVENTS_BAR_COLOR, FATALITIES_BAR_COLOR];
-  const barColor: ExpressionSpecification = [
+  const prismBase: ExpressionSpecification = ['interpolate', ['linear'], ['sqrt', fs('d')], ...FATALITY_RAMP.flat()] as unknown as ExpressionSpecification;
+  const prismColor: ExpressionSpecification = [
     'case',
-    ['==', ['get', 'pcode'], hl?.pcode ?? ''],
+    ['==', ['get', 'adm2_pcode'], hl?.pcode ?? ''],
     HIGHLIGHT_COLOR,
-    focusState ? ['case', ['==', ['get', 'state'], focusState], barBase, MUTED_COLOR] : barBase,
+    focusState ? ['case', ['==', ['get', 'adm1_name'], focusState], prismBase, MUTED_COLOR] : prismBase,
   ];
-  // Halve the height per zoom level so the bars keep the same screen height
-  // when the camera flies to a state. With a state selected only its
-  // localities stand up; the rest lie flat as context and can't block the view.
-  const height = (scale: number): ExpressionSpecification =>
-    selectedState ? ['case', ['==', ['get', 'state'], selectedState], ['*', fs('h'), scale], 0] : ['*', fs('h'), scale];
-  const barHeight: ExpressionSpecification = [
+  // Halve the height per zoom level so the blocks keep the same screen height
+  // when the camera flies to a state.
+  const height = (scale: number): ExpressionSpecification => {
+    const h: ExpressionSpecification = ['*', ['sqrt', fs('e')], scale];
+    return selectedState ? ['case', ['==', ['get', 'adm1_name'], selectedState], h, 0] : h;
+  };
+  const prismHeight: ExpressionSpecification = [
     'interpolate', ['exponential', 2], ['zoom'], 3, height(MAX_HEIGHT * 4), 10, height(MAX_HEIGHT / 32),
   ];
 
@@ -310,8 +291,8 @@ export default function AcledMap({
     const feature = event.features?.[0];
     if (!feature) return null;
     const p = feature.properties;
-    if (feature.layer.id === 'locality-circles' || feature.layer.id === 'bars-3d') return { state: p.state, pcode: p.pcode };
-    if (feature.layer.id === 'localities-fill' || feature.layer.id === 'localities-base' || feature.layer.id === 'insights-fill') return { state: p.adm1_name, pcode: p.adm2_pcode };
+    if (feature.layer.id === 'locality-circles') return { state: p.state, pcode: p.pcode };
+    if (feature.layer.id === 'localities-fill' || feature.layer.id === 'prisms-3d' || feature.layer.id === 'insights-fill') return { state: p.adm1_name, pcode: p.adm2_pcode };
     return { state: p.adm1_name, pcode: null };
   };
 
@@ -322,9 +303,7 @@ export default function AcledMap({
     if (feature.layer.id === 'locality-circles') {
       const [lng, lat] = (feature.geometry as GeoJSON.Point).coordinates;
       setPopup({ view, lng, lat, pcode: p.pcode, name: p.name, state: p.state });
-    } else if (feature.layer.id === 'bars-3d') {
-      onLocalitySelect(p.name === selectedLocality ? null : p.name, p.state);
-    } else if (feature.layer.id === 'localities-fill' || feature.layer.id === 'localities-base' || feature.layer.id === 'insights-fill') {
+    } else if (feature.layer.id === 'localities-fill' || feature.layer.id === 'prisms-3d' || feature.layer.id === 'insights-fill') {
       onLocalitySelect(p.adm2_name === selectedLocality ? null : p.adm2_name, p.adm1_name);
     } else if (feature.layer.id === 'states-fill' && p.adm1_name !== selectedState) {
       onStateSelect(p.adm1_name);
@@ -368,7 +347,7 @@ export default function AcledMap({
         maxZoom={10}
         maxPitch={70}
         mapStyle={BASEMAP}
-        interactiveLayerIds={is3d ? ['bars-3d', 'localities-base'] : overlayOn ? ['locality-circles', 'insights-fill', 'localities-fill', 'states-fill'] : ['locality-circles', 'localities-fill', 'states-fill']}
+        interactiveLayerIds={is3d ? ['prisms-3d'] : overlayOn ? ['locality-circles', 'insights-fill', 'localities-fill', 'states-fill'] : ['locality-circles', 'localities-fill', 'states-fill']}
         onClick={handleClick}
         onMouseMove={handleMove}
         onMouseLeave={handleLeave}
@@ -412,22 +391,6 @@ export default function AcledMap({
             layout={visibility(!is3d)}
             paint={{ 'line-color': '#ffffff', 'line-width': ['interpolate', ['linear'], ['zoom'], 5, 0.4, 8, 1] }}
           />
-          {/* 3D view: a flat, light locality base for context under the bars. */}
-          <Layer
-            id="localities-base"
-            type="fill"
-            layout={visibility(is3d)}
-            paint={{
-              'fill-color': ['case', isHlLocality, '#FFF3D6', focusState ? ['case', ['==', ['get', 'adm1_name'], focusState], '#EEF3FA', '#F6F6F6'] : '#EEF3FA'],
-              'fill-opacity': 0.9,
-            }}
-          />
-          <Layer
-            id="localities-base-outline"
-            type="line"
-            layout={visibility(is3d)}
-            paint={{ 'line-color': '#B8C4D6', 'line-width': ['interpolate', ['linear'], ['zoom'], 5, 0.3, 8, 0.8] }}
-          />
         </Source>
 
         {/* Separate sources (same data) so these lines stack above the fills:
@@ -461,15 +424,17 @@ export default function AcledMap({
           <Layer id="localities-highlight" type="line" filter={isHlLocality} layout={visibility(!is3d)} paint={{ 'line-color': HIGHLIGHT_COLOR, 'line-width': 3 }} />
         </Source>
 
-        <Source id="bars" type="geojson" data={barsGeoJson} promoteId="id">
+        {/* 3D view: every locality as a block, above the 2D lines so the
+            state borders don't draw over the walls. */}
+        <Source id="prisms" type="geojson" data={admin2} promoteId="adm2_pcode">
           <Layer
-            id="bars-3d"
+            id="prisms-3d"
             type="fill-extrusion"
             layout={visibility(is3d)}
             paint={{
-              'fill-extrusion-color': barColor,
-              'fill-extrusion-height': barHeight,
-              'fill-extrusion-opacity': 0.95,
+              'fill-extrusion-color': prismColor,
+              'fill-extrusion-height': prismHeight,
+              'fill-extrusion-opacity': 0.92,
               'fill-extrusion-vertical-gradient': true,
             }}
           />
@@ -511,21 +476,24 @@ export default function AcledMap({
         {is3d ? (
           <Box>
             <Typography variant="caption" sx={{ fontWeight: 600, display: 'block', mb: 0.5 }}>
-              {tr('Each locality: two bars', 'لكل محلية عمودان')}
+              {tr('Height = events · colour = fatalities', 'الارتفاع = الأحداث · اللون = الوفيات')}
             </Typography>
-            {([
-              [EVENTS_BAR_COLOR, tr('Events', 'الأحداث'), eventsMax],
-              [FATALITIES_BAR_COLOR, tr('Fatalities', 'الوفيات'), fatalitiesMax],
-            ] as [string, string, number][]).map(([color, label, max]) => (
-              <Box key={label} sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mt: 0.25 }}>
-                <Box sx={{ width: 10, height: 18, borderRadius: '2px', bgcolor: color }} />
-                <Typography variant="caption" sx={{ fontSize: '0.68rem' }}>
-                  {label} · {tr(`tallest = ${max.toLocaleString()}`, `الأطول = ${max.toLocaleString()}`)}
-                </Typography>
-              </Box>
-            ))}
+            <Box sx={{ display: 'flex', height: 10, width: 200, borderRadius: '3px', overflow: 'hidden' }} dir="ltr">
+              {FATALITY_RAMP.slice(1).map(([, c]) => (
+                <Box key={c} sx={{ flex: 1, bgcolor: c }} />
+              ))}
+            </Box>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', width: 200 }} dir="ltr">
+              <Typography variant="caption" sx={{ fontSize: '0.62rem' }}>1</Typography>
+              <Typography variant="caption" sx={{ fontSize: '0.62rem' }}>{Math.round(fatalitiesMax / 4).toLocaleString()}</Typography>
+              <Typography variant="caption" sx={{ fontSize: '0.62rem' }}>{fatalitiesMax.toLocaleString()}</Typography>
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mt: 0.5 }}>
+              <Box sx={{ width: 10, height: 10, borderRadius: '2px', bgcolor: FATALITY_RAMP[0][1], border: '1px solid #ccd' }} />
+              <Typography variant="caption" sx={{ fontSize: '0.65rem' }}>{tr('No recorded deaths', 'لا وفيات مسجّلة')}</Typography>
+            </Box>
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.62rem', mt: 0.5, maxWidth: 220, lineHeight: 1.35 }}>
-              {tr('Each measure has its own scale, so a tall red bar beside a short blue one means few events but many deaths.', 'لكل مقياس سلّمه الخاص، فالعمود الأحمر الطويل بجانب أزرق قصير يعني أحداثًا قليلة ووفيات كثيرة.')}
+              {tr(`Tallest = ${eventsMax.toLocaleString()} events. Square-root scales, so smaller localities stay visible; a low dark block means few events but many deaths.`, `الأعلى = ${eventsMax.toLocaleString()} حدثًا. مقاييس الجذر التربيعي تُبقي المحليات الصغيرة ظاهرة؛ والكتلة المنخفضة الداكنة تعني أحداثًا قليلة ووفيات كثيرة.`)}
               {scaleMax ? tr(' Same scale for every month of the range.', ' مقياس واحد لكل أشهر الفترة.') : ''}
             </Typography>
           </Box>

@@ -22,19 +22,12 @@ interface ThreeWMapProps {
   selectedState: string | null;
   metric: ThreeWMetric;
   onStateSelect: (state: string | null) => void;
-  /** Response Gap Explorer overlay: locality key (state|name) → fill colour, with its legend. */
-  overlayFill?: Map<string, string> | null;
-  overlayLegend?: { color: string; label: string }[] | null;
-  overlayTitle?: string | null;
-  overlayTooltip?: (key: string) => string | null;
-  selectedLocality?: string | null; // locality key, outlined on the map
-  onLocalityClick?: (key: string) => void;
-  /** ACLED fatalities per locality key over the 3W months, drawn as red 3D bars. */
-  fatalities?: Map<string, number> | null;
-  fatalityPeriod?: string;
+  /** ACLED conflict events per locality key over the 3W months, drawn as red 3D bars. */
+  events?: Map<string, number> | null;
+  eventPeriod?: string;
 }
 
-const FATALITY_COLOR = '#C62828';
+const EVENT_BAR_COLOR = '#C62828';
 const BAR_HALF = 0.06; // half the bar side, degrees of latitude (~6.5 km)
 const BAR_MAX_HEIGHT = 260_000; // metres at zoom 5, for the deadliest locality
 
@@ -106,14 +99,8 @@ export default function ThreeWMap({
   selectedState,
   metric,
   onStateSelect,
-  overlayFill = null,
-  overlayLegend = null,
-  overlayTitle = null,
-  overlayTooltip,
-  selectedLocality = null,
-  onLocalityClick,
-  fatalities = null,
-  fatalityPeriod = '',
+  events = null,
+  eventPeriod = '',
 }: ThreeWMapProps) {
   const [view3d, setView3d] = useState(false);
   const [hoveredLocality, setHoveredLocality] = useState<{ lng: number; lat: number; text: string } | null>(null);
@@ -148,14 +135,14 @@ export default function ThreeWMap({
     mapRef.current.easeTo({ pitch: view3d ? 50 : 0, bearing: view3d ? -12 : 0, duration: 800 });
   }, [mapLoaded, view3d]);
 
-  // One red column per locality at its centroid, height ∝ fatalities.
+  // One red column per locality at its centroid, height ∝ conflict events.
   const barsGeoJson = useMemo<GeoJSON.FeatureCollection<GeoJSON.Polygon> | null>(() => {
-    if (!admin2 || !fatalities) return null;
-    const max = Math.max(1, ...fatalities.values());
+    if (!admin2 || !events) return null;
+    const max = Math.max(1, ...events.values());
     const features: GeoJSON.Feature<GeoJSON.Polygon>[] = [];
     for (const f of admin2.features) {
       const key = localityKey(f.properties.adm1_name, f.properties.adm2_name);
-      const value = fatalities.get(key) ?? 0;
+      const value = events.get(key) ?? 0;
       const c = ringCentroid(f.geometry as GeoJSON.Geometry);
       if (!value || !c) continue;
       const k = BAR_HALF / Math.cos((c[1] * Math.PI) / 180);
@@ -166,8 +153,8 @@ export default function ThreeWMap({
       });
     }
     return { type: 'FeatureCollection', features };
-  }, [admin2, fatalities]);
-  const maxFatalities = fatalities ? Math.max(0, ...fatalities.values()) : 0;
+  }, [admin2, events]);
+  const maxEvents = events ? Math.max(0, ...events.values()) : 0;
   const barHeight = (scale: number): ExpressionSpecification => ['*', ['get', 'ratio'], scale];
   const barHeightExpression: ExpressionSpecification = [
     'interpolate', ['exponential', 2], ['zoom'], 3, barHeight(BAR_MAX_HEIGHT * 4), 10, barHeight(BAR_MAX_HEIGHT / 32),
@@ -211,22 +198,6 @@ export default function ThreeWMap({
     };
   }, [admin2, selectedState]);
 
-  // Localities flagged by the response-gap panel, drawn nationwide.
-  const overlayGeoJson = useMemo(() => {
-    if (!admin2 || !overlayFill || overlayFill.size === 0) return null;
-    const features = admin2.features.flatMap((f) => {
-      const color = overlayFill.get(localityKey(f.properties.adm1_name, f.properties.adm2_name));
-      const key = localityKey(f.properties.adm1_name, f.properties.adm2_name);
-      return color ? [{ ...f, properties: { ...f.properties, color, key } }] : [];
-    });
-    return { ...admin2, features };
-  }, [admin2, overlayFill]);
-  const overlayOn = !!overlayGeoJson && overlayGeoJson.features.length > 0;
-  const selectedGeoJson = useMemo(() => {
-    if (!admin2 || !selectedLocality) return null;
-    return { ...admin2, features: admin2.features.filter((f) => localityKey(f.properties.adm1_name, f.properties.adm2_name) === selectedLocality) };
-  }, [admin2, selectedLocality]);
-
   const fillColorExpression: ExpressionSpecification = [
     'case',
     ['<=', ['get', 'ratio'], 0], RAMP_NONE,
@@ -243,28 +214,22 @@ export default function ThreeWMap({
 
   const handleClick = (event: MapLayerMouseEvent) => {
     const feature = event.features?.[0];
-    if (feature?.layer.id === 'gap-overlay-fill' && onLocalityClick) onLocalityClick(feature.properties.key);
-    else if (feature) onStateSelect(feature.properties?.adm1_name ?? null);
+    if (feature?.layer.id === 'event-bars') return;
+    if (feature) onStateSelect(feature.properties?.adm1_name ?? null);
   };
 
   const handleMouseMove = (event: MapLayerMouseEvent) => {
     const feature = event.features?.[0];
     const canvas = mapRef.current?.getCanvas();
     if (canvas) canvas.style.cursor = feature ? 'pointer' : '';
-    if (feature?.layer.id === 'fatality-bars') {
+    if (feature?.layer.id === 'event-bars') {
       const p = feature.properties;
       setHovered(null);
       setHoveredLocality({
         lng: event.lngLat.lng,
         lat: event.lngLat.lat,
-        text: tr(`${names.locality(p.name)} · ${names.state(p.state)}\n${Number(p.value).toLocaleString()} fatalities (ACLED, ${fatalityPeriod})`, `${names.locality(p.name)} · ${names.state(p.state)}\n${Number(p.value).toLocaleString()} وفاة (ACLED، ${fatalityPeriod})`),
+        text: tr(`${names.locality(p.name)} · ${names.state(p.state)}\n${Number(p.value).toLocaleString()} conflict events (ACLED, ${eventPeriod})`, `${names.locality(p.name)} · ${names.state(p.state)}\n${Number(p.value).toLocaleString()} حدث نزاع (ACLED، ${eventPeriod})`),
       });
-      return;
-    }
-    if (feature?.layer.id === 'gap-overlay-fill') {
-      const text = overlayTooltip?.(feature.properties.key) ?? null;
-      setHovered(null);
-      setHoveredLocality(text ? { lng: event.lngLat.lng, lat: event.lngLat.lat, text } : null);
       return;
     }
     setHoveredLocality(null);
@@ -302,7 +267,7 @@ export default function ThreeWMap({
         maxPitch={70}
         interactiveLayerIds={
           enrichedGeoJson
-            ? [...(view3d && barsGeoJson ? ['fatality-bars'] : []), ...(overlayOn ? ['gap-overlay-fill'] : []), STATES_FILL_LAYER]
+            ? [...(view3d && barsGeoJson ? ['event-bars'] : []), STATES_FILL_LAYER]
             : []
         }
         onClick={handleClick}
@@ -321,7 +286,7 @@ export default function ThreeWMap({
               type="fill"
               paint={{
                 'fill-color': fillColorExpression,
-                'fill-opacity': overlayOn ? 0.25 : fillOpacityExpression,
+                'fill-opacity': fillOpacityExpression,
               }}
             />
             <Layer
@@ -350,25 +315,13 @@ export default function ThreeWMap({
           </Source>
         )}
 
-        {overlayOn && (
-          <Source id="gap-overlay" type="geojson" data={overlayGeoJson}>
-            <Layer id="gap-overlay-fill" type="fill" paint={{ 'fill-color': ['get', 'color'], 'fill-opacity': 0.75 }} />
-            <Layer id="gap-overlay-line" type="line" paint={{ 'line-color': '#ffffff', 'line-width': 0.6 }} />
-          </Source>
-        )}
-        {selectedGeoJson && selectedGeoJson.features.length > 0 && (
-          <Source id="selected-locality" type="geojson" data={selectedGeoJson}>
-            <Layer id="selected-locality-casing" type="line" paint={{ 'line-color': '#ffffff', 'line-width': 5 }} />
-            <Layer id="selected-locality-line" type="line" paint={{ 'line-color': '#0D2B52', 'line-width': 2.5 }} />
-          </Source>
-        )}
         {view3d && barsGeoJson && (
-          <Source id="fatality-bars" type="geojson" data={barsGeoJson}>
+          <Source id="event-bars" type="geojson" data={barsGeoJson}>
             <Layer
-              id="fatality-bars"
+              id="event-bars"
               type="fill-extrusion"
               paint={{
-                'fill-extrusion-color': FATALITY_COLOR,
+                'fill-extrusion-color': EVENT_BAR_COLOR,
                 'fill-extrusion-height': barHeightExpression,
                 'fill-extrusion-opacity': 0.92,
                 'fill-extrusion-vertical-gradient': true,
@@ -415,7 +368,7 @@ export default function ThreeWMap({
         )}
       </MapGL>
 
-      {fatalities && (
+      {events && (
         <Box sx={{ position: 'absolute', top: { xs: 12, md: 78 }, left: 12, zIndex: 500, ...floatingPanelSx }}>
           <ToggleButtonGroup
             size="small"
@@ -431,7 +384,7 @@ export default function ThreeWMap({
             </ToggleButton>
             <ToggleButton value="3d">
               <ViewInArIcon sx={{ fontSize: 16 }} />
-              {tr('3D fatalities', 'الوفيات ثلاثية الأبعاد')}
+              {tr('3D events', 'الأحداث ثلاثية الأبعاد')}
             </ToggleButton>
           </ToggleButtonGroup>
         </Box>
@@ -462,27 +415,10 @@ export default function ThreeWMap({
         </Box>
         {view3d && barsGeoJson && (
           <Box sx={{ mt: 1, pt: 1, borderTop: '1px solid rgba(0,0,0,0.08)', display: 'flex', alignItems: 'center', gap: 0.75 }}>
-            <Box sx={{ width: 10, height: 18, borderRadius: '2px', bgcolor: FATALITY_COLOR, flexShrink: 0 }} />
+            <Box sx={{ width: 10, height: 18, borderRadius: '2px', bgcolor: EVENT_BAR_COLOR, flexShrink: 0 }} />
             <Typography variant="caption" sx={{ fontSize: '0.65rem', lineHeight: 1.35 }}>
-              {tr(`Conflict fatalities (ACLED), ${fatalityPeriod} · tallest = ${maxFatalities.toLocaleString()}`, `وفيات النزاع (ACLED)، ${fatalityPeriod} · الأطول = ${maxFatalities.toLocaleString()}`)}
+              {tr(`Conflict events (ACLED), ${eventPeriod} · tallest = ${maxEvents.toLocaleString()}`, `أحداث النزاع (ACLED)، ${eventPeriod} · الأطول = ${maxEvents.toLocaleString()}`)}
             </Typography>
-          </Box>
-        )}
-        {overlayOn && overlayLegend && (
-          <Box sx={{ mt: 1, pt: 1, borderTop: '1px solid rgba(0,0,0,0.08)' }}>
-            {overlayTitle && (
-              <Typography variant="caption" sx={{ fontWeight: 600, display: 'block', mb: 0.25 }}>
-                {overlayTitle}
-              </Typography>
-            )}
-            {overlayLegend.map((item) => (
-              <Box key={item.label} sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mt: 0.25 }}>
-                <Box sx={{ width: 12, height: 12, borderRadius: '2px', bgcolor: item.color, opacity: 0.85, border: '1px solid rgba(0,0,0,0.1)' }} />
-                <Typography variant="caption" sx={{ fontSize: '0.65rem' }}>
-                  {item.label}
-                </Typography>
-              </Box>
-            ))}
           </Box>
         )}
       </Box>

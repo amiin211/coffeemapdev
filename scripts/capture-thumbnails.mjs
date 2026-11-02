@@ -68,7 +68,7 @@ const SHOTS = [
     out: 'public/images/3w.png',
     path: '/projects/3w-humanitarian-mapping/',
     async prepare(page) {
-      await page.getByText('Response Gap Explorer').waitFor({ timeout: 120_000 });
+      await page.getByText('Top Organizations').first().waitFor({ timeout: 120_000 });
       await sleep(6000);
     },
     target: '.maplibregl-map',

@@ -75,7 +75,7 @@ Hotspots are always computed nationwide, because a spatial statistic needs every
 - **Every list item is clickable** and zooms to the locality.
 - Switching between **events and fatalities** recomputes everything: some places are violent but rarely deadly, and the reverse.
 - Moving the **period slider** moves the comparison window with it, so you can ask the same question of any quarter since 2023.
-- The **3D view** stands two bars on every locality, blue for events and red for fatalities, each on its own scale, so a tall red bar beside a short blue one marks places where few events kill many people.
+- The **3D view** raises every locality by its number of events and colours it by fatalities, from pale to deep red, on square-root scales so the smaller localities stay visible beside Khartoum. A low, dark block marks a place where few events kill many people.
 - **PDF report** turns the view on screen into an A4 brief: scope, key findings, the map, ranked tables, method, limitations and sources.
 
 ### The optional AI assistant
